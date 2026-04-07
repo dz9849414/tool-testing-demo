@@ -1,5 +1,45 @@
 server:
   port: 8080
+
 spring:
   application:
-    name: t ool-testing-demo
+    name: tool-testing-demo
+  
+  # 数据源配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/tool_testing?useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: Shop123123
+  
+  # MyBatis Plus配置
+  mybatis-plus:
+    configuration:
+      map-underscore-to-camel-case: true
+      log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    global-config:
+      db-config:
+        id-type: assign_id
+        logic-delete-field: deleted
+        logic-delete-value: 1
+        logic-not-delete-value: 0
+
+# JWT配置
+jwt:
+  secret: mySecretKeyForJWTGenerationInSpringBootApplication2024
+  expiration: 86400
+  header: Authorization
+
+# 安全配置
+security:
+  ignored:
+    - /api/auth/**
+    - /swagger-ui/**
+    - /v3/api-docs/**
+    - /webjars/**
+
+# 日志配置
+logging:
+  level:
+    com.example.tooltestingdemo: DEBUG
+    org.springframework.security: DEBUG
