@@ -2,4 +2,4 @@ server:
   port: 8080
 spring:
   application:
-    name: tool-testing-demo
+    name: t ool-testing-demo
