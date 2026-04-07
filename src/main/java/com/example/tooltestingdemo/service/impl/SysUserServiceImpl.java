@@ -1,0 +1,104 @@
+package com.example.tooltestingdemo.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.tooltestingdemo.entity.SysUser;
+import com.example.tooltestingdemo.mapper.SysUserMapper;
+import com.example.tooltestingdemo.service.SysUserService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * 用户服务实现类
+ */
+@Service
+@RequiredArgsConstructor
+public class SysUserServiceImpl implements SysUserService {
+    
+    private final SysUserMapper userMapper;
+    
+    @Override
+    public SysUser findById(String id) {
+        return userMapper.selectById(id);
+    }
+    
+    @Override
+    public SysUser findByUsername(String username) {
+        return userMapper.selectByUsername(username);
+    }
+    
+    @Override
+    public List<SysUser> findAll() {
+        return userMapper.selectList(new QueryWrapper<>());
+    }
+    
+    @Override
+    public Page<SysUser> findAll(Page<SysUser> page) {
+        return userMapper.selectPage(page, new QueryWrapper<>());
+    }
+    
+    @Override
+    @Transactional
+    public SysUser save(SysUser user) {
+        userMapper.insert(user);
+        return user;
+    }
+    
+    @Override
+    @Transactional
+    public SysUser update(SysUser user) {
+        SysUser existingUser = userMapper.selectById(user.getId());
+        if (existingUser != null) {
+            existingUser.setUsername(user.getUsername());
+            existingUser.setEmail(user.getEmail());
+            existingUser.setPhone(user.getPhone());
+            existingUser.setRealName(user.getRealName());
+            existingUser.setStatus(user.getStatus());
+            existingUser.setSource(user.getSource());
+            userMapper.updateById(existingUser);
+            return existingUser;
+        }
+        return null;
+    }
+    
+    @Override
+    @Transactional
+    public void deleteById(String id) {
+        userMapper.deleteById(id);
+    }
+    
+    @Override
+    public boolean existsByUsername(String username) {
+        return userMapper.countByUsername(username) > 0;
+    }
+    
+    @Override
+    public boolean existsByEmail(String email) {
+        return userMapper.countByEmail(email) > 0;
+    }
+    
+    @Override
+    public List<SysUser> findByStatus(Integer status) {
+        return userMapper.selectByStatus(status);
+    }
+    
+    @Override
+    public List<SysUser> findByRoleId(String roleId) {
+        return userMapper.selectByRoleId(roleId);
+    }
+    
+    @Override
+    @Transactional
+    public void updateLastLoginInfo(String userId, String ipAddress) {
+        SysUser user = userMapper.selectById(userId);
+        if (user != null) {
+            user.setLastLoginTime(LocalDateTime.now());
+            user.setLastLoginIp(ipAddress);
+            userMapper.updateById(user);
+        }
+    }
+}
