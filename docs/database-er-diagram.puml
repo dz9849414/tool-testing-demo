@@ -1,0 +1,412 @@
+@startuml 船舶PDM接口测试工具-模板管理模块ER图
+
+!define table(x) class x << (T,#FFAAAA) >>
+!define primary_key(x) <u>x</u>
+!define foreign_key(x) #x#
+
+skinparam class {
+    BackgroundColor White
+    ArrowColor Black
+    BorderColor Black
+}
+
+title 船舶PDM接口测试工具 - 模板管理模块数据库关系图
+
+' ==================== 主表 ====================
+table(template_folder) {
+    primary_key(id): BIGINT
+    parent_id: BIGINT
+    name: VARCHAR(100)
+    description: VARCHAR(500)
+    sort_order: INT
+    icon: VARCHAR(50)
+    color: VARCHAR(20)
+    owner_id: BIGINT
+    owner_name: VARCHAR(50)
+    team_id: BIGINT
+    visibility: TINYINT
+    status: TINYINT
+    create_time: DATETIME
+    update_time: DATETIME
+    delete_time: DATETIME
+}
+
+table(interface_template) {
+    primary_key(id): BIGINT
+    foreign_key(folder_id): BIGINT
+    name: VARCHAR(200)
+    description: TEXT
+    protocol_type: VARCHAR(50)
+    method: VARCHAR(20)
+    base_url: VARCHAR(500)
+    path: VARCHAR(1000)
+    full_url: VARCHAR(1500)
+    auth_type: VARCHAR(30)
+    auth_config: JSON
+    content_type: VARCHAR(100)
+    charset: VARCHAR(20)
+    body_type: VARCHAR(20)
+    body_content: LONGTEXT
+    body_raw_type: VARCHAR(20)
+    connect_timeout: INT
+    read_timeout: INT
+    retry_count: INT
+    retry_interval: INT
+    version: VARCHAR(20)
+    version_remark: VARCHAR(500)
+    is_latest: TINYINT
+    ref_template_id: BIGINT
+    owner_id: BIGINT
+    owner_name: VARCHAR(50)
+    team_id: BIGINT
+    visibility: TINYINT
+    tags: VARCHAR(500)
+    pdm_system_type: VARCHAR(50)
+    pdm_module: VARCHAR(100)
+    business_scene: VARCHAR(200)
+    status: TINYINT
+    use_count: INT
+    last_use_time: DATETIME
+    create_time: DATETIME
+    update_time: DATETIME
+    delete_time: DATETIME
+}
+
+' ==================== 模板子表 ====================
+table(template_header) {
+    primary_key(id): BIGINT
+    foreign_key(template_id): BIGINT
+    header_name: VARCHAR(200)
+    header_value: VARCHAR(1000)
+    description: VARCHAR(500)
+    is_enabled: TINYINT
+    is_required: TINYINT
+    is_variable: TINYINT
+    variable_name: VARCHAR(100)
+    sort_order: INT
+    create_time: DATETIME
+    update_time: DATETIME
+}
+
+table(template_parameter) {
+    primary_key(id): BIGINT
+    foreign_key(template_id): BIGINT
+    param_type: VARCHAR(20)
+    param_name: VARCHAR(200)
+    param_value: VARCHAR(1000)
+    data_type: VARCHAR(30)
+    description: VARCHAR(500)
+    example_value: VARCHAR(1000)
+    is_required: TINYINT
+    is_enabled: TINYINT
+    is_variable: TINYINT
+    variable_name: VARCHAR(100)
+    validation_rules: JSON
+    sort_order: INT
+    create_time: DATETIME
+    update_time: DATETIME
+}
+
+table(template_form_data) {
+    primary_key(id): BIGINT
+    foreign_key(template_id): BIGINT
+    field_name: VARCHAR(200)
+    field_type: VARCHAR(20)
+    field_value: TEXT
+    file_path: VARCHAR(1000)
+    file_name: VARCHAR(255)
+    content_type: VARCHAR(100)
+    description: VARCHAR(500)
+    is_required: TINYINT
+    is_enabled: TINYINT
+    is_variable: TINYINT
+    variable_name: VARCHAR(100)
+    sort_order: INT
+    create_time: DATETIME
+    update_time: DATETIME
+}
+
+table(template_assertion) {
+    primary_key(id): BIGINT
+    foreign_key(template_id): BIGINT
+    assert_name: VARCHAR(200)
+    assert_type: VARCHAR(50)
+    extract_path: VARCHAR(500)
+    expected_value: TEXT
+    operator: VARCHAR(30)
+    data_type: VARCHAR(20)
+    error_message: VARCHAR(500)
+    is_enabled: TINYINT
+    assert_group: VARCHAR(100)
+    logic_type: VARCHAR(10)
+    sort_order: INT
+    create_time: DATETIME
+    update_time: DATETIME
+}
+
+table(template_pre_processor) {
+    primary_key(id): BIGINT
+    foreign_key(template_id): BIGINT
+    processor_name: VARCHAR(200)
+    processor_type: VARCHAR(50)
+    config: JSON
+    script_content: TEXT
+    target_variable: VARCHAR(200)
+    variable_scope: VARCHAR(20)
+    description: VARCHAR(500)
+    is_enabled: TINYINT
+    sort_order: INT
+    create_time: DATETIME
+    update_time: DATETIME
+}
+
+table(template_post_processor) {
+    primary_key(id): BIGINT
+    foreign_key(template_id): BIGINT
+    processor_name: VARCHAR(200)
+    processor_type: VARCHAR(50)
+    extract_type: VARCHAR(30)
+    extract_expression: VARCHAR(1000)
+    extract_match_no: INT
+    target_variable: VARCHAR(200)
+    variable_scope: VARCHAR(20)
+    default_value: VARCHAR(500)
+    config: JSON
+    script_content: TEXT
+    description: VARCHAR(500)
+    is_enabled: TINYINT
+    sort_order: INT
+    create_time: DATETIME
+    update_time: DATETIME
+}
+
+table(template_variable) {
+    primary_key(id): BIGINT
+    foreign_key(template_id): BIGINT
+    variable_name: VARCHAR(200)
+    variable_type: VARCHAR(30)
+    default_value: TEXT
+    current_value: TEXT
+    description: VARCHAR(500)
+    example_value: VARCHAR(500)
+    is_required: TINYINT
+    is_editable: TINYINT
+    is_persistent: TINYINT
+    source_type: VARCHAR(30)
+    source_config: JSON
+    validation_rules: JSON
+    sort_order: INT
+    create_time: DATETIME
+    update_time: DATETIME
+}
+
+table(template_environment) {
+    primary_key(id): BIGINT
+    foreign_key(template_id): BIGINT
+    env_name: VARCHAR(100)
+    env_code: VARCHAR(50)
+    base_url: VARCHAR(500)
+    headers: JSON
+    variables: JSON
+    auth_type: VARCHAR(30)
+    auth_config: JSON
+    proxy_enabled: TINYINT
+    proxy_host: VARCHAR(200)
+    proxy_port: INT
+    proxy_username: VARCHAR(100)
+    proxy_password: VARCHAR(200)
+    is_default: TINYINT
+    description: VARCHAR(500)
+    create_time: DATETIME
+    update_time: DATETIME
+}
+
+' ==================== 辅助表 ====================
+table(template_history) {
+    primary_key(id): BIGINT
+    foreign_key(template_id): BIGINT
+    version: VARCHAR(20)
+    version_type: VARCHAR(20)
+    change_summary: VARCHAR(1000)
+    change_details: TEXT
+    template_snapshot: LONGTEXT
+    operator_id: BIGINT
+    operator_name: VARCHAR(50)
+    operation_type: VARCHAR(30)
+    can_rollback: TINYINT
+    rollback_to_time: DATETIME
+    create_time: DATETIME
+}
+
+table(template_favorite) {
+    primary_key(id): BIGINT
+    foreign_key(template_id): BIGINT
+    user_id: BIGINT
+    favorite_type: TINYINT
+    remark: VARCHAR(200)
+    create_time: DATETIME
+}
+
+table(template_usage_log) {
+    primary_key(id): BIGINT
+    foreign_key(template_id): BIGINT
+    usage_type: VARCHAR(30)
+    user_id: BIGINT
+    user_name: VARCHAR(50)
+    task_id: BIGINT
+    execution_result: TINYINT
+    execution_duration: INT
+    request_summary: VARCHAR(1000)
+    response_summary: VARCHAR(1000)
+    error_message: TEXT
+    client_ip: VARCHAR(50)
+    user_agent: VARCHAR(500)
+    create_time: DATETIME
+}
+
+table(template_import_export) {
+    primary_key(id): BIGINT
+    operation_type: VARCHAR(20)
+    template_ids: VARCHAR(1000)
+    folder_id: BIGINT
+    file_name: VARCHAR(255)
+    file_path: VARCHAR(1000)
+    file_size: BIGINT
+    file_format: VARCHAR(20)
+    status: TINYINT
+    success_count: INT
+    fail_count: INT
+    error_message: TEXT
+    operator_id: BIGINT
+    operator_name: VARCHAR(50)
+    start_time: DATETIME
+    end_time: DATETIME
+    create_time: DATETIME
+}
+
+table(template_share) {
+    primary_key(id): BIGINT
+    foreign_key(template_id): BIGINT
+    share_type: VARCHAR(20)
+    share_target_id: BIGINT
+    share_target_name: VARCHAR(100)
+    permission: VARCHAR(50)
+    can_share: TINYINT
+    expire_time: DATETIME
+    share_code: VARCHAR(100)
+    share_link: VARCHAR(500)
+    access_password: VARCHAR(100)
+    created_by: BIGINT
+    create_time: DATETIME
+    update_time: DATETIME
+}
+
+' ==================== 关系定义 ====================
+
+' 文件夹自关联（父子关系）
+template_folder "0..*" -- "0..1" template_folder : parent_id
+
+' 模板与文件夹
+template_folder "1" -- "0..*" interface_template : folder_id
+
+' 模板与子表（一对多）
+interface_template "1" -- "0..*" template_header : template_id
+interface_template "1" -- "0..*" template_parameter : template_id
+interface_template "1" -- "0..*" template_form_data : template_id
+interface_template "1" -- "0..*" template_assertion : template_id
+interface_template "1" -- "0..*" template_pre_processor : template_id
+interface_template "1" -- "0..*" template_post_processor : template_id
+interface_template "1" -- "0..*" template_variable : template_id
+interface_template "1" -- "0..*" template_environment : template_id
+interface_template "1" -- "0..*" template_history : template_id
+interface_template "1" -- "0..*" template_favorite : template_id
+interface_template "1" -- "0..*" template_usage_log : template_id
+interface_template "1" -- "0..*" template_share : template_id
+
+' 模板版本链自关联
+interface_template "1" -- "0..*" interface_template : ref_template_id
+
+note right of template_folder
+    模板分类/文件夹
+    支持无限层级树结构
+end note
+
+note right of interface_template
+    接口模板主表
+    存储请求基本信息、认证、超时等配置
+end note
+
+note right of template_header
+    HTTP请求头
+    支持变量替换
+end note
+
+note right of template_parameter
+    URL参数(Query/Path)
+    支持数据类型和验证规则
+end note
+
+note right of template_form_data
+    multipart/form-data参数
+    支持文件上传
+end note
+
+note right of template_assertion
+    响应断言规则
+    支持多种断言类型
+end note
+
+note right of template_pre_processor
+    前置处理器
+    请求发送前执行
+end note
+
+note right of template_post_processor
+    后置处理器
+    响应接收后执行
+    支持数据提取到变量
+end note
+
+note right of template_variable
+    模板变量定义
+    支持多种来源和作用域
+end note
+
+note right of template_environment
+    环境配置
+    支持多环境切换
+end note
+
+note right of template_history
+    版本历史记录
+    保存完整模板快照
+end note
+
+note right of template_favorite
+    用户收藏/关注
+    favorite_type: 1-收藏 2-关注
+end note
+
+note right of template_usage_log
+    使用记录统计
+    用于分析模板使用频率
+end note
+
+note right of template_import_export
+    导入导出记录
+    支持多种文件格式
+end note
+
+note right of template_share
+    模板共享授权
+    支持按用户/团队/角色共享
+end note
+
+legend right
+    |= 图例 |= 说明 |
+    | <u>下划线</u> | 主键 |
+    | #井号# | 外键 |
+    | (T) | 数据表 |
+endlegend
+
+@enduml

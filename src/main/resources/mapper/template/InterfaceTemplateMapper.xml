@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.tooltestingdemo.mapper.template.InterfaceTemplateMapper">
+
+    <!-- 
+        文件位置：src/main/resources/mapper/template/InterfaceTemplateMapper.xml
+        命名空间：com.example.tooltestingdemo.mapper.template.InterfaceTemplateMapper
+    -->
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.example.tooltestingdemo.entity.template.InterfaceTemplate">
+        <id column="id" property="id"/>
+        <result column="folder_id" property="folderId"/>
+        <result column="name" property="name"/>
+        <result column="description" property="description"/>
+        <result column="protocol_type" property="protocolType"/>
+        <result column="method" property="method"/>
+        <result column="base_url" property="baseUrl"/>
+        <result column="path" property="path"/>
+        <result column="full_url" property="fullUrl"/>
+        <result column="auth_type" property="authType"/>
+        <result column="auth_config" property="authConfig"/>
+        <result column="content_type" property="contentType"/>
+        <result column="charset" property="charset"/>
+        <result column="body_type" property="bodyType"/>
+        <result column="body_content" property="bodyContent"/>
+        <result column="body_raw_type" property="bodyRawType"/>
+        <result column="connect_timeout" property="connectTimeout"/>
+        <result column="read_timeout" property="readTimeout"/>
+        <result column="retry_count" property="retryCount"/>
+        <result column="retry_interval" property="retryInterval"/>
+        <result column="version" property="version"/>
+        <result column="version_remark" property="versionRemark"/>
+        <result column="is_latest" property="isLatest"/>
+        <result column="ref_template_id" property="refTemplateId"/>
+        <result column="owner_id" property="ownerId"/>
+        <result column="owner_name" property="ownerName"/>
+        <result column="team_id" property="teamId"/>
+        <result column="visibility" property="visibility"/>
+        <result column="tags" property="tags"/>
+        <result column="pdm_system_type" property="pdmSystemType"/>
+        <result column="pdm_module" property="pdmModule"/>
+        <result column="business_scene" property="businessScene"/>
+        <result column="status" property="status"/>
+        <result column="use_count" property="useCount"/>
+        <result column="last_use_time" property="lastUseTime"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="delete_time" property="deleteTime"/>
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, folder_id, name, description, protocol_type, method, base_url, path, full_url,
+        auth_type, auth_config, content_type, charset, body_type, body_content, body_raw_type,
+        connect_timeout, read_timeout, retry_count, retry_interval, version, version_remark,
+        is_latest, ref_template_id, owner_id, owner_name, team_id, visibility, tags,
+        pdm_system_type, pdm_module, business_scene, status, use_count, last_use_time,
+        create_time, update_time, delete_time
+    </sql>
+
+    <!-- 分页查询模板列表 -->
+    <select id="selectTemplatePage" resultMap="BaseResultMap">
+        SELECT
+            <include refid="Base_Column_List"/>
+        FROM interface_template
+        WHERE delete_time IS NULL
+        <if test="folderId != null">
+            AND folder_id = #{folderId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (name LIKE CONCAT('%', #{keyword}, '%') 
+                OR description LIKE CONCAT('%', #{keyword}, '%')
+                OR tags LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="protocolType != null and protocolType != ''">
+            AND protocol_type = #{protocolType}
+        </if>
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 查询模板的所有版本 -->
+    <select id="selectVersionsByRefId" resultMap="BaseResultMap">
+        SELECT
+            <include refid="Base_Column_List"/>
+        FROM interface_template
+        WHERE ref_template_id = #{refTemplateId}
+        AND delete_time IS NULL
+        ORDER BY version DESC
+    </select>
+
+    <!-- 根据ID查询模板详情 -->
+    <select id="selectTemplateDetailById" resultMap="BaseResultMap">
+        SELECT
+            <include refid="Base_Column_List"/>
+        FROM interface_template
+        WHERE id = #{id}
+        AND delete_time IS NULL
+    </select>
+
+</mapper>

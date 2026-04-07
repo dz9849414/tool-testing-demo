@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateUsageLogMapper">
+
+    <!-- 
+        文件位置：src/main/resources/mapper/template/TemplateUsageLogMapper.xml
+        命名空间：com.example.tooltestingdemo.mapper.template.TemplateUsageLogMapper
+    -->
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.example.tooltestingdemo.entity.template.TemplateUsageLog">
+        <id column="id" property="id"/>
+        <result column="template_id" property="templateId"/>
+        <result column="usage_type" property="usageType"/>
+        <result column="user_id" property="userId"/>
+        <result column="user_name" property="userName"/>
+        <result column="task_id" property="taskId"/>
+        <result column="execution_result" property="executionResult"/>
+        <result column="execution_duration" property="executionDuration"/>
+        <result column="request_summary" property="requestSummary"/>
+        <result column="response_summary" property="responseSummary"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="client_ip" property="clientIp"/>
+        <result column="user_agent" property="userAgent"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <!-- 根据模板ID查询使用记录 -->
+    <select id="selectByTemplateId" resultMap="BaseResultMap">
+        SELECT * FROM template_usage_log 
+        WHERE template_id = #{templateId} 
+        ORDER BY create_time DESC 
+        LIMIT #{limit}
+    </select>
+
+    <!-- 查询用户的使用记录 -->
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT * FROM template_usage_log 
+        WHERE user_id = #{userId} 
+        ORDER BY create_time DESC 
+        LIMIT #{limit}
+    </select>
+
+    <!-- 统计模板使用次数 -->
+    <select id="countByTemplateId" resultType="int">
+        SELECT COUNT(*) FROM template_usage_log 
+        WHERE template_id = #{templateId}
+    </select>
+
+</mapper>

@@ -48,5 +48,10 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
         if (metaObject.hasSetter("updateUser")) {
             this.strictUpdateFill(metaObject, "updateUser", String.class, "system");
         }
+        
+        // 填充删除时间（软删除时）
+        if (metaObject.hasSetter("deleteTime") && metaObject.getValue("deleteTime") != null) {
+            this.strictUpdateFill(metaObject, "deleteTime", LocalDateTime.class, LocalDateTime.now());
+        }
     }
 }

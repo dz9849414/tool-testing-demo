@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateVariableMapper">
+
+    <!-- 
+        文件位置：src/main/resources/mapper/template/TemplateVariableMapper.xml
+        命名空间：com.example.tooltestingdemo.mapper.template.TemplateVariableMapper
+    -->
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.example.tooltestingdemo.entity.template.TemplateVariable">
+        <id column="id" property="id"/>
+        <result column="template_id" property="templateId"/>
+        <result column="variable_name" property="variableName"/>
+        <result column="variable_type" property="variableType"/>
+        <result column="default_value" property="defaultValue"/>
+        <result column="current_value" property="currentValue"/>
+        <result column="description" property="description"/>
+        <result column="example_value" property="exampleValue"/>
+        <result column="is_required" property="isRequired"/>
+        <result column="is_editable" property="isEditable"/>
+        <result column="is_persistent" property="isPersistent"/>
+        <result column="source_type" property="sourceType"/>
+        <result column="source_config" property="sourceConfig"/>
+        <result column="validation_rules" property="validationRules"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <!-- 根据模板ID查询变量列表 -->
+    <select id="selectByTemplateId" resultMap="BaseResultMap">
+        SELECT * FROM template_variable 
+        WHERE template_id = #{templateId} 
+        ORDER BY sort_order ASC
+    </select>
+
+    <!-- 批量插入变量 -->
+    <insert id="batchInsert">
+        INSERT INTO template_variable (
+            template_id, variable_name, variable_type, default_value, current_value,
+            description, example_value, is_required, is_editable, is_persistent,
+            source_type, source_config, validation_rules, sort_order
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.templateId}, #{item.variableName}, #{item.variableType}, #{item.defaultValue}, #{item.currentValue},
+                #{item.description}, #{item.exampleValue}, #{item.isRequired}, #{item.isEditable}, #{item.isPersistent},
+                #{item.sourceType}, #{item.sourceConfig}, #{item.validationRules}, #{item.sortOrder}
+            )
+        </foreach>
+    </insert>
+
+</mapper>

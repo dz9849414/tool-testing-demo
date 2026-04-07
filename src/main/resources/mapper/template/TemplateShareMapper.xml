@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateShareMapper">
+
+    <!-- 
+        文件位置：src/main/resources/mapper/template/TemplateShareMapper.xml
+        命名空间：com.example.tooltestingdemo.mapper.template.TemplateShareMapper
+    -->
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.example.tooltestingdemo.entity.template.TemplateShare">
+        <id column="id" property="id"/>
+        <result column="template_id" property="templateId"/>
+        <result column="share_type" property="shareType"/>
+        <result column="share_target_id" property="shareTargetId"/>
+        <result column="share_target_name" property="shareTargetName"/>
+        <result column="permission" property="permission"/>
+        <result column="can_share" property="canShare"/>
+        <result column="expire_time" property="expireTime"/>
+        <result column="share_code" property="shareCode"/>
+        <result column="share_link" property="shareLink"/>
+        <result column="access_password" property="accessPassword"/>
+        <result column="created_by" property="createdBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <!-- 查询用户被共享的模板列表 -->
+    <select id="selectByShareTarget" resultMap="BaseResultMap">
+        SELECT * FROM template_share
+        WHERE share_type = #{shareType}
+        AND share_target_id = #{shareTargetId}
+        AND (expire_time IS NULL OR expire_time > NOW())
+        ORDER BY create_time DESC
+    </select>
+
+</mapper>

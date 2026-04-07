@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateAssertionMapper">
+
+    <!-- 
+        文件位置：src/main/resources/mapper/template/TemplateAssertionMapper.xml
+        命名空间：com.example.tooltestingdemo.mapper.template.TemplateAssertionMapper
+    -->
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.example.tooltestingdemo.entity.template.TemplateAssertion">
+        <id column="id" property="id"/>
+        <result column="template_id" property="templateId"/>
+        <result column="assert_name" property="assertName"/>
+        <result column="assert_type" property="assertType"/>
+        <result column="extract_path" property="extractPath"/>
+        <result column="expected_value" property="expectedValue"/>
+        <result column="operator" property="operator"/>
+        <result column="data_type" property="dataType"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="is_enabled" property="isEnabled"/>
+        <result column="assert_group" property="assertGroup"/>
+        <result column="logic_type" property="logicType"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <!-- 根据模板ID查询断言列表 -->
+    <select id="selectByTemplateId" resultMap="BaseResultMap">
+        SELECT * FROM template_assertion 
+        WHERE template_id = #{templateId} 
+        AND is_enabled = 1 
+        ORDER BY sort_order ASC
+    </select>
+
+    <!-- 批量插入断言 -->
+    <insert id="batchInsert">
+        INSERT INTO template_assertion (
+            template_id, assert_name, assert_type, extract_path, expected_value,
+            operator, data_type, error_message, is_enabled, assert_group,
+            logic_type, sort_order
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.templateId}, #{item.assertName}, #{item.assertType}, #{item.extractPath}, #{item.expectedValue},
+                #{item.operator}, #{item.dataType}, #{item.errorMessage}, #{item.isEnabled}, #{item.assertGroup},
+                #{item.logicType}, #{item.sortOrder}
+            )
+        </foreach>
+    </insert>
+
+</mapper>

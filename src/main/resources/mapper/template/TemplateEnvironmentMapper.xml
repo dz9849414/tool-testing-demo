@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateEnvironmentMapper">
+
+    <!-- 
+        文件位置：src/main/resources/mapper/template/TemplateEnvironmentMapper.xml
+        命名空间：com.example.tooltestingdemo.mapper.template.TemplateEnvironmentMapper
+    -->
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.example.tooltestingdemo.entity.template.TemplateEnvironment">
+        <id column="id" property="id"/>
+        <result column="template_id" property="templateId"/>
+        <result column="env_name" property="envName"/>
+        <result column="env_code" property="envCode"/>
+        <result column="base_url" property="baseUrl"/>
+        <result column="headers" property="headers"/>
+        <result column="variables" property="variables"/>
+        <result column="auth_type" property="authType"/>
+        <result column="auth_config" property="authConfig"/>
+        <result column="proxy_enabled" property="proxyEnabled"/>
+        <result column="proxy_host" property="proxyHost"/>
+        <result column="proxy_port" property="proxyPort"/>
+        <result column="proxy_username" property="proxyUsername"/>
+        <result column="proxy_password" property="proxyPassword"/>
+        <result column="is_default" property="isDefault"/>
+        <result column="description" property="description"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <!-- 根据模板ID查询环境配置列表 -->
+    <select id="selectByTemplateId" resultMap="BaseResultMap">
+        SELECT * FROM template_environment 
+        WHERE template_id = #{templateId} 
+        ORDER BY create_time ASC
+    </select>
+
+    <!-- 查询模板的默认环境 -->
+    <select id="selectDefaultByTemplateId" resultMap="BaseResultMap">
+        SELECT * FROM template_environment 
+        WHERE template_id = #{templateId} 
+        AND is_default = 1 
+        LIMIT 1
+    </select>
+
+    <!-- 取消模板的所有默认环境设置 -->
+    <update id="clearDefaultByTemplateId">
+        UPDATE template_environment 
+        SET is_default = 0 
+        WHERE template_id = #{templateId}
+    </update>
+
+    <!-- 批量插入环境配置 -->
+    <insert id="batchInsert">
+        INSERT INTO template_environment (
+            template_id, env_name, env_code, base_url, headers, variables,
+            auth_type, auth_config, proxy_enabled, proxy_host, proxy_port,
+            proxy_username, proxy_password, is_default, description
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.templateId}, #{item.envName}, #{item.envCode}, #{item.baseUrl}, #{item.headers}, #{item.variables},
+                #{item.authType}, #{item.authConfig}, #{item.proxyEnabled}, #{item.proxyHost}, #{item.proxyPort},
+                #{item.proxyUsername}, #{item.proxyPassword}, #{item.isDefault}, #{item.description}
+            )
+        </foreach>
+    </insert>
+
+</mapper>

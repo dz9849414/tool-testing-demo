@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.tooltestingdemo.mapper.template.TemplatePreProcessorMapper">
+
+    <!-- 
+        文件位置：src/main/resources/mapper/template/TemplatePreProcessorMapper.xml
+        命名空间：com.example.tooltestingdemo.mapper.template.TemplatePreProcessorMapper
+    -->
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.example.tooltestingdemo.entity.template.TemplatePreProcessor">
+        <id column="id" property="id"/>
+        <result column="template_id" property="templateId"/>
+        <result column="processor_name" property="processorName"/>
+        <result column="processor_type" property="processorType"/>
+        <result column="config" property="config"/>
+        <result column="script_content" property="scriptContent"/>
+        <result column="target_variable" property="targetVariable"/>
+        <result column="variable_scope" property="variableScope"/>
+        <result column="description" property="description"/>
+        <result column="is_enabled" property="isEnabled"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <!-- 根据模板ID查询前置处理器列表 -->
+    <select id="selectByTemplateId" resultMap="BaseResultMap">
+        SELECT * FROM template_pre_processor 
+        WHERE template_id = #{templateId} 
+        AND is_enabled = 1 
+        ORDER BY sort_order ASC
+    </select>
+
+    <!-- 批量插入前置处理器 -->
+    <insert id="batchInsert">
+        INSERT INTO template_pre_processor (
+            template_id, processor_name, processor_type, config, script_content,
+            target_variable, variable_scope, description, is_enabled, sort_order
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.templateId}, #{item.processorName}, #{item.processorType}, #{item.config}, #{item.scriptContent},
+                #{item.targetVariable}, #{item.variableScope}, #{item.description}, #{item.isEnabled}, #{item.sortOrder}
+            )
+        </foreach>
+    </insert>
+
+</mapper>

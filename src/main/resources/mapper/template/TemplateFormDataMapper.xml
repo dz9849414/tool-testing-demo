@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateFormDataMapper">
+
+    <!-- 
+        文件位置：src/main/resources/mapper/template/TemplateFormDataMapper.xml
+        命名空间：com.example.tooltestingdemo.mapper.template.TemplateFormDataMapper
+    -->
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.example.tooltestingdemo.entity.template.TemplateFormData">
+        <id column="id" property="id"/>
+        <result column="template_id" property="templateId"/>
+        <result column="field_name" property="fieldName"/>
+        <result column="field_type" property="fieldType"/>
+        <result column="field_value" property="fieldValue"/>
+        <result column="file_path" property="filePath"/>
+        <result column="file_name" property="fileName"/>
+        <result column="content_type" property="contentType"/>
+        <result column="description" property="description"/>
+        <result column="is_required" property="isRequired"/>
+        <result column="is_enabled" property="isEnabled"/>
+        <result column="is_variable" property="isVariable"/>
+        <result column="variable_name" property="variableName"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <!-- 根据模板ID查询FormData列表 -->
+    <select id="selectByTemplateId" resultMap="BaseResultMap">
+        SELECT * FROM template_form_data 
+        WHERE template_id = #{templateId} 
+        AND is_enabled = 1 
+        ORDER BY sort_order ASC
+    </select>
+
+    <!-- 批量插入FormData参数 -->
+    <insert id="batchInsert">
+        INSERT INTO template_form_data (
+            template_id, field_name, field_type, field_value, file_path,
+            file_name, content_type, description, is_required, is_enabled,
+            is_variable, variable_name, sort_order
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.templateId}, #{item.fieldName}, #{item.fieldType}, #{item.fieldValue}, #{item.filePath},
+                #{item.fileName}, #{item.contentType}, #{item.description}, #{item.isRequired}, #{item.isEnabled},
+                #{item.isVariable}, #{item.variableName}, #{item.sortOrder}
+            )
+        </foreach>
+    </insert>
+
+</mapper>
