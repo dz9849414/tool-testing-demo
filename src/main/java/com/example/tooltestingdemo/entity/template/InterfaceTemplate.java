@@ -1,6 +1,7 @@
 package com.example.tooltestingdemo.entity.template;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -84,11 +85,11 @@ public class InterfaceTemplate {
     @TableField(value = "ref_template_id")
     private Long refTemplateId;
 
-    @TableField(value = "owner_id")
-    private Long ownerId;
+    @TableField(value = "create_id", fill = FieldFill.INSERT)
+    private Long createId;
 
-    @TableField(value = "owner_name")
-    private String ownerName;
+    @TableField(value = "create_name", fill = FieldFill.INSERT)
+    private String createName;
 
     @TableField(value = "team_id")
     private Long teamId;

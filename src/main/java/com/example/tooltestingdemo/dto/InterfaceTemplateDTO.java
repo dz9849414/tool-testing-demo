@@ -133,6 +133,16 @@ public class InterfaceTemplateDTO {
      */
     private String businessScene;
 
+    /**
+     * 创建人ID
+     */
+    private Long createId;
+
+    /**
+     * 创建人姓名
+     */
+    private String createName;
+
     // ==================== 关联数据 ====================
 
     /**

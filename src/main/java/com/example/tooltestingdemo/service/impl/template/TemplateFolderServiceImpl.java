@@ -45,6 +45,13 @@ public class TemplateFolderServiceImpl extends ServiceImpl<TemplateFolderMapper,
             folder.setSortOrder(0);
         }
         folder.setStatus(1);
+        
+        // 设置创建人（如果未设置）
+        if (folder.getCreateId() == null) {
+            folder.setCreateId(1L);
+            folder.setCreateName("管理员");
+        }
+        
         save(folder);
         log.info("创建文件夹成功: id={}, name={}", folder.getId(), folder.getName());
         return TemplateConverter.toVO(folder);

@@ -137,12 +137,12 @@ public class InterfaceTemplateVO {
     /**
      * 创建人ID
      */
-    private Long ownerId;
+    private Long createId;
 
     /**
      * 创建人姓名
      */
-    private String ownerName;
+    private String createName;
 
     /**
      * 所属团队ID

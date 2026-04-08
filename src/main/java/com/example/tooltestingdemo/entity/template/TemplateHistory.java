@@ -33,10 +33,10 @@ public class TemplateHistory {
     @TableField(value = "template_snapshot")
     private String templateSnapshot;
 
-    @TableField(value = "operator_id")
+    @TableField(value = "operator_id", fill = FieldFill.INSERT)
     private Long operatorId;
 
-    @TableField(value = "operator_name")
+    @TableField(value = "operator_name", fill = FieldFill.INSERT)
     private String operatorName;
 
     @TableField(value = "operation_type")

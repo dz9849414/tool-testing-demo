@@ -50,6 +50,12 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         template.setUseCount(0);
         template.setStatus(1);
         
+        // 设置创建人（如果未设置）
+        if (template.getCreateId() == null) {
+            template.setCreateId(1L);
+            template.setCreateName("管理员");
+        }
+        
         save(template);
         
         // 保存关联数据
@@ -158,8 +164,8 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         copy.setReadTimeout(source.getReadTimeout());
         copy.setRetryCount(source.getRetryCount());
         copy.setRetryInterval(source.getRetryInterval());
-        copy.setOwnerId(source.getOwnerId());
-        copy.setOwnerName(source.getOwnerName());
+        copy.setCreateId(source.getCreateId());
+        copy.setCreateName(source.getCreateName());
         copy.setTeamId(source.getTeamId());
         copy.setVisibility(source.getVisibility());
         copy.setTags(source.getTags());
@@ -436,6 +442,13 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         history.setChangeSummary(changeSummary);
         history.setOperationType(operationType);
         history.setCanRollback(1);
+        
+        // 设置操作人（如果未设置）
+        if (history.getOperatorId() == null) {
+            history.setOperatorId(1L);
+            history.setOperatorName("管理员");
+        }
+        
         historyMapper.insert(history);
     }
 }

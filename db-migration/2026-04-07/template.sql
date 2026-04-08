@@ -15,8 +15,8 @@ CREATE TABLE template_folder (
     color           VARCHAR(20) COMMENT '颜色标识',
     
     -- 权限相关
-    owner_id        BIGINT NOT NULL COMMENT '创建人ID',
-    owner_name      VARCHAR(50) COMMENT '创建人姓名',
+    create_id       BIGINT NOT NULL COMMENT '创建人ID',
+    create_name     VARCHAR(50) COMMENT '创建人姓名',
     team_id         BIGINT COMMENT '所属团队ID',
     visibility      TINYINT DEFAULT 1 COMMENT '可见性：1-私有 2-团队 3-公开',
     
@@ -29,7 +29,7 @@ CREATE TABLE template_folder (
     delete_time     DATETIME COMMENT '删除时间（软删除）',
     
     INDEX idx_parent_id (parent_id),
-    INDEX idx_owner_id (owner_id),
+    INDEX idx_create_id (create_id),
     INDEX idx_team_id (team_id),
     INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板分类/文件夹表';
@@ -82,8 +82,8 @@ CREATE TABLE interface_template (
     ref_template_id     BIGINT COMMENT '关联的模板ID（版本链）',
     
     -- 权限相关
-    owner_id            BIGINT NOT NULL COMMENT '创建人ID',
-    owner_name          VARCHAR(50) COMMENT '创建人姓名',
+    create_id           BIGINT NOT NULL COMMENT '创建人ID',
+    create_name         VARCHAR(50) COMMENT '创建人姓名',
     team_id             BIGINT COMMENT '所属团队ID',
     visibility          TINYINT DEFAULT 1 COMMENT '可见性：1-私有 2-团队 3-公开',
     
@@ -110,7 +110,7 @@ CREATE TABLE interface_template (
     INDEX idx_folder_id (folder_id),
     INDEX idx_protocol_type (protocol_type),
     INDEX idx_method (method),
-    INDEX idx_owner_id (owner_id),
+    INDEX idx_create_id (create_id),
     INDEX idx_team_id (team_id),
     INDEX idx_visibility (visibility),
     INDEX idx_status (status),
@@ -583,7 +583,7 @@ ALTER TABLE template_environment ADD CONSTRAINT fk_env_template
 -- ----------------------------
 
 -- 默认根分类
-INSERT INTO template_folder (id, parent_id, name, description, sort_order, owner_id, visibility) VALUES
+INSERT INTO template_folder (id, parent_id, name, description, sort_order, create_id, visibility) VALUES
 (1, 0, '默认分类', '系统默认分类', 0, 1, 3),
 (2, 0, '船舶CAD接口', '船舶CAD系统相关接口模板', 1, 1, 3),
 (3, 0, 'ERP接口', '企业资源计划系统接口模板', 2, 1, 3),
