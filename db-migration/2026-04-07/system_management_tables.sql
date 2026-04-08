@@ -172,6 +172,24 @@ CREATE TABLE `sys_dict` (
     KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='字典表';
 
+-- 登录日志表
+CREATE TABLE `sys_login_log` (
+    `id` VARCHAR(50) NOT NULL COMMENT '日志ID',
+    `user_id` VARCHAR(50) COMMENT '用户ID',
+    `username` VARCHAR(64) COMMENT '用户名',
+    `ip_address` VARCHAR(64) COMMENT '登录IP',
+    `user_agent` VARCHAR(512) COMMENT '用户代理',
+    `login_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '登录时间',
+    `status` TINYINT DEFAULT 1 COMMENT '登录状态：0-失败，1-成功',
+    `error_message` TEXT COMMENT '错误信息',
+    `login_type` VARCHAR(32) DEFAULT 'LOCAL' COMMENT '登录类型：LOCAL-本地登录，LDAP-LDAP登录，OIDC-OIDC登录',
+    PRIMARY KEY (`id`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_username` (`username`),
+    KEY `idx_login_time` (`login_time`),
+    KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='登录日志表';
+
 -- ===========================================
 -- 初始化数据
 -- ===========================================
