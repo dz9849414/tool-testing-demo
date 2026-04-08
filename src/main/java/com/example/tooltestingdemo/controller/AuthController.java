@@ -1,6 +1,8 @@
 package com.example.tooltestingdemo.controller;
 
 import com.example.tooltestingdemo.entity.SysUser;
+import com.example.tooltestingdemo.entity.SysUserOrganization;
+import com.example.tooltestingdemo.mapper.SysUserOrganizationMapper;
 import com.example.tooltestingdemo.security.JwtUtil;
 import com.example.tooltestingdemo.service.SysUserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,6 +32,7 @@ public class AuthController {
     private final JwtUtil jwtUtil;
     private final SysUserService userService;
     private final PasswordEncoder passwordEncoder;
+    private final SysUserOrganizationMapper userOrganizationMapper;
     
     /**
      * 用户登录
@@ -81,13 +85,27 @@ public class AuthController {
         user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
         user.setEmail(registerRequest.getEmail());
         user.setRealName(registerRequest.getRealName());
-        user.setStatus(1);
+        user.setOrganizationId(registerRequest.getOrganizationId());
+        user.setStatus(registerRequest.getStatus()); // 使用请求中的状态，默认待激活
         
         SysUser savedUser = userService.save(user);
         
+        // 处理部门关联
+        if (registerRequest.getOrganizationId() != null && !registerRequest.getOrganizationId().isEmpty()) {
+            SysUserOrganization userOrganization = new SysUserOrganization();
+            userOrganization.setId(java.util.UUID.randomUUID().toString());
+            userOrganization.setUserId(savedUser.getId());
+            userOrganization.setOrgId(registerRequest.getOrganizationId());
+            userOrganization.setIsPrimary(1); // 设置为主要部门
+            userOrganization.setCreateTime(LocalDateTime.now());
+            userOrganizationMapper.insert(userOrganization);
+        }
+        
         Map<String, Object> response = new HashMap<>();
-        response.put("message", "注册成功");
+        String statusText = savedUser.getStatus() == 1 ? "已启用" : "待激活";
+        response.put("message", "注册成功，账户状态为：" + statusText);
         response.put("userId", savedUser.getId());
+        response.put("status", statusText);
         
         return ResponseEntity.ok(response);
     }
@@ -144,5 +162,7 @@ public class AuthController {
         private String password;
         private String email;
         private String realName;
+        private String organizationId;
+        private Integer status = 0; // 0-待激活，1-已启用，默认待激活
     }
 }

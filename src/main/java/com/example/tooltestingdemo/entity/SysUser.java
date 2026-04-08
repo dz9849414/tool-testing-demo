@@ -47,4 +47,7 @@ public class SysUser {
     
     @TableField(value = "source")
     private String source = "LOCAL";
+    
+    @TableField(value = "organization_id")
+    private String organizationId;
 }

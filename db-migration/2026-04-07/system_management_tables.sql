@@ -17,6 +17,7 @@ CREATE TABLE `sys_user` (
     `last_login_time` DATETIME COMMENT '最后登录时间',
     `last_login_ip` VARCHAR(64) COMMENT '最后登录IP',
     `source` VARCHAR(32) DEFAULT 'LOCAL' COMMENT '用户来源：LOCAL-本地，LDAP-LDAP，OIDC-OIDC',
+    `organization_id` VARCHAR(50) COMMENT '所属组织ID',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_username` (`username`),
     UNIQUE KEY `uk_email` (`email`),
