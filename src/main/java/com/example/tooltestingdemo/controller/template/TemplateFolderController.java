@@ -3,6 +3,7 @@ package com.example.tooltestingdemo.controller.template;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.entity.template.TemplateFolder;
 import com.example.tooltestingdemo.service.template.TemplateFolderService;
+import com.example.tooltestingdemo.vo.TemplateFolderVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -28,11 +29,11 @@ public class TemplateFolderController {
      * 接口地址：GET /api/template/folder/tree
      * 
      * @param parentId 父文件夹ID，不传则查询根目录
-     * @return 文件夹列表
+     * @return 文件夹VO列表
      */
     @GetMapping("/tree")
-    public Result<List<TemplateFolder>> getFolderTree(@RequestParam(required = false) Long parentId) {
-        List<TemplateFolder> folders = folderService.getFolderTree(parentId);
+    public Result<List<TemplateFolderVO>> getFolderTree(@RequestParam(required = false) Long parentId) {
+        List<TemplateFolderVO> folders = folderService.getFolderTree(parentId);
         return Result.success(folders);
     }
 
@@ -42,12 +43,12 @@ public class TemplateFolderController {
      * 接口地址：POST /api/template/folder
      * 
      * @param folder 文件夹信息
-     * @return 创建后的文件夹
+     * @return 创建后的文件夹VO
      */
     @PostMapping
-    public Result<TemplateFolder> createFolder(@RequestBody TemplateFolder folder) {
-        TemplateFolder created = folderService.createFolder(folder);
-        return Result.success("创建成功", created);
+    public Result<TemplateFolderVO> createFolder(@RequestBody TemplateFolder folder) {
+        TemplateFolderVO vo = folderService.createFolder(folder);
+        return Result.success("创建成功", vo);
     }
 
     /**
@@ -57,14 +58,14 @@ public class TemplateFolderController {
      * 
      * @param id 文件夹ID
      * @param folder 文件夹信息
-     * @return 更新后的文件夹
+     * @return 是否成功
      */
     @PutMapping("/{id}")
-    public Result<TemplateFolder> updateFolder(@PathVariable Long id, @RequestBody TemplateFolder folder) {
+    public Result<String> updateFolder(@PathVariable Long id, @RequestBody TemplateFolder folder) {
         folder.setId(id);
         boolean success = folderService.updateFolder(folder);
         if (success) {
-            return Result.success("更新成功", folder);
+            return Result.success("更新成功");
         }
         return Result.error("更新失败");
     }
@@ -78,7 +79,7 @@ public class TemplateFolderController {
      * @return 是否成功
      */
     @DeleteMapping("/{id}")
-    public Result<Void> deleteFolder(@PathVariable Long id) {
+    public Result<String> deleteFolder(@PathVariable Long id) {
         boolean success = folderService.deleteFolder(id);
         if (success) {
             return Result.success("删除成功");
@@ -96,7 +97,7 @@ public class TemplateFolderController {
      * @return 是否成功
      */
     @PutMapping("/{id}/move")
-    public Result<Void> moveFolder(@PathVariable Long id, @RequestParam Long targetParentId) {
+    public Result<String> moveFolder(@PathVariable Long id, @RequestParam Long targetParentId) {
         boolean success = folderService.moveFolder(id, targetParentId);
         if (success) {
             return Result.success("移动成功");
@@ -110,13 +111,13 @@ public class TemplateFolderController {
      * 接口地址：GET /api/template/folder/{id}
      * 
      * @param id 文件夹ID
-     * @return 文件夹详情
+     * @return 文件夹VO
      */
     @GetMapping("/{id}")
-    public Result<TemplateFolder> getFolderById(@PathVariable Long id) {
-        TemplateFolder folder = folderService.getById(id);
-        if (folder != null) {
-            return Result.success(folder);
+    public Result<TemplateFolderVO> getFolderById(@PathVariable Long id) {
+        TemplateFolderVO vo = folderService.getFolderDetail(id);
+        if (vo != null) {
+            return Result.success(vo);
         }
         return Result.error("文件夹不存在");
     }

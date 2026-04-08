@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.entity.template.TemplateFolder;
 import com.example.tooltestingdemo.mapper.template.TemplateFolderMapper;
 import com.example.tooltestingdemo.service.template.TemplateFolderService;
+import com.example.tooltestingdemo.util.TemplateConverter;
+import com.example.tooltestingdemo.vo.TemplateFolderVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,18 +24,20 @@ public class TemplateFolderServiceImpl extends ServiceImpl<TemplateFolderMapper,
         implements TemplateFolderService {
 
     @Override
-    public List<TemplateFolder> getFolderTree(Long parentId) {
+    public List<TemplateFolderVO> getFolderTree(Long parentId) {
         // 查询指定父ID下的所有文件夹
-        return lambdaQuery()
+        List<TemplateFolder> folders = lambdaQuery()
                 .eq(TemplateFolder::getParentId, parentId == null ? 0L : parentId)
                 .eq(TemplateFolder::getStatus, 1)
                 .orderByAsc(TemplateFolder::getSortOrder)
                 .list();
+        
+        return TemplateConverter.toFolderVOList(folders);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TemplateFolder createFolder(TemplateFolder folder) {
+    public TemplateFolderVO createFolder(TemplateFolder folder) {
         if (folder.getParentId() == null) {
             folder.setParentId(0L);
         }
@@ -43,7 +47,7 @@ public class TemplateFolderServiceImpl extends ServiceImpl<TemplateFolderMapper,
         folder.setStatus(1);
         save(folder);
         log.info("创建文件夹成功: id={}, name={}", folder.getId(), folder.getName());
-        return folder;
+        return TemplateConverter.toVO(folder);
     }
 
     @Override
@@ -70,5 +74,11 @@ public class TemplateFolderServiceImpl extends ServiceImpl<TemplateFolderMapper,
         folder.setId(id);
         folder.setParentId(targetParentId);
         return updateById(folder);
+    }
+
+    @Override
+    public TemplateFolderVO getFolderDetail(Long id) {
+        TemplateFolder folder = getById(id);
+        return TemplateConverter.toVO(folder);
     }
 }

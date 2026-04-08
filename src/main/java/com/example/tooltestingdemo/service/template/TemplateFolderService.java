@@ -2,6 +2,7 @@ package com.example.tooltestingdemo.service.template;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.entity.template.TemplateFolder;
+import com.example.tooltestingdemo.vo.TemplateFolderVO;
 
 import java.util.List;
 
@@ -16,17 +17,17 @@ public interface TemplateFolderService extends IService<TemplateFolder> {
      * 获取文件夹树形结构
      * 
      * @param parentId 父文件夹ID
-     * @return 文件夹列表（包含子文件夹）
+     * @return 文件夹VO列表（包含子文件夹）
      */
-    List<TemplateFolder> getFolderTree(Long parentId);
+    List<TemplateFolderVO> getFolderTree(Long parentId);
 
     /**
      * 创建文件夹
      * 
      * @param folder 文件夹信息
-     * @return 创建后的文件夹
+     * @return 创建后的文件夹VO
      */
-    TemplateFolder createFolder(TemplateFolder folder);
+    TemplateFolderVO createFolder(TemplateFolder folder);
 
     /**
      * 更新文件夹
@@ -52,4 +53,12 @@ public interface TemplateFolderService extends IService<TemplateFolder> {
      * @return 是否成功
      */
     boolean moveFolder(Long id, Long targetParentId);
+
+    /**
+     * 获取文件夹详情
+     * 
+     * @param id 文件夹ID
+     * @return 文件夹VO
+     */
+    TemplateFolderVO getFolderDetail(Long id);
 }

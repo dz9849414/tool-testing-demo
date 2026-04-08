@@ -1,8 +1,8 @@
 package com.example.tooltestingdemo.controller.template;
 
 import com.example.tooltestingdemo.common.Result;
-import com.example.tooltestingdemo.entity.template.TemplateFavorite;
 import com.example.tooltestingdemo.service.template.TemplateFavoriteService;
+import com.example.tooltestingdemo.vo.TemplateFavoriteVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -26,23 +26,32 @@ public class TemplateFavoriteController {
      * 收藏模板
      * 
      * 接口地址：POST /api/template/favorite/{templateId}
+     * 
+     * @param templateId 模板ID
+     * @param userId 用户ID
+     * @param remark 备注
+     * @return 收藏记录VO
      */
     @PostMapping("/{templateId}")
-    public Result<TemplateFavorite> favoriteTemplate(@PathVariable Long templateId,
+    public Result<TemplateFavoriteVO> favoriteTemplate(@PathVariable Long templateId,
                                                       @RequestAttribute("userId") Long userId,
                                                       @RequestParam(required = false) String remark) {
-        TemplateFavorite favorite = favoriteService.favoriteTemplate(userId, templateId, remark);
-        return Result.success("收藏成功", favorite);
+        TemplateFavoriteVO vo = favoriteService.favoriteTemplate(userId, templateId, remark);
+        return Result.success("收藏成功", vo);
     }
 
     /**
      * 取消收藏
      * 
      * 接口地址：DELETE /api/template/favorite/{templateId}
+     * 
+     * @param templateId 模板ID
+     * @param userId 用户ID
+     * @return 是否成功
      */
     @DeleteMapping("/{templateId}")
-    public Result<Void> unfavoriteTemplate(@PathVariable Long templateId,
-                                            @RequestAttribute("userId") Long userId) {
+    public Result<String> unfavoriteTemplate(@PathVariable Long templateId,
+                                          @RequestAttribute("userId") Long userId) {
         boolean success = favoriteService.unfavoriteTemplate(userId, templateId);
         if (success) {
             return Result.success("取消收藏成功");
@@ -54,22 +63,30 @@ public class TemplateFavoriteController {
      * 关注模板
      * 
      * 接口地址：POST /api/template/favorite/follow/{templateId}
+     * 
+     * @param templateId 模板ID
+     * @param userId 用户ID
+     * @return 关注记录VO
      */
     @PostMapping("/follow/{templateId}")
-    public Result<TemplateFavorite> followTemplate(@PathVariable Long templateId,
+    public Result<TemplateFavoriteVO> followTemplate(@PathVariable Long templateId,
                                                     @RequestAttribute("userId") Long userId) {
-        TemplateFavorite follow = favoriteService.followTemplate(userId, templateId);
-        return Result.success("关注成功", follow);
+        TemplateFavoriteVO vo = favoriteService.followTemplate(userId, templateId);
+        return Result.success("关注成功", vo);
     }
 
     /**
      * 取消关注
      * 
      * 接口地址：DELETE /api/template/favorite/follow/{templateId}
+     * 
+     * @param templateId 模板ID
+     * @param userId 用户ID
+     * @return 是否成功
      */
     @DeleteMapping("/follow/{templateId}")
-    public Result<Void> unfollowTemplate(@PathVariable Long templateId,
-                                          @RequestAttribute("userId") Long userId) {
+    public Result<String> unfollowTemplate(@PathVariable Long templateId,
+                                        @RequestAttribute("userId") Long userId) {
         boolean success = favoriteService.unfollowTemplate(userId, templateId);
         if (success) {
             return Result.success("取消关注成功");
@@ -81,10 +98,13 @@ public class TemplateFavoriteController {
      * 获取用户的收藏列表
      * 
      * 接口地址：GET /api/template/favorite/my-favorites
+     * 
+     * @param userId 用户ID
+     * @return 收藏VO列表
      */
     @GetMapping("/my-favorites")
-    public Result<List<TemplateFavorite>> getMyFavorites(@RequestAttribute("userId") Long userId) {
-        List<TemplateFavorite> favorites = favoriteService.getUserFavorites(userId);
+    public Result<List<TemplateFavoriteVO>> getMyFavorites(@RequestAttribute("userId") Long userId) {
+        List<TemplateFavoriteVO> favorites = favoriteService.getUserFavorites(userId);
         return Result.success(favorites);
     }
 
@@ -92,10 +112,13 @@ public class TemplateFavoriteController {
      * 获取用户的关注列表
      * 
      * 接口地址：GET /api/template/favorite/my-follows
+     * 
+     * @param userId 用户ID
+     * @return 关注VO列表
      */
     @GetMapping("/my-follows")
-    public Result<List<TemplateFavorite>> getMyFollows(@RequestAttribute("userId") Long userId) {
-        List<TemplateFavorite> follows = favoriteService.getUserFollows(userId);
+    public Result<List<TemplateFavoriteVO>> getMyFollows(@RequestAttribute("userId") Long userId) {
+        List<TemplateFavoriteVO> follows = favoriteService.getUserFollows(userId);
         return Result.success(follows);
     }
 
@@ -103,10 +126,14 @@ public class TemplateFavoriteController {
      * 检查是否已收藏
      * 
      * 接口地址：GET /api/template/favorite/check/{templateId}
+     * 
+     * @param templateId 模板ID
+     * @param userId 用户ID
+     * @return 是否已收藏
      */
     @GetMapping("/check/{templateId}")
     public Result<Boolean> isFavorited(@PathVariable Long templateId,
-                                        @RequestAttribute("userId") Long userId) {
+                                      @RequestAttribute("userId") Long userId) {
         boolean isFavorited = favoriteService.isFavorited(userId, templateId);
         return Result.success(isFavorited);
     }

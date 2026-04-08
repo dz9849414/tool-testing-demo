@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.entity.template.TemplateHistory;
 import com.example.tooltestingdemo.mapper.template.TemplateHistoryMapper;
 import com.example.tooltestingdemo.service.template.TemplateHistoryService;
+import com.example.tooltestingdemo.util.TemplateConverter;
+import com.example.tooltestingdemo.vo.TemplateHistoryVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,21 +25,23 @@ public class TemplateHistoryServiceImpl extends ServiceImpl<TemplateHistoryMappe
         implements TemplateHistoryService {
 
     @Override
-    public List<TemplateHistory> getHistoriesByTemplateId(Long templateId) {
-        return baseMapper.selectByTemplateId(templateId);
+    public List<TemplateHistoryVO> getHistoriesByTemplateId(Long templateId) {
+        List<TemplateHistory> histories = baseMapper.selectByTemplateId(templateId);
+        return TemplateConverter.toHistoryVOList(histories);
     }
 
     @Override
-    public TemplateHistory getHistoryDetail(Long historyId) {
-        return getById(historyId);
+    public TemplateHistoryVO getHistoryDetail(Long historyId) {
+        TemplateHistory history = getById(historyId);
+        return TemplateConverter.toVO(history);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TemplateHistory recordHistory(TemplateHistory history) {
+    public TemplateHistoryVO recordHistory(TemplateHistory history) {
         save(history);
         log.info("记录模板历史成功: templateId={}, version={}", history.getTemplateId(), history.getVersion());
-        return history;
+        return TemplateConverter.toVO(history);
     }
 
     @Override

@@ -2,6 +2,7 @@ package com.example.tooltestingdemo.service.template;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.entity.template.TemplateFavorite;
+import com.example.tooltestingdemo.vo.TemplateFavoriteVO;
 
 import java.util.List;
 
@@ -18,9 +19,9 @@ public interface TemplateFavoriteService extends IService<TemplateFavorite> {
      * @param userId 用户ID
      * @param templateId 模板ID
      * @param remark 备注
-     * @return 收藏记录
+     * @return 收藏记录VO
      */
-    TemplateFavorite favoriteTemplate(Long userId, Long templateId, String remark);
+    TemplateFavoriteVO favoriteTemplate(Long userId, Long templateId, String remark);
 
     /**
      * 取消收藏
@@ -36,9 +37,9 @@ public interface TemplateFavoriteService extends IService<TemplateFavorite> {
      * 
      * @param userId 用户ID
      * @param templateId 模板ID
-     * @return 关注记录
+     * @return 关注记录VO
      */
-    TemplateFavorite followTemplate(Long userId, Long templateId);
+    TemplateFavoriteVO followTemplate(Long userId, Long templateId);
 
     /**
      * 取消关注
@@ -53,17 +54,17 @@ public interface TemplateFavoriteService extends IService<TemplateFavorite> {
      * 获取用户的收藏列表
      * 
      * @param userId 用户ID
-     * @return 收藏列表
+     * @return 收藏VO列表
      */
-    List<TemplateFavorite> getUserFavorites(Long userId);
+    List<TemplateFavoriteVO> getUserFavorites(Long userId);
 
     /**
      * 获取用户的关注列表
      * 
      * @param userId 用户ID
-     * @return 关注列表
+     * @return 关注VO列表
      */
-    List<TemplateFavorite> getUserFollows(Long userId);
+    List<TemplateFavoriteVO> getUserFollows(Long userId);
 
     /**
      * 检查用户是否已收藏模板

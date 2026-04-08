@@ -2,6 +2,7 @@ package com.example.tooltestingdemo.service.template;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.entity.template.TemplateHistory;
+import com.example.tooltestingdemo.vo.TemplateHistoryVO;
 
 import java.util.List;
 
@@ -16,25 +17,25 @@ public interface TemplateHistoryService extends IService<TemplateHistory> {
      * 获取模板的历史版本列表
      * 
      * @param templateId 模板ID
-     * @return 历史版本列表
+     * @return 历史版本VO列表
      */
-    List<TemplateHistory> getHistoriesByTemplateId(Long templateId);
+    List<TemplateHistoryVO> getHistoriesByTemplateId(Long templateId);
 
     /**
      * 获取历史版本详情
      * 
      * @param historyId 历史版本ID
-     * @return 历史版本详情
+     * @return 历史版本详情VO
      */
-    TemplateHistory getHistoryDetail(Long historyId);
+    TemplateHistoryVO getHistoryDetail(Long historyId);
 
     /**
      * 记录模板变更历史
      * 
      * @param history 历史记录
-     * @return 保存后的历史记录
+     * @return 保存后的历史记录VO
      */
-    TemplateHistory recordHistory(TemplateHistory history);
+    TemplateHistoryVO recordHistory(TemplateHistory history);
 
     /**
      * 回滚到指定版本

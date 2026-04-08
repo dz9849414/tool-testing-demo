@@ -3,9 +3,9 @@ package com.example.tooltestingdemo.service.template;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.example.tooltestingdemo.entity.template.*;
-
-import java.util.List;
+import com.example.tooltestingdemo.dto.InterfaceTemplateDTO;
+import com.example.tooltestingdemo.entity.template.InterfaceTemplate;
+import com.example.tooltestingdemo.vo.InterfaceTemplateVO;
 
 /**
  * 接口模板 Service 接口
@@ -17,54 +17,27 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
     /**
      * 创建模板（包含所有关联信息）
      * 
-     * @param template 模板信息
-     * @param headers 请求头列表
-     * @param parameters 参数列表
-     * @param formDataList FormData列表
-     * @param assertions 断言列表
-     * @param preProcessors 前置处理器列表
-     * @param postProcessors 后置处理器列表
-     * @param variables 变量列表
-     * @return 创建后的模板
+     * @param dto 模板DTO（包含关联数据）
+     * @return 创建后的模板VO
      */
-    InterfaceTemplate createTemplate(InterfaceTemplate template,
-                                      List<TemplateHeader> headers,
-                                      List<TemplateParameter> parameters,
-                                      List<TemplateFormData> formDataList,
-                                      List<TemplateAssertion> assertions,
-                                      List<TemplatePreProcessor> preProcessors,
-                                      List<TemplatePostProcessor> postProcessors,
-                                      List<TemplateVariable> variables);
+    InterfaceTemplateVO createTemplate(InterfaceTemplateDTO dto);
 
     /**
      * 更新模板（包含所有关联信息）
      * 
-     * @param template 模板信息
-     * @param headers 请求头列表
-     * @param parameters 参数列表
-     * @param formDataList FormData列表
-     * @param assertions 断言列表
-     * @param preProcessors 前置处理器列表
-     * @param postProcessors 后置处理器列表
-     * @param variables 变量列表
+     * @param id 模板ID
+     * @param dto 模板DTO（包含关联数据）
      * @return 是否成功
      */
-    boolean updateTemplate(InterfaceTemplate template,
-                           List<TemplateHeader> headers,
-                           List<TemplateParameter> parameters,
-                           List<TemplateFormData> formDataList,
-                           List<TemplateAssertion> assertions,
-                           List<TemplatePreProcessor> preProcessors,
-                           List<TemplatePostProcessor> postProcessors,
-                           List<TemplateVariable> variables);
+    boolean updateTemplate(Long id, InterfaceTemplateDTO dto);
 
     /**
      * 获取模板详情（包含所有关联信息）
      * 
      * @param id 模板ID
-     * @return 模板详情
+     * @return 模板详情VO
      */
-    InterfaceTemplate getTemplateDetail(Long id);
+    InterfaceTemplateVO getTemplateDetail(Long id);
 
     /**
      * 分页查询模板列表
@@ -74,22 +47,22 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
      * @param keyword 关键词
      * @param protocolType 协议类型
      * @param status 状态
-     * @return 分页结果
+     * @return 分页结果VO
      */
-    IPage<InterfaceTemplate> pageTemplates(Page<InterfaceTemplate> page,
-                                            Long folderId,
-                                            String keyword,
-                                            String protocolType,
-                                            Integer status);
+    IPage<InterfaceTemplateVO> pageTemplates(Page<InterfaceTemplate> page,
+                                              Long folderId,
+                                              String keyword,
+                                              String protocolType,
+                                              Integer status);
 
     /**
      * 复制模板
      * 
      * @param id 原模板ID
      * @param newName 新模板名称
-     * @return 新模板
+     * @return 新模板VO
      */
-    InterfaceTemplate copyTemplate(Long id, String newName);
+    InterfaceTemplateVO copyTemplate(Long id, String newName);
 
     /**
      * 发布模板

@@ -2,6 +2,7 @@ package com.example.tooltestingdemo.service.template;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.entity.template.TemplateEnvironment;
+import com.example.tooltestingdemo.vo.TemplateEnvironmentVO;
 
 import java.util.List;
 
@@ -13,28 +14,36 @@ import java.util.List;
 public interface TemplateEnvironmentService extends IService<TemplateEnvironment> {
 
     /**
+     * 根据ID获取环境配置
+     * 
+     * @param id 环境配置ID
+     * @return 环境配置VO
+     */
+    TemplateEnvironmentVO getEnvironmentById(Long id);
+
+    /**
      * 获取模板的所有环境配置
      * 
      * @param templateId 模板ID
-     * @return 环境配置列表
+     * @return 环境配置VO列表
      */
-    List<TemplateEnvironment> getEnvironmentsByTemplateId(Long templateId);
+    List<TemplateEnvironmentVO> getEnvironmentsByTemplateId(Long templateId);
 
     /**
      * 获取模板的默认环境
      * 
      * @param templateId 模板ID
-     * @return 默认环境配置
+     * @return 默认环境配置VO
      */
-    TemplateEnvironment getDefaultEnvironment(Long templateId);
+    TemplateEnvironmentVO getDefaultEnvironment(Long templateId);
 
     /**
      * 创建环境配置
      * 
      * @param environment 环境配置
-     * @return 创建后的环境配置
+     * @return 创建后的环境配置VO
      */
-    TemplateEnvironment createEnvironment(TemplateEnvironment environment);
+    TemplateEnvironmentVO createEnvironment(TemplateEnvironment environment);
 
     /**
      * 更新环境配置
@@ -66,7 +75,7 @@ public interface TemplateEnvironmentService extends IService<TemplateEnvironment
      * 
      * @param sourceEnvId 源环境配置ID
      * @param newName 新环境名称
-     * @return 新环境配置
+     * @return 新环境配置VO
      */
-    TemplateEnvironment cloneEnvironment(Long sourceEnvId, String newName);
+    TemplateEnvironmentVO cloneEnvironment(Long sourceEnvId, String newName);
 }

@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.entity.template.TemplateEnvironment;
 import com.example.tooltestingdemo.mapper.template.TemplateEnvironmentMapper;
 import com.example.tooltestingdemo.service.template.TemplateEnvironmentService;
+import com.example.tooltestingdemo.util.TemplateConverter;
+import com.example.tooltestingdemo.vo.TemplateEnvironmentVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,18 +25,26 @@ public class TemplateEnvironmentServiceImpl extends ServiceImpl<TemplateEnvironm
         implements TemplateEnvironmentService {
 
     @Override
-    public List<TemplateEnvironment> getEnvironmentsByTemplateId(Long templateId) {
-        return baseMapper.selectByTemplateId(templateId);
+    public TemplateEnvironmentVO getEnvironmentById(Long id) {
+        TemplateEnvironment environment = getById(id);
+        return TemplateConverter.toVO(environment);
     }
 
     @Override
-    public TemplateEnvironment getDefaultEnvironment(Long templateId) {
-        return baseMapper.selectDefaultByTemplateId(templateId);
+    public List<TemplateEnvironmentVO> getEnvironmentsByTemplateId(Long templateId) {
+        List<TemplateEnvironment> environments = baseMapper.selectByTemplateId(templateId);
+        return TemplateConverter.toEnvironmentVOList(environments);
+    }
+
+    @Override
+    public TemplateEnvironmentVO getDefaultEnvironment(Long templateId) {
+        TemplateEnvironment environment = baseMapper.selectDefaultByTemplateId(templateId);
+        return TemplateConverter.toVO(environment);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TemplateEnvironment createEnvironment(TemplateEnvironment environment) {
+    public TemplateEnvironmentVO createEnvironment(TemplateEnvironment environment) {
         // 如果设置为默认环境，先取消其他默认环境
         if (Integer.valueOf(1).equals(environment.getIsDefault())) {
             baseMapper.clearDefaultByTemplateId(environment.getTemplateId());
@@ -42,7 +52,7 @@ public class TemplateEnvironmentServiceImpl extends ServiceImpl<TemplateEnvironm
         
         save(environment);
         log.info("创建环境配置成功: id={}, name={}", environment.getId(), environment.getEnvName());
-        return environment;
+        return TemplateConverter.toVO(environment);
     }
 
     @Override
@@ -90,7 +100,7 @@ public class TemplateEnvironmentServiceImpl extends ServiceImpl<TemplateEnvironm
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TemplateEnvironment cloneEnvironment(Long sourceEnvId, String newName) {
+    public TemplateEnvironmentVO cloneEnvironment(Long sourceEnvId, String newName) {
         TemplateEnvironment source = getById(sourceEnvId);
         if (source == null) {
             throw new RuntimeException("源环境配置不存在");
@@ -115,6 +125,6 @@ public class TemplateEnvironmentServiceImpl extends ServiceImpl<TemplateEnvironm
         
         save(clone);
         log.info("克隆环境配置成功: newId={}, sourceId={}, name={}", clone.getId(), sourceEnvId, newName);
-        return clone;
+        return TemplateConverter.toVO(clone);
     }
 }
