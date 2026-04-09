@@ -32,12 +32,14 @@ CREATE TABLE `sys_role` (
     `description` VARCHAR(256) COMMENT '角色描述',
     `type` VARCHAR(32) DEFAULT 'SYSTEM' COMMENT '角色类型：SYSTEM-系统角色，CUSTOM-自定义角色',
     `scope_id` VARCHAR(50) COMMENT '作用域ID',
+    `status` TINYINT DEFAULT 1 COMMENT '状态：0-禁用，1-启用',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_name_scope` (`name`, `scope_id`),
     KEY `idx_type` (`type`),
-    KEY `idx_scope_id` (`scope_id`)
+    KEY `idx_scope_id` (`scope_id`),
+    KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色表';
 
 -- 权限表
@@ -199,9 +201,9 @@ INSERT INTO `sys_user` (`id`, `username`, `password`, `email`, `real_name`, `sta
 ('admin', 'admin', '$2a$10$r3xPKMnGkh/4qGZubMuK1u7T/2eSj7V9X3qIo5MT7K4Lr6gCQYfW6', 'admin@example.com', '系统管理员', 1);
 
 -- 插入默认角色
-INSERT INTO `sys_role` (`id`, `name`, `description`, `type`) VALUES 
-('admin', '系统管理员', '系统管理员，拥有所有权限', 'SYSTEM'),
-('user', '普通用户', '普通用户，拥有基础权限', 'SYSTEM');
+INSERT INTO `sys_role` (`id`, `name`, `description`, `type`, `status`) VALUES 
+('admin', '系统管理员', '系统管理员，拥有所有权限', 'SYSTEM', 1),
+('user', '普通用户', '普通用户，拥有基础权限', 'SYSTEM', 1);
 
 -- 插入用户角色关联
 INSERT INTO `sys_user_role` (`id`, `user_id`, `role_id`) VALUES 

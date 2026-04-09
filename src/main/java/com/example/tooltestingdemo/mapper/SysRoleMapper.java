@@ -41,6 +41,12 @@ public interface SysRoleMapper extends BaseMapper<SysRole> {
     /**
      * 根据用户ID查找角色列表
      */
-    @Select("SELECT r.* FROM sys_role r JOIN sys_user_role ur ON r.id = ur.role_id WHERE ur.user_id = #{userId}")
+    @Select("SELECT r.* FROM sys_role r JOIN sys_user_role ur ON r.id = ur.role_id WHERE ur.user_id = #{userId} AND r.status = 1")
     List<SysRole> selectByUserId(@Param("userId") String userId);
+    
+    /**
+     * 根据角色状态查找角色列表
+     */
+    @Select("SELECT * FROM sys_role WHERE status = #{status}")
+    List<SysRole> selectByStatus(@Param("status") Integer status);
 }

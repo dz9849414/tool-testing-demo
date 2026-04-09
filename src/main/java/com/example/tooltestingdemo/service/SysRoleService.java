@@ -64,4 +64,19 @@ public interface SysRoleService extends IService<SysRole> {
      * 从角色中移除用户
      */
     void removeUsers(String roleId, List<String> userIds);
+    
+    /**
+     * 根据角色状态查找角色列表
+     */
+    List<SysRole> findByStatus(Integer status);
+    
+    /**
+     * 启用角色
+     */
+    void enableRole(String roleId);
+    
+    /**
+     * 禁用角色
+     */
+    void disableRole(String roleId);
 }

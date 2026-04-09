@@ -119,4 +119,27 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             }
         }
     }
+    
+    @Override
+    public List<SysRole> findByStatus(Integer status) {
+        return roleMapper.selectByStatus(status);
+    }
+    
+    @Override
+    public void enableRole(String roleId) {
+        SysRole role = getById(roleId);
+        if (role != null) {
+            role.setStatus(1);
+            updateById(role);
+        }
+    }
+    
+    @Override
+    public void disableRole(String roleId) {
+        SysRole role = getById(roleId);
+        if (role != null) {
+            role.setStatus(0);
+            updateById(role);
+        }
+    }
 }

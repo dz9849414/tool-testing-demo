@@ -27,6 +27,9 @@ public class SysRole {
     @TableField(value = "scope_id")
     private String scopeId;
     
+    @TableField(value = "status")
+    private Integer status = 1;
+    
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
     

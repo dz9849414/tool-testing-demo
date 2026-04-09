@@ -70,6 +70,7 @@ public class DataInitializer implements CommandLineRunner {
             adminRole.setName("系统管理员");
             adminRole.setDescription("系统管理员，拥有所有权限");
             adminRole.setType("SYSTEM");
+            adminRole.setStatus(1);
             adminRole.setCreateTime(LocalDateTime.now());
             adminRole.setUpdateTime(LocalDateTime.now());
             

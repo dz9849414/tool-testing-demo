@@ -166,4 +166,34 @@ public class SysRoleController {
         roleService.removeUsers(roleId, userIds);
         return ResponseEntity.ok().build();
     }
+    
+    /**
+     * 根据状态获取角色列表
+     */
+    @GetMapping("/status/{status}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<SysRole>> getRolesByStatus(@PathVariable Integer status) {
+        List<SysRole> roles = roleService.findByStatus(status);
+        return ResponseEntity.ok(roles);
+    }
+    
+    /**
+     * 启用角色
+     */
+    @PutMapping("/{roleId}/enable")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> enableRole(@PathVariable String roleId) {
+        roleService.enableRole(roleId);
+        return ResponseEntity.ok().build();
+    }
+    
+    /**
+     * 禁用角色
+     */
+    @PutMapping("/{roleId}/disable")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> disableRole(@PathVariable String roleId) {
+        roleService.disableRole(roleId);
+        return ResponseEntity.ok().build();
+    }
 }
