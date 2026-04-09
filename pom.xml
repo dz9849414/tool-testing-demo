@@ -96,13 +96,6 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Spring AI - OpenAI 支持 -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-openai-spring-boot-starter</artifactId>
-            <version>1.0.0-M3</version>
-        </dependency>
-
         <!-- 测试依赖 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
