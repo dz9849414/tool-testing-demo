@@ -3,7 +3,9 @@ package com.example.tooltestingdemo.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.entity.SysUser;
+import com.example.tooltestingdemo.entity.SysUserRole;
 import com.example.tooltestingdemo.mapper.SysUserMapper;
+import com.example.tooltestingdemo.mapper.SysUserRoleMapper;
 import com.example.tooltestingdemo.service.SysUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -22,6 +24,7 @@ import java.util.List;
 public class SysUserServiceImpl implements SysUserService {
     
     private final SysUserMapper userMapper;
+    private final SysUserRoleMapper userRoleMapper;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     
     @Override
@@ -140,5 +143,25 @@ public class SysUserServiceImpl implements SysUserService {
     @Override
     public List<String> getRolesByUserId(String userId) {
         return userMapper.selectRolesByUserId(userId);
+    }
+
+    @Override
+    @Transactional
+    public void assignRoles(String userId, List<String> roleIds, String operatorId) {
+        // 先删除用户现有的所有角色关联
+        userRoleMapper.deleteByUserId(userId);
+        
+        // 然后添加新的角色关联
+        if (roleIds != null && !roleIds.isEmpty()) {
+            for (String roleId : roleIds) {
+                SysUserRole userRole = new SysUserRole();
+                userRole.setId(java.util.UUID.randomUUID().toString().replace("-", "_"));
+                userRole.setUserId(userId);
+                userRole.setRoleId(roleId);
+                userRole.setCreateTime(java.time.LocalDateTime.now());
+                userRole.setCreateUser(operatorId);
+                userRoleMapper.insert(userRole);
+            }
+        }
     }
 }

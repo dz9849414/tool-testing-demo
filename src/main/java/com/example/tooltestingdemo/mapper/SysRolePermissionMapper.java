@@ -42,7 +42,7 @@ public interface SysRolePermissionMapper extends BaseMapper<SysRolePermission> {
      * 根据角色ID删除关联
      */
     @Select("DELETE FROM sys_role_permission WHERE role_id = #{roleId}")
-    int deleteByRoleId(@Param("roleId") String roleId);
+    Integer deleteByRoleId(@Param("roleId") String roleId);
     
     /**
      * 根据权限ID删除关联

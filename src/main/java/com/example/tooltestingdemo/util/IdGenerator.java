@@ -11,7 +11,7 @@ public class IdGenerator {
      * 生成UUID
      */
     public static String generateUUID() {
-        return UUID.randomUUID().toString().replace("-", "");
+        return UUID.randomUUID().toString().replace("-", "_");
     }
     
     /**

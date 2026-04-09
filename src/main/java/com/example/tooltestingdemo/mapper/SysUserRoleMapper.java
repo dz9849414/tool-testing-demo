@@ -42,7 +42,7 @@ public interface SysUserRoleMapper extends BaseMapper<SysUserRole> {
      * 根据用户ID删除关联
      */
     @Select("DELETE FROM sys_user_role WHERE user_id = #{userId}")
-    int deleteByUserId(@Param("userId") String userId);
+    Integer deleteByUserId(@Param("userId") String userId);
     
     /**
      * 根据角色ID删除关联

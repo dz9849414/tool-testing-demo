@@ -203,4 +203,31 @@ public class SysUserController {
         private String oldPassword;
         private String newPassword;
     }
+    
+    /**
+     * 为用户分配角色
+     */
+    @PostMapping("/{id}/roles")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> assignRoles(@PathVariable String id, @RequestBody List<String> roleIds) {
+        // 获取当前登录用户（操作人）
+        org.springframework.security.core.Authentication authentication = 
+            org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String operatorUsername = authentication.getName();
+        
+        // 获取操作人ID
+        com.example.tooltestingdemo.entity.SysUser operator = userService.findByUsername(operatorUsername);
+        if (operator == null) {
+            return ResponseEntity.badRequest().body("操作人不存在");
+        }
+        
+        // 为用户分配角色
+        userService.assignRoles(id, roleIds, operator.getId());
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "角色分配成功");
+        response.put("data", null);
+        return ResponseEntity.ok(response);
+    }
 }

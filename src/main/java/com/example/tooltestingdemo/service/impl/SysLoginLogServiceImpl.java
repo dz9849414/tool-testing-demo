@@ -24,7 +24,7 @@ public class SysLoginLogServiceImpl extends ServiceImpl<SysLoginLogMapper, SysLo
     public void recordLoginLog(SysLoginLog loginLog) {
         // 设置日志ID
         if (loginLog.getId() == null) {
-            loginLog.setId(UUID.randomUUID().toString());
+            loginLog.setId(UUID.randomUUID().toString().replace("-", "_"));
         }
         
         // 设置登录时间

@@ -147,7 +147,7 @@ public class AuthController {
         }
         
         SysUser user = new SysUser();
-        user.setId(java.util.UUID.randomUUID().toString());
+        user.setId(java.util.UUID.randomUUID().toString().replace("-", "_"));
         user.setUsername(registerRequest.getUsername());
         user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
         user.setEmail(registerRequest.getEmail());
@@ -160,7 +160,7 @@ public class AuthController {
         // 处理部门关联
         if (registerRequest.getOrganizationId() != null && !registerRequest.getOrganizationId().isEmpty()) {
             SysUserOrganization userOrganization = new SysUserOrganization();
-            userOrganization.setId(java.util.UUID.randomUUID().toString());
+            userOrganization.setId(java.util.UUID.randomUUID().toString().replace("-", "_"));
             userOrganization.setUserId(savedUser.getId());
             userOrganization.setOrgId(registerRequest.getOrganizationId());
             userOrganization.setIsPrimary(1); // 设置为主要部门

@@ -8,7 +8,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 角色管理控制器
@@ -134,7 +136,11 @@ public class SysRoleController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> assignPermissions(@PathVariable String roleId, @RequestBody List<String> permissionIds) {
         roleService.assignPermissions(roleId, permissionIds);
-        return ResponseEntity.ok().build();
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "权限分配成功");
+        response.put("data", null);
+        return ResponseEntity.ok(response);
     }
     
     /**

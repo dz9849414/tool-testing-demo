@@ -106,7 +106,7 @@ public class ProcessorExecuteServiceImpl implements ProcessorExecuteService {
                 result = generateRandomNumber(processor.getConfig());
                 break;
             case TemplateConstants.PRE_PROCESSOR_UUID:
-                result = UUID.randomUUID().toString();
+                result = UUID.randomUUID().toString().replace("-", "_");
                 break;
             case TemplateConstants.PRE_PROCESSOR_BASE64_ENC:
                 result = base64Encode(processor.getConfig(), context);
