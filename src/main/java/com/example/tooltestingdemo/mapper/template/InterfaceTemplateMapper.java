@@ -42,4 +42,18 @@ public interface InterfaceTemplateMapper extends BaseMapper<InterfaceTemplate> {
      * 文件位置：src/main/resources/mapper/template/InterfaceTemplateMapper.xml
      */
     InterfaceTemplate selectTemplateDetailById(@Param("id") Long id);
+
+    /**
+     * 根据名称和方法查找模板（用于导入时检查重复）
+     *
+     * @param name   模板名称
+     * @param method 请求方法
+     * @return 模板对象
+     */
+    /**
+     * 根据名称和方法查找模板（用于导入时检查重复）
+     * 
+     * 对应XML: InterfaceTemplateMapper.xml
+     */
+    InterfaceTemplate selectByNameAndMethod(@Param("name") String name, @Param("method") String method);
 }

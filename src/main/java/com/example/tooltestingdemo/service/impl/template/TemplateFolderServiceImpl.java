@@ -2,6 +2,7 @@ package com.example.tooltestingdemo.service.impl.template;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.entity.template.TemplateFolder;
+import com.example.tooltestingdemo.enums.TemplateEnums;
 import com.example.tooltestingdemo.mapper.template.TemplateFolderMapper;
 import com.example.tooltestingdemo.service.template.TemplateFolderService;
 import com.example.tooltestingdemo.util.TemplateConverter;
@@ -44,7 +45,7 @@ public class TemplateFolderServiceImpl extends ServiceImpl<TemplateFolderMapper,
         if (folder.getSortOrder() == null) {
             folder.setSortOrder(0);
         }
-        folder.setStatus(1);
+        folder.setStatus(TemplateEnums.TemplateStatus.PUBLISHED.getCode());
         
         // 设置创建人（如果未设置）
         if (folder.getCreateId() == null) {
@@ -71,7 +72,7 @@ public class TemplateFolderServiceImpl extends ServiceImpl<TemplateFolderMapper,
         folder.setId(id);
         folder.setIsDeleted(1);
         folder.setDeletedTime(LocalDateTime.now());
-        folder.setStatus(0);
+        folder.setStatus(TemplateEnums.TemplateStatus.DISABLED.getCode());
         return updateById(folder);
     }
 

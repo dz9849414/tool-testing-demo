@@ -25,6 +25,9 @@ public class InterfaceTemplate {
     @TableField(value = "description")
     private String description;
 
+    @TableField(value = "protocol_id")
+    private Long protocolId;
+
     @TableField(value = "protocol_type")
     private String protocolType;
 
@@ -135,6 +138,29 @@ public class InterfaceTemplate {
 
     @TableField(value = "update_name", fill = FieldFill.UPDATE)
     private String updateName;
+
+    // ==================== 扩展字段（预留）====================
+
+    @TableField(value = "ext_field1")
+    private String extField1;
+
+    @TableField(value = "ext_field2")
+    private String extField2;
+
+    @TableField(value = "ext_field3")
+    private String extField3;
+
+    @TableField(value = "ext_field4")
+    private String extField4;
+
+    @TableField(value = "ext_field5")
+    private String extField5;
+
+    @TableField(value = "ext_num1")
+    private Long extNum1;
+
+    @TableField(value = "ext_num2")
+    private Long extNum2;
 
     @TableField(value = "deleted_by")
     private Long deletedBy;

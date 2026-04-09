@@ -46,6 +46,7 @@ CREATE TABLE interface_template (
     description         TEXT COMMENT '模板描述/备注',
     
     -- 协议配置
+    protocol_id         BIGINT COMMENT '协议类型ID，关联protocol_type表',
     protocol_type       VARCHAR(50) NOT NULL COMMENT '协议类型：HTTP/HTTPS/WEBSOCKET/SOAP/REST/MQTT/TCP/UDP',
     method              VARCHAR(20) COMMENT '请求方法：GET/POST/PUT/DELETE/PATCH/HEAD/OPTIONS',
     
@@ -98,6 +99,15 @@ CREATE TABLE interface_template (
     use_count           INT DEFAULT 0 COMMENT '使用次数',
     last_use_time       DATETIME COMMENT '最后使用时间',
     
+    -- 扩展字段（预留）
+    ext_field1          VARCHAR(500) COMMENT '扩展字段1',
+    ext_field2          VARCHAR(500) COMMENT '扩展字段2',
+    ext_field3          VARCHAR(500) COMMENT '扩展字段3',
+    ext_field4          TEXT COMMENT '扩展字段4（长文本）',
+    ext_field5          JSON COMMENT '扩展字段5（JSON格式）',
+    ext_num1            BIGINT COMMENT '扩展数字字段1',
+    ext_num2            BIGINT COMMENT '扩展数字字段2',
+    
     -- 审计字段
     create_id           BIGINT NOT NULL DEFAULT 1 COMMENT '创建人ID',
     create_name         VARCHAR(50) DEFAULT '' COMMENT '创建人姓名',
@@ -110,6 +120,7 @@ CREATE TABLE interface_template (
     deleted_time        DATETIME COMMENT '删除时间（软删除）',
     
     INDEX idx_folder_id (folder_id),
+    INDEX idx_protocol_id (protocol_id),
     INDEX idx_protocol_type (protocol_type),
     INDEX idx_method (method),
     INDEX idx_team_id (team_id),

@@ -10,6 +10,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 /**
  * 接口模板 Controller
  * 
@@ -114,6 +118,35 @@ public class InterfaceTemplateController {
             return Result.success("删除成功");
         }
         return Result.error("删除失败");
+    }
+
+    /**
+     * 批量删除模板
+     * 
+     * 接口地址：DELETE /api/template/batch
+     * 
+     * @param ids 模板ID数组
+     * @return 删除结果，包含成功和失败的ID列表
+     */
+    @DeleteMapping("/batch")
+    public Result<Map<String, Object>> batchDeleteTemplates(@RequestBody Long[] ids) {
+        if (ids == null || ids.length == 0) {
+            return Result.error("模板ID列表不能为空");
+        }
+        
+        Map<String, List<Long>> result = templateService.batchDeleteTemplates(ids);
+        
+        Map<String, Object> data = new HashMap<>();
+        data.put("successIds", result.get("success"));
+        data.put("failIds", result.get("fail"));
+        data.put("successCount", result.get("success").size());
+        data.put("failCount", result.get("fail").size());
+        
+        if (result.get("fail").isEmpty()) {
+            return Result.success("批量删除成功", data);
+        } else {
+            return Result.success("批量删除部分成功", data);
+        }
     }
 
     /**
