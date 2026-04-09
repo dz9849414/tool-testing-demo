@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.InterfaceTemplateDTO;
 import com.example.tooltestingdemo.entity.template.*;
+import com.example.tooltestingdemo.enums.TemplateEnums;
 import com.example.tooltestingdemo.mapper.template.*;
 import com.example.tooltestingdemo.service.template.InterfaceTemplateService;
 import com.example.tooltestingdemo.util.TemplateConverter;
@@ -16,7 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 接口模板 Service 实现类
@@ -28,6 +32,35 @@ import java.util.List;
 @RequiredArgsConstructor
 public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateMapper, InterfaceTemplate> 
         implements InterfaceTemplateService {
+
+    // 默认版本号
+    private static final String DEFAULT_VERSION = "1.0.0";
+    
+    // 默认创建者信息
+    private static final Long DEFAULT_CREATE_ID = 1L;
+    private static final String DEFAULT_CREATE_NAME = "管理员";
+    
+    // 最新版本标识
+    private static final int IS_LATEST_YES = 1;
+    
+    // 初始使用次数
+    private static final int INITIAL_USE_COUNT = 0;
+    
+    // 历史记录版本类型
+    private static final String VERSION_TYPE_AUTO = "AUTO";
+    
+    // 操作描述常量
+    private static final String OPERATION_DESC_CREATE = "创建模板";
+    private static final String OPERATION_DESC_UPDATE = "更新模板";
+    private static final String OPERATION_DESC_COPY_PREFIX = "复制自模板[ID=";
+    private static final String OPERATION_DESC_COPY_SUFFIX = "]";
+    private static final String OPERATION_DESC_PUBLISH = "发布模板";
+    private static final String OPERATION_DESC_ARCHIVE = "归档模板";
+    private static final String OPERATION_DESC_DELETE = "删除模板";
+    
+    // Map Key 常量
+    private static final String KEY_SUCCESS = "success";
+    private static final String KEY_FAIL = "fail";
 
     private final TemplateHeaderMapper headerMapper;
     private final TemplateParameterMapper parameterMapper;
@@ -48,7 +81,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         template.setVersion("1.0.0");
         template.setIsLatest(1);
         template.setUseCount(0);
-        template.setStatus(1);
+        template.setStatus(TemplateEnums.TemplateStatus.PUBLISHED.getCode());
         
         // 设置创建人（如果未设置）
         if (template.getCreateId() == null) {
@@ -62,7 +95,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         saveRelatedData(template.getId(), dto);
         
         // 记录历史版本
-        saveHistory(template, "CREATE", "创建模板");
+        saveHistory(template, TemplateEnums.OperationType.CREATE.getCode(), "创建模板");
         
         log.info("创建模板成功: id={}, name={}", template.getId(), template.getName());
         
@@ -94,7 +127,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         saveRelatedData(id, dto);
         
         // 记录历史版本
-        saveHistory(getById(id), "UPDATE", "更新模板");
+        saveHistory(getById(id), TemplateEnums.OperationType.UPDATE.getCode(), "更新模板");
         
         log.info("更新模板成功: id={}, name={}", id, template.getName());
         return true;
@@ -175,7 +208,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         copy.setVersion("1.0.0");
         copy.setIsLatest(1);
         copy.setUseCount(0);
-        copy.setStatus(1);
+        copy.setStatus(TemplateEnums.TemplateStatus.PUBLISHED.getCode());
         
         save(copy);
         
@@ -183,7 +216,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         copyRelatedData(id, copy.getId());
         
         // 记录历史
-        saveHistory(copy, "COPY", "复制自模板[ID=" + id + "]");
+        saveHistory(copy, TemplateEnums.OperationType.COPY.getCode(), "复制自模板[ID=" + id + "]");
         
         log.info("复制模板成功: newId={}, sourceId={}, name={}", copy.getId(), id, newName);
         
@@ -198,11 +231,11 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
             return false;
         }
         
-        template.setStatus(1);
+        template.setStatus(TemplateEnums.TemplateStatus.PUBLISHED.getCode());
         boolean result = updateById(template);
         
         if (result) {
-            saveHistory(template, "PUBLISH", "发布模板");
+            saveHistory(template, TemplateEnums.OperationType.PUBLISH.getCode(), "发布模板");
         }
         return result;
     }
@@ -215,11 +248,11 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
             return false;
         }
         
-        template.setStatus(2);
+        template.setStatus(TemplateEnums.TemplateStatus.ARCHIVED.getCode());
         boolean result = updateById(template);
         
         if (result) {
-            saveHistory(template, "ARCHIVE", "归档模板");
+            saveHistory(template, TemplateEnums.OperationType.ARCHIVE.getCode(), "归档模板");
         }
         return result;
     }
@@ -232,14 +265,42 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
             return false;
         }
         
-        template.setStatus(3);
+        template.setStatus(TemplateEnums.TemplateStatus.DISABLED.getCode());
         template.setIsDeleted(1);
         template.setDeletedTime(LocalDateTime.now());
         boolean result = updateById(template);
         
         if (result) {
-            saveHistory(template, "DELETE", "删除模板");
+            saveHistory(template, TemplateEnums.OperationType.DELETE.getCode(), "删除模板");
         }
+        return result;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, List<Long>> batchDeleteTemplates(Long[] ids) {
+        List<Long> successIds = new ArrayList<>();
+        List<Long> failIds = new ArrayList<>();
+        
+        for (Long id : ids) {
+            try {
+                boolean result = deleteTemplate(id);
+                if (result) {
+                    successIds.add(id);
+                } else {
+                    failIds.add(id);
+                }
+            } catch (Exception e) {
+                log.error("批量删除模板失败: id={}", id, e);
+                failIds.add(id);
+            }
+        }
+        
+        log.info("批量删除完成: 成功={}, 失败={}", successIds.size(), failIds.size());
+        
+        Map<String, List<Long>> result = new HashMap<>();
+        result.put("success", successIds);
+        result.put("fail", failIds);
         return result;
     }
 

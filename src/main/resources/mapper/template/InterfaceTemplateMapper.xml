@@ -13,6 +13,7 @@
         <result column="folder_id" property="folderId"/>
         <result column="name" property="name"/>
         <result column="description" property="description"/>
+        <result column="protocol_id" property="protocolId"/>
         <result column="protocol_type" property="protocolType"/>
         <result column="method" property="method"/>
         <result column="base_url" property="baseUrl"/>
@@ -43,6 +44,13 @@
         <result column="status" property="status"/>
         <result column="use_count" property="useCount"/>
         <result column="last_use_time" property="lastUseTime"/>
+        <result column="ext_field1" property="extField1"/>
+        <result column="ext_field2" property="extField2"/>
+        <result column="ext_field3" property="extField3"/>
+        <result column="ext_field4" property="extField4"/>
+        <result column="ext_field5" property="extField5"/>
+        <result column="ext_num1" property="extNum1"/>
+        <result column="ext_num2" property="extNum2"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
         <result column="deleted_time" property="deletedTime"/>
@@ -50,11 +58,12 @@
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, folder_id, name, description, protocol_type, method, base_url, path, full_url,
+        id, folder_id, name, description, protocol_id, protocol_type, method, base_url, path, full_url,
         auth_type, auth_config, content_type, charset, body_type, body_content, body_raw_type,
         connect_timeout, read_timeout, retry_count, retry_interval, version, version_remark,
         is_latest, ref_template_id, team_id, visibility, tags,
         pdm_system_type, pdm_module, business_scene, status, use_count, last_use_time,
+        ext_field1, ext_field2, ext_field3, ext_field4, ext_field5, ext_num1, ext_num2,
         create_time, update_time, deleted_time
     </sql>
 
@@ -98,6 +107,17 @@
         FROM interface_template
         WHERE id = #{id}
         AND (is_deleted = 0 OR is_deleted IS NULL)
+    </select>
+
+    <!-- 根据名称和方法查找模板（用于导入时检查重复） -->
+    <select id="selectByNameAndMethod" resultMap="BaseResultMap">
+        SELECT
+            <include refid="Base_Column_List"/>
+        FROM interface_template
+        WHERE name = #{name}
+        AND method = #{method}
+        AND (is_deleted = 0 OR is_deleted IS NULL)
+        LIMIT 1
     </select>
 
 </mapper>

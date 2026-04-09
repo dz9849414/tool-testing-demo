@@ -40,6 +40,11 @@ public class InterfaceTemplateVO {
     private String description;
 
     /**
+     * 协议类型ID
+     */
+    private Long protocolId;
+
+    /**
      * 协议类型
      */
     private String protocolType;
@@ -243,6 +248,43 @@ public class InterfaceTemplateVO {
      * 环境配置列表
      */
     private List<TemplateEnvironmentVO> environments;
+
+    // ==================== 扩展字段（预留）====================
+
+    /**
+     * 扩展字段1
+     */
+    private String extField1;
+
+    /**
+     * 扩展字段2
+     */
+    private String extField2;
+
+    /**
+     * 扩展字段3
+     */
+    private String extField3;
+
+    /**
+     * 扩展字段4（长文本）
+     */
+    private String extField4;
+
+    /**
+     * 扩展字段5（JSON格式）
+     */
+    private String extField5;
+
+    /**
+     * 扩展数字字段1
+     */
+    private Long extNum1;
+
+    /**
+     * 扩展数字字段2
+     */
+    private Long extNum2;
 
     /**
      * 历史版本列表

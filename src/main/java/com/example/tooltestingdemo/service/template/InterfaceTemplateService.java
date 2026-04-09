@@ -7,6 +7,9 @@ import com.example.tooltestingdemo.dto.InterfaceTemplateDTO;
 import com.example.tooltestingdemo.entity.template.InterfaceTemplate;
 import com.example.tooltestingdemo.vo.InterfaceTemplateVO;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 接口模板 Service 接口
  * 
@@ -87,6 +90,14 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
      * @return 是否成功
      */
     boolean deleteTemplate(Long id);
+
+    /**
+     * 批量删除模板（逻辑删除）
+     * 
+     * @param ids 模板ID数组
+     * @return 删除结果，包含成功和失败的ID列表
+     */
+    Map<String, List<Long>> batchDeleteTemplates(Long[] ids);
 
     /**
      * 移动模板到指定文件夹
