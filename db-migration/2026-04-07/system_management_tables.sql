@@ -206,6 +206,7 @@ INSERT INTO `sys_user` (`id`, `username`, `password`, `email`, `real_name`, `sta
 -- 插入默认角色
 INSERT INTO `sys_role` (`id`, `name`, `description`, `type`, `status`) VALUES 
 ('admin', '系统管理员', '系统管理员，拥有所有权限', 'SYSTEM', 1),
+('manager', '部门经理', '部门经理，拥有部门权限', 'SYSTEM', 1),
 ('user', '普通用户', '普通用户，拥有基础权限', 'SYSTEM', 1);
 
 -- 插入用户角色关联
