@@ -34,7 +34,7 @@ public class CustomUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("用户已被禁用: " + username);
         }
         
-        // 根据用户角色获取权限
+        // 根据用户角色和权限获取权限集合
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
         
         // 获取用户的角色列表
@@ -50,6 +50,15 @@ public class CustomUserDetailsService implements UserDetailsService {
         } else {
             // 默认角色
             authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+        }
+        
+        // 获取用户的权限列表
+        List<String> permissions = userService.getPermissionsByUserId(user.getId());
+        if (permissions != null && !permissions.isEmpty()) {
+            for (String permission : permissions) {
+                // 添加权限
+                authorities.add(new SimpleGrantedAuthority(permission));
+            }
         }
         
         return new User(

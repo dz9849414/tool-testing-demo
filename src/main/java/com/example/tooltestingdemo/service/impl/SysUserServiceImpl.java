@@ -164,4 +164,9 @@ public class SysUserServiceImpl implements SysUserService {
             }
         }
     }
+
+    @Override
+    public List<String> getPermissionsByUserId(String userId) {
+        return userMapper.selectPermissionsByUserId(userId);
+    }
 }

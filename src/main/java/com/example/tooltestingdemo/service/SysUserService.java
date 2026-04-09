@@ -89,4 +89,9 @@ public interface SysUserService {
      * 为用户分配角色
      */
     void assignRoles(String userId, List<String> roleIds, String operatorId);
+    
+    /**
+     * 获取用户的权限列表
+     */
+    List<String> getPermissionsByUserId(String userId);
 }

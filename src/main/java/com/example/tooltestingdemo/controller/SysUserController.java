@@ -26,7 +26,7 @@ public class SysUserController {
      * 获取所有用户列表
      */
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@securityService.hasPermission('system:user:api')")
     public ResponseEntity<List<SysUser>> getAllUsers() {
         List<SysUser> users = userService.findAll();
         return ResponseEntity.ok(users);
@@ -36,7 +36,7 @@ public class SysUserController {
      * 分页获取用户列表
      */
     @GetMapping("/page")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@securityService.hasPermission('system:user:api')")
     public ResponseEntity<Page<SysUser>> getUsersByPage(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -49,7 +49,7 @@ public class SysUserController {
      * 根据ID获取用户信息
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @securityService.isCurrentUser(#id)")
+    @PreAuthorize("@securityService.hasPermission('system:user:api') or @securityService.isCurrentUser(#id)")
     public ResponseEntity<SysUser> getUserById(@PathVariable String id) {
         SysUser user = userService.findById(id);
         if (user == null) {
@@ -62,7 +62,7 @@ public class SysUserController {
      * 创建新用户
      */
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@securityService.hasPermission('system:user:api')")
     public ResponseEntity<?> createUser(@RequestBody SysUser user) {
         if (userService.existsByUsername(user.getUsername())) {
             return ResponseEntity.badRequest().body("用户名已存在");
@@ -80,7 +80,7 @@ public class SysUserController {
      * 更新用户信息
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @securityService.isCurrentUser(#id)")
+    @PreAuthorize("@securityService.hasPermission('system:user:api') or @securityService.isCurrentUser(#id)")
     public ResponseEntity<?> updateUser(@PathVariable String id, @RequestBody SysUser user) {
         user.setId(id);
         SysUser updatedUser = userService.update(user);
@@ -94,7 +94,7 @@ public class SysUserController {
      * 删除用户
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@securityService.hasPermission('system:user:api')")
     public ResponseEntity<?> deleteUser(@PathVariable String id) {
         SysUser user = userService.findById(id);
         if (user == null) {
@@ -112,7 +112,7 @@ public class SysUserController {
      * 根据状态获取用户列表
      */
     @GetMapping("/status/{status}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@securityService.hasPermission('system:user:api')")
     public ResponseEntity<List<SysUser>> getUsersByStatus(@PathVariable Integer status) {
         List<SysUser> users = userService.findByStatus(status);
         return ResponseEntity.ok(users);
@@ -122,7 +122,7 @@ public class SysUserController {
      * 根据角色ID获取用户列表
      */
     @GetMapping("/role/{roleId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@securityService.hasPermission('system:user:api')")
     public ResponseEntity<List<SysUser>> getUsersByRoleId(@PathVariable String roleId) {
         List<SysUser> users = userService.findByRoleId(roleId);
         return ResponseEntity.ok(users);
@@ -154,7 +154,7 @@ public class SysUserController {
      * 审批用户注册
      */
     @PutMapping("/{id}/approve")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@securityService.hasPermission('system:user:api')")
     public ResponseEntity<?> approveUser(@PathVariable String id, @RequestParam Integer status) {
         // 获取当前登录用户（审批人）
         org.springframework.security.core.Authentication authentication = 
@@ -180,7 +180,7 @@ public class SysUserController {
      * 修改用户密码
      */
     @PutMapping("/{id}/password")
-    @PreAuthorize("hasRole('ADMIN') or @securityService.isCurrentUser(#id)")
+    @PreAuthorize("@securityService.hasPermission('system:user:api') or @securityService.isCurrentUser(#id)")
     public ResponseEntity<?> changePassword(@PathVariable String id, @RequestBody PasswordChangeRequest request) {
         boolean success = userService.changePassword(id, request.getOldPassword(), request.getNewPassword());
         if (!success) {
@@ -208,7 +208,7 @@ public class SysUserController {
      * 为用户分配角色
      */
     @PostMapping("/{id}/roles")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@securityService.hasPermission('system:user:api')")
     public ResponseEntity<?> assignRoles(@PathVariable String id, @RequestBody List<String> roleIds) {
         // 获取当前登录用户（操作人）
         org.springframework.security.core.Authentication authentication = 
