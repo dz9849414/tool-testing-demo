@@ -55,4 +55,10 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
      */
     @Select("SELECT u.* FROM sys_user u JOIN sys_user_role ur ON u.id = ur.user_id WHERE ur.role_id = #{roleId}")
     List<SysUser> selectByRoleId(@Param("roleId") String roleId);
+    
+    /**
+     * 根据用户ID查找角色列表
+     */
+    @Select("SELECT r.id FROM sys_role r JOIN sys_user_role ur ON r.id = ur.role_id WHERE ur.user_id = #{userId}")
+    List<String> selectRolesByUserId(@Param("userId") String userId);
 }

@@ -136,4 +136,9 @@ public class SysUserServiceImpl implements SysUserService {
         userMapper.updateById(user);
         return true;
     }
+
+    @Override
+    public List<String> getRolesByUserId(String userId) {
+        return userMapper.selectRolesByUserId(userId);
+    }
 }

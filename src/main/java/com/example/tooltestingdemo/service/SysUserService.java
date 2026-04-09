@@ -79,4 +79,9 @@ public interface SysUserService {
      * 修改用户密码
      */
     boolean changePassword(String userId, String oldPassword, String newPassword);
+    
+    /**
+     * 获取用户的角色列表
+     */
+    List<String> getRolesByUserId(String userId);
 }

@@ -1,6 +1,7 @@
 package com.example.tooltestingdemo.security;
 
 import com.example.tooltestingdemo.entity.SysUser;
+import com.example.tooltestingdemo.enums.RoleEnum;
 import com.example.tooltestingdemo.service.SysUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -10,7 +11,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 自定义用户详情服务
@@ -32,11 +34,28 @@ public class CustomUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("用户已被禁用: " + username);
         }
         
-        // 这里简化权限处理，实际项目中应该根据用户角色获取权限
+        // 根据用户角色获取权限
+        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        
+        // 获取用户的角色列表
+        List<String> roles = userService.getRolesByUserId(user.getId());
+        
+        if (roles != null && !roles.isEmpty()) {
+            for (String roleCode : roles) {
+                // 根据角色代码获取角色枚举
+                RoleEnum role = RoleEnum.getByCode(roleCode);
+                // 添加角色权限
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getCode().toUpperCase()));
+            }
+        } else {
+            // 默认角色
+            authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+        }
+        
         return new User(
                 user.getUsername(),
                 user.getPassword(),
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+                authorities
         );
     }
 }
