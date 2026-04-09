@@ -16,21 +16,20 @@
         <result column="sort_order" property="sortOrder"/>
         <result column="icon" property="icon"/>
         <result column="color" property="color"/>
-        <result column="owner_id" property="ownerId"/>
-        <result column="owner_name" property="ownerName"/>
+
         <result column="team_id" property="teamId"/>
         <result column="visibility" property="visibility"/>
         <result column="status" property="status"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
-        <result column="delete_time" property="deleteTime"/>
+        <result column="deleted_time" property="deletedTime"/>
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
         id, parent_id, name, description, sort_order, icon, color,
-        owner_id, owner_name, team_id, visibility, status,
-        create_time, update_time, delete_time
+        team_id, visibility, status,
+        create_time, update_time, deleted_time
     </sql>
 
 </mapper>

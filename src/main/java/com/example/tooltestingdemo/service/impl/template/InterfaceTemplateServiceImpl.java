@@ -233,7 +233,8 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         }
         
         template.setStatus(3);
-        template.setDeleteTime(LocalDateTime.now());
+        template.setIsDeleted(1);
+        template.setDeletedTime(LocalDateTime.now());
         boolean result = updateById(template);
         
         if (result) {
@@ -443,10 +444,10 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         history.setOperationType(operationType);
         history.setCanRollback(1);
         
-        // 设置操作人（如果未设置）
-        if (history.getOperatorId() == null) {
-            history.setOperatorId(1L);
-            history.setOperatorName("管理员");
+        // 设置创建人（如果未设置）
+        if (history.getCreateId() == null) {
+            history.setCreateId(1L);
+            history.setCreateName("管理员");
         }
         
         historyMapper.insert(history);

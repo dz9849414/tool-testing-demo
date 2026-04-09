@@ -124,6 +124,18 @@ public class InterfaceTemplate {
     @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 
-    @TableField(value = "delete_time")
-    private LocalDateTime deleteTime;
+    @TableField(value = "deleted_time")
+    private LocalDateTime deletedTime;
+
+    @TableField(value = "is_deleted")
+    private Integer isDeleted;
+
+    @TableField(value = "update_id", fill = FieldFill.UPDATE)
+    private Long updateId;
+
+    @TableField(value = "update_name", fill = FieldFill.UPDATE)
+    private String updateName;
+
+    @TableField(value = "deleted_by")
+    private Long deletedBy;
 }

@@ -69,7 +69,8 @@ public class TemplateFolderServiceImpl extends ServiceImpl<TemplateFolderMapper,
         // 逻辑删除
         TemplateFolder folder = new TemplateFolder();
         folder.setId(id);
-        folder.setDeleteTime(LocalDateTime.now());
+        folder.setIsDeleted(1);
+        folder.setDeletedTime(LocalDateTime.now());
         folder.setStatus(0);
         return updateById(folder);
     }

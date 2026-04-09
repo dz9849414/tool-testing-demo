@@ -20,7 +20,7 @@
         <result column="share_code" property="shareCode"/>
         <result column="share_link" property="shareLink"/>
         <result column="access_password" property="accessPassword"/>
-        <result column="created_by" property="createdBy"/>
+        <result column="create_id" property="createId"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
     </resultMap>

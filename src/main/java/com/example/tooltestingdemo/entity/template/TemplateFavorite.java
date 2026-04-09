@@ -18,8 +18,8 @@ public class TemplateFavorite {
     @TableField(value = "template_id")
     private Long templateId;
 
-    @TableField(value = "user_id")
-    private Long userId;
+    @TableField(value = "create_id")
+    private Long createId;
 
     @TableField(value = "favorite_type")
     private Integer favoriteType;
@@ -27,6 +27,27 @@ public class TemplateFavorite {
     @TableField(value = "remark")
     private String remark;
 
+    @TableField(value = "create_name", fill = FieldFill.INSERT)
+    private String createName;
+
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+
+    @TableField(value = "update_id")
+    private Long updateId;
+
+    @TableField(value = "update_name")
+    private String updateName;
+
+    @TableField(value = "update_time")
+    private LocalDateTime updateTime;
+
+    @TableField(value = "is_deleted")
+    private Integer isDeleted;
+
+    @TableField(value = "deleted_by")
+    private Long deletedBy;
+
+    @TableField(value = "deleted_time")
+    private LocalDateTime deletedTime;
 }

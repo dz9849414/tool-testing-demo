@@ -66,22 +66,22 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
             this.strictInsertFill(metaObject, "createName", String.class, userName);
         }
         
-        // 填充操作人ID（operator_id）- 用于历史记录表
-        if (metaObject.hasSetter("operatorId")) {
+        // 填充创建人ID（create_id）- 用于历史记录表
+        if (metaObject.hasSetter("createId")) {
             Long userId = CURRENT_USER_ID.get();
             if (userId == null) {
                 userId = 1L;
             }
-            this.strictInsertFill(metaObject, "operatorId", Long.class, userId);
+            this.strictInsertFill(metaObject, "createId", Long.class, userId);
         }
         
-        // 填充操作人姓名（operator_name）- 用于历史记录表
-        if (metaObject.hasSetter("operatorName")) {
+        // 填充创建人姓名（create_name）- 用于历史记录表
+        if (metaObject.hasSetter("createName")) {
             String userName = CURRENT_USER_NAME.get();
             if (userName == null) {
                 userName = "管理员";
             }
-            this.strictInsertFill(metaObject, "operatorName", String.class, userName);
+            this.strictInsertFill(metaObject, "createName", String.class, userName);
         }
     }
     
@@ -95,9 +95,36 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
         // 填充更新时间
         this.strictUpdateFill(metaObject, "updateTime", LocalDateTime.class, LocalDateTime.now());
         
+        // 填充修改人ID（update_id）
+        if (metaObject.hasSetter("updateId")) {
+            Long userId = CURRENT_USER_ID.get();
+            if (userId == null) {
+                userId = 1L; // 默认用户ID
+            }
+            this.strictUpdateFill(metaObject, "updateId", Long.class, userId);
+        }
+        
+        // 填充修改人姓名（update_name）
+        if (metaObject.hasSetter("updateName")) {
+            String userName = CURRENT_USER_NAME.get();
+            if (userName == null) {
+                userName = "管理员";
+            }
+            this.strictUpdateFill(metaObject, "updateName", String.class, userName);
+        }
+        
         // 填充删除时间（软删除时）
-        if (metaObject.hasSetter("deleteTime") && metaObject.getValue("deleteTime") != null) {
-            this.strictUpdateFill(metaObject, "deleteTime", LocalDateTime.class, LocalDateTime.now());
+        if (metaObject.hasSetter("deletedTime") && metaObject.getValue("deletedTime") != null) {
+            this.strictUpdateFill(metaObject, "deletedTime", LocalDateTime.class, LocalDateTime.now());
+        }
+        
+        // 填充删除人（软删除时）
+        if (metaObject.hasSetter("deletedBy") && metaObject.getValue("deletedBy") != null) {
+            Long userId = CURRENT_USER_ID.get();
+            if (userId == null) {
+                userId = 1L;
+            }
+            this.strictUpdateFill(metaObject, "deletedBy", Long.class, userId);
         }
     }
 }

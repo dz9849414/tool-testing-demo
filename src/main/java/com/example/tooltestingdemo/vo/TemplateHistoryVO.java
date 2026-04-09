@@ -38,14 +38,14 @@ public class TemplateHistoryVO {
     private String changeDetails;
 
     /**
-     * 操作人ID
+     * 创建人ID
      */
-    private Long operatorId;
+    private Long createId;
 
     /**
-     * 操作人姓名
+     * 创建人姓名
      */
-    private String operatorName;
+    private String createName;
 
     /**
      * 操作类型

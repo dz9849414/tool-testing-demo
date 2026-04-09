@@ -48,11 +48,11 @@ public class TemplateImportExport {
     @TableField(value = "error_message")
     private String errorMessage;
 
-    @TableField(value = "operator_id")
-    private Long operatorId;
+    @TableField(value = "create_id", fill = FieldFill.INSERT)
+    private Long createId;
 
-    @TableField(value = "operator_name")
-    private String operatorName;
+    @TableField(value = "create_name", fill = FieldFill.INSERT)
+    private String createName;
 
     @TableField(value = "start_time")
     private LocalDateTime startTime;
@@ -62,4 +62,22 @@ public class TemplateImportExport {
 
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+
+    @TableField(value = "update_id")
+    private Long updateId;
+
+    @TableField(value = "update_name")
+    private String updateName;
+
+    @TableField(value = "update_time")
+    private LocalDateTime updateTime;
+
+    @TableField(value = "is_deleted")
+    private Integer isDeleted;
+
+    @TableField(value = "deleted_by")
+    private Long deletedBy;
+
+    @TableField(value = "deleted_time")
+    private LocalDateTime deletedTime;
 }

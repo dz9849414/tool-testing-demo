@@ -33,8 +33,7 @@
         <result column="version_remark" property="versionRemark"/>
         <result column="is_latest" property="isLatest"/>
         <result column="ref_template_id" property="refTemplateId"/>
-        <result column="owner_id" property="ownerId"/>
-        <result column="owner_name" property="ownerName"/>
+
         <result column="team_id" property="teamId"/>
         <result column="visibility" property="visibility"/>
         <result column="tags" property="tags"/>
@@ -46,7 +45,7 @@
         <result column="last_use_time" property="lastUseTime"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
-        <result column="delete_time" property="deleteTime"/>
+        <result column="deleted_time" property="deletedTime"/>
     </resultMap>
 
     <!-- 通用查询结果列 -->
@@ -54,9 +53,9 @@
         id, folder_id, name, description, protocol_type, method, base_url, path, full_url,
         auth_type, auth_config, content_type, charset, body_type, body_content, body_raw_type,
         connect_timeout, read_timeout, retry_count, retry_interval, version, version_remark,
-        is_latest, ref_template_id, owner_id, owner_name, team_id, visibility, tags,
+        is_latest, ref_template_id, team_id, visibility, tags,
         pdm_system_type, pdm_module, business_scene, status, use_count, last_use_time,
-        create_time, update_time, delete_time
+        create_time, update_time, deleted_time
     </sql>
 
     <!-- 分页查询模板列表 -->
@@ -64,7 +63,7 @@
         SELECT
             <include refid="Base_Column_List"/>
         FROM interface_template
-        WHERE delete_time IS NULL
+        WHERE is_deleted = 0 OR is_deleted IS NULL
         <if test="folderId != null">
             AND folder_id = #{folderId}
         </if>
@@ -88,7 +87,7 @@
             <include refid="Base_Column_List"/>
         FROM interface_template
         WHERE ref_template_id = #{refTemplateId}
-        AND delete_time IS NULL
+        AND (is_deleted = 0 OR is_deleted IS NULL)
         ORDER BY version DESC
     </select>
 
@@ -98,7 +97,7 @@
             <include refid="Base_Column_List"/>
         FROM interface_template
         WHERE id = #{id}
-        AND delete_time IS NULL
+        AND (is_deleted = 0 OR is_deleted IS NULL)
     </select>
 
 </mapper>
