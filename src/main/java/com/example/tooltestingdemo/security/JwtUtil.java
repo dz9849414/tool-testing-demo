@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Date;
 
 /**
@@ -80,7 +82,15 @@ public class JwtUtil {
                 .parseClaimsJws(token)
                 .getBody();
         
-        return claims.getExpiration();
+        // 获取UTC时间
+        Date utcExpiration = claims.getExpiration();
+        
+        // 转换为Asia/Shanghai时区
+        ZonedDateTime utcDateTime = utcExpiration.toInstant().atZone(ZoneId.of("UTC"));
+        ZonedDateTime shanghaiDateTime = utcDateTime.withZoneSameInstant(ZoneId.of("Asia/Shanghai"));
+        
+        // 转换回Date对象
+        return Date.from(shanghaiDateTime.toInstant());
     }
     
     /**

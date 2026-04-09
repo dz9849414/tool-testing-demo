@@ -6,6 +6,7 @@ import com.example.tooltestingdemo.mapper.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -24,7 +25,7 @@ public class DataInitializer implements CommandLineRunner {
     private final SysPermissionMapper permissionMapper;
     private final SysUserRoleMapper userRoleMapper;
     private final SysRolePermissionMapper rolePermissionMapper;
-    private final PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     
     @Override
     public void run(String... args) throws Exception {
@@ -132,6 +133,9 @@ public class DataInitializer implements CommandLineRunner {
             log.info("创建默认管理员用户: {}", adminUser.getUsername());
             return adminUser;
         }
+        SysUser user2 = userMapper.selectById("admin");
+        // 更新新密码
+        user2.setPassword(passwordEncoder.encode("admin123"));
         
         log.info("默认管理员用户已存在");
         return existingUser;

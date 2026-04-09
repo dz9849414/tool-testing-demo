@@ -149,4 +149,58 @@ public class SysUserController {
         response.put("exists", exists);
         return ResponseEntity.ok(response);
     }
+    
+    /**
+     * 审批用户注册
+     */
+    @PutMapping("/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> approveUser(@PathVariable String id, @RequestParam Integer status) {
+        // 获取当前登录用户（审批人）
+        org.springframework.security.core.Authentication authentication = 
+            org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String approverUsername = authentication.getName();
+        
+        // 获取审批人ID
+        com.example.tooltestingdemo.entity.SysUser approver = userService.findByUsername(approverUsername);
+        if (approver == null) {
+            return ResponseEntity.badRequest().body("审批人不存在");
+        }
+        
+        // 更新用户状态并记录审批人信息
+        userService.updateUserStatusWithApproval(id, status, approver.getId());
+        
+        String message = status == 1 ? "用户审批通过" : "用户审批拒绝";
+        Map<String, String> response = new HashMap<>();
+        response.put("message", message);
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * 修改用户密码
+     */
+    @PutMapping("/{id}/password")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.isCurrentUser(#id)")
+    public ResponseEntity<?> changePassword(@PathVariable String id, @RequestBody PasswordChangeRequest request) {
+        boolean success = userService.changePassword(id, request.getOldPassword(), request.getNewPassword());
+        if (!success) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 400);
+            response.put("message", "旧密码错误");
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "密码修改成功");
+        response.put("data", null);
+        return ResponseEntity.ok(response);
+    }
+    
+    @lombok.Data
+    public static class PasswordChangeRequest {
+        private String oldPassword;
+        private String newPassword;
+    }
 }

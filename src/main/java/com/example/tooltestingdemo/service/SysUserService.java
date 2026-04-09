@@ -69,4 +69,14 @@ public interface SysUserService {
      * 更新用户最后登录信息
      */
     void updateLastLoginInfo(String userId, String ipAddress);
+    
+    /**
+     * 更新用户状态并记录审批人信息
+     */
+    void updateUserStatusWithApproval(String userId, Integer status, String approverId);
+    
+    /**
+     * 修改用户密码
+     */
+    boolean changePassword(String userId, String oldPassword, String newPassword);
 }

@@ -6,6 +6,8 @@ import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.mapper.SysUserMapper;
 import com.example.tooltestingdemo.service.SysUserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +22,7 @@ import java.util.List;
 public class SysUserServiceImpl implements SysUserService {
     
     private final SysUserMapper userMapper;
+    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     
     @Override
     public SysUser findById(String id) {
@@ -101,5 +104,36 @@ public class SysUserServiceImpl implements SysUserService {
             user.setLastLoginIp(ipAddress);
             userMapper.updateById(user);
         }
+    }
+
+    @Override
+    @Transactional
+    public void updateUserStatusWithApproval(String userId, Integer status, String approverId) {
+        SysUser user = userMapper.selectById(userId);
+        if (user != null) {
+            user.setStatus(status);
+            user.setApproverId(approverId);
+            user.setApproveTime(LocalDateTime.now());
+            userMapper.updateById(user);
+        }
+    }
+
+    @Override
+    @Transactional
+    public boolean changePassword(String userId, String oldPassword, String newPassword) {
+        SysUser user = userMapper.selectById(userId);
+        if (user == null) {
+            return false;
+        }
+        
+        // 验证旧密码
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            return false;
+        }
+        
+        // 更新新密码
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userMapper.updateById(user);
+        return true;
     }
 }

@@ -50,4 +50,10 @@ public class SysUser {
     
     @TableField(value = "organization_id")
     private String organizationId;
+    
+    @TableField(value = "approver_id")
+    private String approverId;
+    
+    @TableField(value = "approve_time")
+    private LocalDateTime approveTime;
 }

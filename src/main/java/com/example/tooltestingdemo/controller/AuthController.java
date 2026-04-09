@@ -1,6 +1,5 @@
 package com.example.tooltestingdemo.controller;
 
-import com.example.tooltestingdemo.config.DataInitializer;
 import com.example.tooltestingdemo.entity.SysLoginLog;
 import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.entity.SysUserOrganization;
@@ -11,12 +10,12 @@ import com.example.tooltestingdemo.service.SysUserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,7 +34,7 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final SysUserService userService;
-    private final PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final SysUserOrganizationMapper userOrganizationMapper;
     private final SysLoginLogService loginLogService;
 

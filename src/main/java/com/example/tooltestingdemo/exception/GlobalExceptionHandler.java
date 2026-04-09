@@ -67,11 +67,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleException(Exception e) {
         log.error("系统异常: {}", e.getMessage(), e);
-        
-        Map<String, String> response = new HashMap<>();
-        response.put("error", "系统错误");
-        response.put("message", "服务器内部错误，请稍后重试");
-        
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+
+//        Map<String, String> response = new HashMap<>();
+//        response.put("error", "系统错误");
+//        response.put("message", "服务器内部错误，请稍后重试");
+//
+//        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        return null;
     }
 }
