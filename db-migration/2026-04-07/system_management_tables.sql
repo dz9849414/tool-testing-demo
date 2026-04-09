@@ -231,3 +231,23 @@ INSERT INTO `sys_role_permission` (`id`, `role_id`, `permission_id`) VALUES
 INSERT INTO `sys_config` (`id`, `config_key`, `config_value`, `config_name`, `description`) VALUES 
 ('config1', 'system.name', '工具测试平台', '系统名称', '系统显示名称'),
 ('config2', 'system.version', '1.0.0', '系统版本', '系统版本号');
+
+-- ===========================================
+-- 添加API类型权限
+-- ===========================================
+
+-- 插入API类型的权限
+INSERT INTO `sys_permission` (`id`, `name`, `code`, `description`, `module`, `type`, `parent_id`, `level`, `sort`) VALUES
+                                                                                                                       ('p5', '用户管理API', 'system:user:api', '用户管理接口权限', 'system', 'API', 'p2', 3, 1),
+                                                                                                                       ('p6', '角色管理API', 'system:role:api', '角色管理接口权限', 'system', 'API', 'p3', 3, 1),
+                                                                                                                       ('p7', '权限管理API', 'system:permission:api', '权限管理接口权限', 'system', 'API', 'p4', 3, 1);
+
+-- 为admin角色分配API权限
+INSERT INTO `sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
+                                                                                                       ('rp5', 'admin', 'p5', NOW(), 'admin'),
+                                                                                                       ('rp6', 'admin', 'p6', NOW(), 'admin'),
+                                                                                                       ('rp7', 'admin', 'p7', NOW(), 'admin');
+
+-- 为manager角色分配部分API权限
+INSERT INTO `sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
+    ('rp8', 'manager', 'p5', NOW(), 'admin');
