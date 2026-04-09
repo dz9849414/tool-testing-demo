@@ -18,11 +18,14 @@ CREATE TABLE `sys_user` (
     `last_login_ip` VARCHAR(64) COMMENT '最后登录IP',
     `source` VARCHAR(32) DEFAULT 'LOCAL' COMMENT '用户来源：LOCAL-本地，LDAP-LDAP，OIDC-OIDC',
     `organization_id` VARCHAR(50) COMMENT '所属组织ID',
+    `approver_id` VARCHAR(50) COMMENT '审批人ID',
+    `approve_time` DATETIME COMMENT '审批时间',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_username` (`username`),
     UNIQUE KEY `uk_email` (`email`),
     KEY `idx_status` (`status`),
-    KEY `idx_create_time` (`create_time`)
+    KEY `idx_create_time` (`create_time`),
+    KEY `idx_approver_id` (`approver_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
 -- 角色表
