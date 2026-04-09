@@ -7,6 +7,7 @@ import com.example.tooltestingdemo.service.template.TemplateEnvironmentService;
 import com.example.tooltestingdemo.service.template.TemplateExecuteService;
 import com.example.tooltestingdemo.vo.InterfaceTemplateVO;
 import com.example.tooltestingdemo.vo.TemplateEnvironmentVO;
+import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -31,6 +32,7 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
     private final TemplateEnvironmentService environmentService;
     private final ProcessorExecuteService processorExecuteService;
     private final RestTemplate restTemplate;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @Override
     public Map<String, Object> executeTemplate(Long templateId, Long environmentId, Map<String, Object> variables) {
@@ -249,7 +251,11 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
             response.put("statusCode", responseEntity.getStatusCode().value());
             response.put("statusText", org.springframework.http.HttpStatus.valueOf(responseEntity.getStatusCode().value()).getReasonPhrase());
             response.put("headers", responseEntity.getHeaders());
-            response.put("body", responseEntity.getBody());
+            
+            // 尝试解析body为JSON，使其更易读
+            String responseBody = responseEntity.getBody();
+            Object parsedBody = parseResponseBody(responseBody);
+            response.put("body", parsedBody);
             response.put("responseTime", responseTime);
 
         } catch (Exception e) {
@@ -261,6 +267,32 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
         return response;
     }
 
+    /**
+     * 尝试解析响应body为Map/List，使其更易读
+     */
+    private Object parseResponseBody(String body) {
+        if (!StringUtils.hasText(body)) {
+            return null;
+        }
+        
+        try {
+            // 尝试解析为JSON
+            body = body.trim();
+            if (body.startsWith("{")) {
+                // JSON Object
+                return objectMapper.readValue(body, new TypeReference<Map<String, Object>>() {});
+            } else if (body.startsWith("[")) {
+                // JSON Array
+                return objectMapper.readValue(body, new TypeReference<List<Object>>() {});
+            }
+        } catch (Exception e) {
+            log.debug("响应body不是JSON格式，返回原始字符串");
+        }
+        
+        // 不是JSON或解析失败，返回原始字符串
+        return body;
+    }
+
     private String buildFullUrl(InterfaceTemplateVO template) {
         if (StringUtils.hasText(template.getFullUrl())) {
             return template.getFullUrl();
@@ -268,22 +300,36 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
         
         StringBuilder url = new StringBuilder();
         
-        // Protocol
-        String protocol = template.getProtocolType();
-        if (!StringUtils.hasText(protocol)) {
-            protocol = "HTTP";
-        }
-        url.append(protocol.toLowerCase()).append("://");
-        
-        // Base URL
-        if (StringUtils.hasText(template.getBaseUrl())) {
-            url.append(template.getBaseUrl());
+        // Base URL (可能已包含协议头)
+        String baseUrl = template.getBaseUrl();
+        if (StringUtils.hasText(baseUrl)) {
+            // 如果baseUrl已包含协议头，直接使用
+            if (baseUrl.startsWith("http://") || baseUrl.startsWith("https://")) {
+                url.append(baseUrl);
+            } else {
+                // 添加协议头
+                String protocol = template.getProtocolType();
+                if (!StringUtils.hasText(protocol)) {
+                    protocol = "HTTP";
+                }
+                url.append(protocol.toLowerCase()).append("://");
+                url.append(baseUrl);
+            }
+        } else {
+            // 没有baseUrl，只添加协议头
+            String protocol = template.getProtocolType();
+            if (!StringUtils.hasText(protocol)) {
+                protocol = "HTTP";
+            }
+            url.append(protocol.toLowerCase()).append("://");
         }
         
         // Path
         if (StringUtils.hasText(template.getPath())) {
             String path = template.getPath();
-            if (!path.startsWith("/")) {
+            // 避免重复的斜杠
+            char lastChar = url.charAt(url.length() - 1);
+            if (lastChar != '/' && !path.startsWith("/")) {
                 url.append("/");
             }
             url.append(path);

@@ -34,8 +34,8 @@ public class TemplateExecuteController {
     public Result<Map<String, Object>> executeTemplate(
             @PathVariable Long templateId,
             @RequestBody(required = false) ExecuteRequest request) {
-        
         try {
+
             Long environmentId = request != null ? request.getEnvironmentId() : null;
             Map<String, Object> variables = request != null ? request.getVariables() : null;
             

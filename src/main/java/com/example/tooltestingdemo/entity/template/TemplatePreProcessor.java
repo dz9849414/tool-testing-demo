@@ -45,9 +45,30 @@ public class TemplatePreProcessor {
     @TableField(value = "sort_order")
     private Integer sortOrder;
 
+    @TableField(value = "create_id", fill = FieldFill.INSERT)
+    private Long createId;
+
+    @TableField(value = "create_name", fill = FieldFill.INSERT)
+    private String createName;
+
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
+    @TableField(value = "update_id", fill = FieldFill.UPDATE)
+    private Long updateId;
+
+    @TableField(value = "update_name", fill = FieldFill.UPDATE)
+    private String updateName;
+
     @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
+
+    @TableField(value = "is_deleted")
+    private Integer isDeleted;
+
+    @TableField(value = "deleted_by")
+    private Long deletedBy;
+
+    @TableField(value = "deleted_time")
+    private LocalDateTime deletedTime;
 }

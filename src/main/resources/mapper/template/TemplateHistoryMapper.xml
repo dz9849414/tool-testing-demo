@@ -16,8 +16,8 @@
         <result column="change_summary" property="changeSummary"/>
         <result column="change_details" property="changeDetails"/>
         <result column="template_snapshot" property="templateSnapshot"/>
-        <result column="operator_id" property="operatorId"/>
-        <result column="operator_name" property="operatorName"/>
+        <result column="create_id" property="createId"/>
+        <result column="create_name" property="createName"/>
         <result column="operation_type" property="operationType"/>
         <result column="can_rollback" property="canRollback"/>
         <result column="rollback_to_time" property="rollbackToTime"/>

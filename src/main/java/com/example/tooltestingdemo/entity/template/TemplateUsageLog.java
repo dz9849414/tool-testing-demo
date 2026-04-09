@@ -21,11 +21,11 @@ public class TemplateUsageLog {
     @TableField(value = "usage_type")
     private String usageType;
 
-    @TableField(value = "user_id")
-    private Long userId;
+    @TableField(value = "create_id")
+    private Long createId;
 
-    @TableField(value = "user_name")
-    private String userName;
+    @TableField(value = "create_name")
+    private String createName;
 
     @TableField(value = "task_id")
     private Long taskId;
@@ -53,4 +53,22 @@ public class TemplateUsageLog {
 
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+
+    @TableField(value = "update_id")
+    private Long updateId;
+
+    @TableField(value = "update_name")
+    private String updateName;
+
+    @TableField(value = "update_time")
+    private LocalDateTime updateTime;
+
+    @TableField(value = "is_deleted")
+    private Integer isDeleted;
+
+    @TableField(value = "deleted_by")
+    private Long deletedBy;
+
+    @TableField(value = "deleted_time")
+    private LocalDateTime deletedTime;
 }

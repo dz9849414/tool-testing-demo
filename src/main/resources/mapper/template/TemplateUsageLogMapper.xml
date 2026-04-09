@@ -12,8 +12,8 @@
         <id column="id" property="id"/>
         <result column="template_id" property="templateId"/>
         <result column="usage_type" property="usageType"/>
-        <result column="user_id" property="userId"/>
-        <result column="user_name" property="userName"/>
+        <result column="create_id" property="createId"/>
+        <result column="create_name" property="createName"/>
         <result column="task_id" property="taskId"/>
         <result column="execution_result" property="executionResult"/>
         <result column="execution_duration" property="executionDuration"/>
@@ -36,7 +36,7 @@
     <!-- 查询用户的使用记录 -->
     <select id="selectByUserId" resultMap="BaseResultMap">
         SELECT * FROM template_usage_log 
-        WHERE user_id = #{userId} 
+        WHERE create_id = #{userId} 
         ORDER BY create_time DESC 
         LIMIT #{limit}
     </select>

@@ -21,8 +21,8 @@
         <result column="success_count" property="successCount"/>
         <result column="fail_count" property="failCount"/>
         <result column="error_message" property="errorMessage"/>
-        <result column="operator_id" property="operatorId"/>
-        <result column="operator_name" property="operatorName"/>
+        <result column="create_id" property="createId"/>
+        <result column="create_name" property="createName"/>
         <result column="start_time" property="startTime"/>
         <result column="end_time" property="endTime"/>
         <result column="create_time" property="createTime"/>

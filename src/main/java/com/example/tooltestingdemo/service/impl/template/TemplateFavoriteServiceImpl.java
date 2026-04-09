@@ -34,7 +34,7 @@ public class TemplateFavoriteServiceImpl extends ServiceImpl<TemplateFavoriteMap
         }
         
         TemplateFavorite favorite = new TemplateFavorite();
-        favorite.setUserId(userId);
+        favorite.setCreateId(userId);
         favorite.setTemplateId(templateId);
         favorite.setFavoriteType(1); // 收藏
         favorite.setRemark(remark);
@@ -48,7 +48,7 @@ public class TemplateFavoriteServiceImpl extends ServiceImpl<TemplateFavoriteMap
     @Transactional(rollbackFor = Exception.class)
     public boolean unfavoriteTemplate(Long userId, Long templateId) {
         LambdaQueryWrapper<TemplateFavorite> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(TemplateFavorite::getUserId, userId)
+        wrapper.eq(TemplateFavorite::getCreateId, userId)
                .eq(TemplateFavorite::getTemplateId, templateId)
                .eq(TemplateFavorite::getFavoriteType, 1);
         
@@ -64,7 +64,7 @@ public class TemplateFavoriteServiceImpl extends ServiceImpl<TemplateFavoriteMap
     public TemplateFavoriteVO followTemplate(Long userId, Long templateId) {
         // 检查是否已关注
         LambdaQueryWrapper<TemplateFavorite> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(TemplateFavorite::getUserId, userId)
+        wrapper.eq(TemplateFavorite::getCreateId, userId)
                .eq(TemplateFavorite::getTemplateId, templateId)
                .eq(TemplateFavorite::getFavoriteType, 2);
         
@@ -73,7 +73,7 @@ public class TemplateFavoriteServiceImpl extends ServiceImpl<TemplateFavoriteMap
         }
         
         TemplateFavorite follow = new TemplateFavorite();
-        follow.setUserId(userId);
+        follow.setCreateId(userId);
         follow.setTemplateId(templateId);
         follow.setFavoriteType(2); // 关注
         
@@ -86,7 +86,7 @@ public class TemplateFavoriteServiceImpl extends ServiceImpl<TemplateFavoriteMap
     @Transactional(rollbackFor = Exception.class)
     public boolean unfollowTemplate(Long userId, Long templateId) {
         LambdaQueryWrapper<TemplateFavorite> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(TemplateFavorite::getUserId, userId)
+        wrapper.eq(TemplateFavorite::getCreateId, userId)
                .eq(TemplateFavorite::getTemplateId, templateId)
                .eq(TemplateFavorite::getFavoriteType, 2);
         

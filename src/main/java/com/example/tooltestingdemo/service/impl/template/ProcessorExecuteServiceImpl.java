@@ -352,11 +352,17 @@ public class ProcessorExecuteServiceImpl implements ProcessorExecuteService {
         }
 
         try {
-            // 简单实现：使用点号分隔的路径提取
-            // 例如：data.user.name
-            String jsonStr = body.toString();
-            Map<String, Object> jsonMap = objectMapper.readValue(jsonStr, new TypeReference<Map<String, Object>>() {});
+            // body 可能是 Map（已解析的JSON）或 String（原始JSON）
+            Map<String, Object> jsonMap;
+            if (body instanceof Map) {
+                jsonMap = (Map<String, Object>) body;
+            } else {
+                // 原始JSON字符串，需要解析
+                String jsonStr = body.toString();
+                jsonMap = objectMapper.readValue(jsonStr, new TypeReference<Map<String, Object>>() {});
+            }
             
+            // 使用点号分隔的路径提取，例如：data.user.name
             String[] parts = expression.split("\\.");
             Object current = jsonMap;
             
@@ -370,7 +376,7 @@ public class ProcessorExecuteServiceImpl implements ProcessorExecuteService {
             
             return current;
         } catch (Exception e) {
-            log.error("JSON提取失败", e);
+            log.error("JSON提取失败: expression={}, body={}", expression, body, e);
             return null;
         }
     }
