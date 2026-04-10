@@ -65,6 +65,15 @@ public class SysUserController {
     @PostMapping
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
     public ResponseEntity<?> createUser(@RequestBody SysUser user) {
+        // 检查是否尝试创建用户名为admin的用户
+        if ("admin".equals(user.getUsername())) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 400);
+            response.put("message", "不能创建用户名为admin的用户");
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
+        }
+        
         if (userService.existsByUsername(user.getUsername())) {
             return ResponseEntity.badRequest().body("用户名已存在");
         }
@@ -85,6 +94,28 @@ public class SysUserController {
     @PermissionCheck(type = "update")
     public ResponseEntity<?> updateUser(@PathVariable String id, @RequestBody SysUser user) {
         user.setId(id);
+        
+        // 检查是否是admin用户
+        if ("admin".equals(id)) {
+            // 检查是否尝试修改admin的用户名
+            if (user.getUsername() != null && !"admin".equals(user.getUsername())) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("code", 400);
+                response.put("message", "不能更改admin用户名");
+                response.put("data", null);
+                return ResponseEntity.badRequest().body(response);
+            }
+        } else {
+            // 检查是否尝试将用户名改为admin
+            if ("admin".equals(user.getUsername())) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("code", 400);
+                response.put("message", "不能将用户名改为admin");
+                response.put("data", null);
+                return ResponseEntity.badRequest().body(response);
+            }
+        }
+        
         SysUser updatedUser = userService.update(user);
         if (updatedUser == null) {
             return ResponseEntity.notFound().build();

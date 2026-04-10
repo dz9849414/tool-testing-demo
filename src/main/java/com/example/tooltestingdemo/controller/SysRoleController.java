@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,8 +85,13 @@ public class SysRoleController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createRole(@RequestBody SysRole role) {
-        if (roleService.existsByName(role.getName())) {
-            return ResponseEntity.badRequest().body("角色名称已存在");
+        // 检查名称和作用域的唯一性
+        if (roleService.existsByNameAndScope(role.getName(), role.getScopeId(), null)) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 400);
+            response.put("message", "角色名称在当前作用域下已存在");
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
         }
         
         Boolean savedRole = roleService.save(role);
@@ -109,8 +115,13 @@ public class SysRoleController {
         
         role.setId(id);
         
-        if (roleService.existsByName(role.getName(), id)) {
-            return ResponseEntity.badRequest().body("角色名称已存在");
+        // 检查名称和作用域的唯一性
+        if (roleService.existsByNameAndScope(role.getName(), role.getScopeId(), id)) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 400);
+            response.put("message", "角色名称在当前作用域下已存在");
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
         }
         
         boolean updated = roleService.updateById(role);
@@ -144,7 +155,11 @@ public class SysRoleController {
         if (!deleted) {
             return ResponseEntity.badRequest().body("删除角色失败");
         }
-        return ResponseEntity.ok().build();
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "角色删除成功");
+        response.put("data", null);
+        return ResponseEntity.ok(response);
     }
     
     /**
@@ -160,6 +175,23 @@ public class SysRoleController {
             response.put("message", "不能为admin角色分配权限");
             response.put("data", null);
             return ResponseEntity.badRequest().body(response);
+        }
+        
+        // 检查权限列表中是否包含admin权限
+        if (permissionIds != null && !permissionIds.isEmpty()) {
+            List<String> adminPermissions = new ArrayList<>();
+            for (String permissionId : permissionIds) {
+                if (permissionId.toLowerCase().contains("admin")) {
+                    adminPermissions.add(permissionId);
+                }
+            }
+            if (!adminPermissions.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("code", 400);
+                response.put("message", "不能分配admin权限");
+                response.put("data", adminPermissions);
+                return ResponseEntity.badRequest().body(response);
+            }
         }
         
         roleService.assignPermissions(roleId, permissionIds);
@@ -186,7 +218,11 @@ public class SysRoleController {
         }
         
         roleService.assignUsers(roleId, userIds);
-        return ResponseEntity.ok().build();
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "用户分配成功");
+        response.put("data", null);
+        return ResponseEntity.ok(response);
     }
     
     /**
@@ -204,8 +240,29 @@ public class SysRoleController {
             return ResponseEntity.badRequest().body(response);
         }
         
+        // 检查权限列表中是否包含admin权限
+        if (permissionIds != null && !permissionIds.isEmpty()) {
+            List<String> adminPermissions = new ArrayList<>();
+            for (String permissionId : permissionIds) {
+                if (permissionId.toLowerCase().contains("admin")) {
+                    adminPermissions.add(permissionId);
+                }
+            }
+            if (!adminPermissions.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("code", 400);
+                response.put("message", "不能操作admin权限");
+                response.put("data", adminPermissions);
+                return ResponseEntity.badRequest().body(response);
+            }
+        }
+        
         roleService.removePermissions(roleId, permissionIds);
-        return ResponseEntity.ok().build();
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "权限移除成功");
+        response.put("data", null);
+        return ResponseEntity.ok(response);
     }
     
     /**
@@ -224,7 +281,11 @@ public class SysRoleController {
         }
         
         roleService.removeUsers(roleId, userIds);
-        return ResponseEntity.ok().build();
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "用户移除成功");
+        response.put("data", null);
+        return ResponseEntity.ok(response);
     }
     
     /**
@@ -244,7 +305,11 @@ public class SysRoleController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> enableRole(@PathVariable String roleId) {
         roleService.enableRole(roleId);
-        return ResponseEntity.ok().build();
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "角色启用成功");
+        response.put("data", null);
+        return ResponseEntity.ok(response);
     }
     
     /**
@@ -254,6 +319,10 @@ public class SysRoleController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> disableRole(@PathVariable String roleId) {
         roleService.disableRole(roleId);
-        return ResponseEntity.ok().build();
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "角色禁用成功");
+        response.put("data", null);
+        return ResponseEntity.ok(response);
     }
 }

@@ -46,6 +46,11 @@ public interface SysRoleService extends IService<SysRole> {
     boolean existsByName(String name, String excludeId);
     
     /**
+     * 检查角色名称在指定作用域下是否已存在（排除指定ID）
+     */
+    boolean existsByNameAndScope(String name, String scopeId, String excludeId);
+    
+    /**
      * 为角色分配权限
      */
     void assignPermissions(String roleId, List<String> permissionIds);

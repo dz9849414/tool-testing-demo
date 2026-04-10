@@ -63,6 +63,15 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     }
     
     @Override
+    public boolean existsByNameAndScope(String name, String scopeId, String excludeId) {
+        SysRole role = roleMapper.selectByNameAndScopeId(name, scopeId);
+        if (role == null) {
+            return false;
+        }
+        return excludeId == null || !role.getId().equals(excludeId);
+    }
+    
+    @Override
     @Transactional
     public void assignPermissions(String roleId, List<String> permissionIds) {
         // 先删除已有的权限关联

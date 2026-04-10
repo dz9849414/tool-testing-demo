@@ -110,6 +110,18 @@ public class AuthController {
             
             return ResponseEntity.ok(response);
             
+        } catch (org.springframework.security.core.userdetails.UsernameNotFoundException e) {
+            // 记录失败登录日志
+            loginLog.setUserId(user.getId());
+            loginLog.setStatus(0);
+            loginLog.setErrorMessage(e.getMessage());
+            loginLogService.recordLoginLog(loginLog);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 401);
+            response.put("message", e.getMessage());
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
         } catch (Exception e) {
             // 记录失败登录日志
             loginLog.setUserId(user.getId());
