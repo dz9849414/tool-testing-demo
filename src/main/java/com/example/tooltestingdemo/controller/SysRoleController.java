@@ -98,6 +98,15 @@ public class SysRoleController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateRole(@PathVariable String id, @RequestBody SysRole role) {
+        // 检查是否是admin角色
+        if ("admin".equals(id)) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 400);
+            response.put("message", "不能修改admin角色");
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
+        }
+        
         role.setId(id);
         
         if (roleService.existsByName(role.getName(), id)) {
@@ -117,6 +126,15 @@ public class SysRoleController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteRole(@PathVariable String id) {
+        // 检查是否是admin角色
+        if ("admin".equals(id)) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 400);
+            response.put("message", "不能删除admin角色");
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
+        }
+        
         SysRole role = roleService.getById(id);
         if (role == null) {
             return ResponseEntity.notFound().build();
@@ -135,6 +153,15 @@ public class SysRoleController {
     @PostMapping("/{roleId}/permissions")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> assignPermissions(@PathVariable String roleId, @RequestBody List<String> permissionIds) {
+        // 检查是否是admin角色
+        if ("admin".equals(roleId)) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 400);
+            response.put("message", "不能为admin角色分配权限");
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
+        }
+        
         roleService.assignPermissions(roleId, permissionIds);
         Map<String, Object> response = new HashMap<>();
         response.put("code", 200);
@@ -149,6 +176,15 @@ public class SysRoleController {
     @PostMapping("/{roleId}/users")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> assignUsers(@PathVariable String roleId, @RequestBody List<String> userIds) {
+        // 检查是否是admin角色
+        if ("admin".equals(roleId)) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 400);
+            response.put("message", "不能为admin角色分配用户");
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
+        }
+        
         roleService.assignUsers(roleId, userIds);
         return ResponseEntity.ok().build();
     }
@@ -159,6 +195,15 @@ public class SysRoleController {
     @DeleteMapping("/{roleId}/permissions")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> removePermissions(@PathVariable String roleId, @RequestBody List<String> permissionIds) {
+        // 检查是否是admin角色
+        if ("admin".equals(roleId)) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 400);
+            response.put("message", "不能从admin角色中移除权限");
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
+        }
+        
         roleService.removePermissions(roleId, permissionIds);
         return ResponseEntity.ok().build();
     }
@@ -169,6 +214,15 @@ public class SysRoleController {
     @DeleteMapping("/{roleId}/users")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> removeUsers(@PathVariable String roleId, @RequestBody List<String> userIds) {
+        // 检查是否是admin角色
+        if ("admin".equals(roleId)) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 400);
+            response.put("message", "不能从admin角色中移除用户");
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
+        }
+        
         roleService.removeUsers(roleId, userIds);
         return ResponseEntity.ok().build();
     }

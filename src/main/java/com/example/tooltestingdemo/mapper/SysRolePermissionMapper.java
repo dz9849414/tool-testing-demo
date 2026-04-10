@@ -36,7 +36,7 @@ public interface SysRolePermissionMapper extends BaseMapper<SysRolePermission> {
      * 检查角色权限关联是否存在
      */
     @Select("SELECT COUNT(*) FROM sys_role_permission WHERE role_id = #{roleId} AND permission_id = #{permissionId}")
-    int countByRoleIdAndPermissionId(@Param("roleId") String roleId, @Param("permissionId") String permissionId);
+    Integer countByRoleIdAndPermissionId(@Param("roleId") String roleId, @Param("permissionId") String permissionId);
     
     /**
      * 根据角色ID删除关联
@@ -48,5 +48,5 @@ public interface SysRolePermissionMapper extends BaseMapper<SysRolePermission> {
      * 根据权限ID删除关联
      */
     @Select("DELETE FROM sys_role_permission WHERE permission_id = #{permissionId}")
-    int deleteByPermissionId(@Param("permissionId") String permissionId);
+    Integer deleteByPermissionId(@Param("permissionId") String permissionId);
 }

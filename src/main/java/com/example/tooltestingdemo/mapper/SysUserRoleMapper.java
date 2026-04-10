@@ -36,7 +36,7 @@ public interface SysUserRoleMapper extends BaseMapper<SysUserRole> {
      * 检查用户角色关联是否存在
      */
     @Select("SELECT COUNT(*) FROM sys_user_role WHERE user_id = #{userId} AND role_id = #{roleId}")
-    int countByUserIdAndRoleId(@Param("userId") String userId, @Param("roleId") String roleId);
+    Integer countByUserIdAndRoleId(@Param("userId") String userId, @Param("roleId") String roleId);
     
     /**
      * 根据用户ID删除关联
@@ -48,5 +48,5 @@ public interface SysUserRoleMapper extends BaseMapper<SysUserRole> {
      * 根据角色ID删除关联
      */
     @Select("DELETE FROM sys_user_role WHERE role_id = #{roleId}")
-    int deleteByRoleId(@Param("roleId") String roleId);
+    Integer deleteByRoleId(@Param("roleId") String roleId);
 }

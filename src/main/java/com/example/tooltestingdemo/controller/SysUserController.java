@@ -1,6 +1,7 @@
 package com.example.tooltestingdemo.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.tooltestingdemo.annotation.PermissionCheck;
 import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.service.SysUserService;
 import lombok.RequiredArgsConstructor;
@@ -81,6 +82,7 @@ public class SysUserController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("@securityService.hasPermission('system:user:api') or @securityService.isCurrentUser(#id)")
+    @PermissionCheck(type = "update")
     public ResponseEntity<?> updateUser(@PathVariable String id, @RequestBody SysUser user) {
         user.setId(id);
         SysUser updatedUser = userService.update(user);
@@ -95,6 +97,7 @@ public class SysUserController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
+    @PermissionCheck(type = "delete")
     public ResponseEntity<?> deleteUser(@PathVariable String id) {
         SysUser user = userService.findById(id);
         if (user == null) {
@@ -155,6 +158,7 @@ public class SysUserController {
      */
     @PutMapping("/{id}/approve")
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
+    @PermissionCheck(type = "approve")
     public ResponseEntity<?> approveUser(@PathVariable String id, @RequestParam Integer status) {
         // 获取当前登录用户（审批人）
         org.springframework.security.core.Authentication authentication = 
@@ -209,7 +213,17 @@ public class SysUserController {
      */
     @PostMapping("/{id}/roles")
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
+    @PermissionCheck(type = "assignRoles")
     public ResponseEntity<?> assignRoles(@PathVariable String id, @RequestBody List<String> roleIds) {
+        // 检查是否包含admin角色
+        if (roleIds != null && roleIds.contains("admin")) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 400);
+            response.put("message", "不能分配admin角色");
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
+        }
+        
         // 获取当前登录用户（操作人）
         org.springframework.security.core.Authentication authentication = 
             org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();

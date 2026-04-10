@@ -36,13 +36,13 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
      * 检查用户名是否存在
      */
     @Select("SELECT COUNT(*) FROM sys_user WHERE username = #{username}")
-    int countByUsername(@Param("username") String username);
+    Integer countByUsername(@Param("username") String username);
     
     /**
      * 检查邮箱是否存在
      */
     @Select("SELECT COUNT(*) FROM sys_user WHERE email = #{email}")
-    int countByEmail(@Param("email") String email);
+    Integer countByEmail(@Param("email") String email);
     
     /**
      * 根据用户名和状态查找用户
