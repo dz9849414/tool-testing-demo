@@ -13,8 +13,8 @@ public enum RoleEnum {
     /**
      * 经理角色
      */
-    MANGER("manager", "部门经理"),
-    
+    MANAGER("manager", "部门经理"),
+ 
     /**
      * 普通用户角色
      */

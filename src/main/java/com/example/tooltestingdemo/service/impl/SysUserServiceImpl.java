@@ -69,6 +69,7 @@ public class SysUserServiceImpl implements SysUserService {
             existingUser.setPhone(user.getPhone());
             existingUser.setRealName(user.getRealName());
             existingUser.setOrganizationId(user.getOrganizationId());
+            existingUser.setStatus(user.getStatus());
             existingUser.setSource(user.getSource());
             userMapper.updateById(existingUser);
             return existingUser;

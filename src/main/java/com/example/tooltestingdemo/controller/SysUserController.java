@@ -296,4 +296,61 @@ public class SysUserController {
         response.put("data", null);
         return ResponseEntity.ok(response);
     }
+    
+    /**
+     * 更新用户状态（启用/禁用/锁定）
+     */
+    @PutMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    @PermissionCheck(type = "update")
+    public ResponseEntity<?> updateUserStatus(@PathVariable String id, @RequestParam Integer status) {
+        // 检查是否是admin用户
+        if ("admin".equals(id)) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 400);
+            response.put("message", "不能修改admin用户状态");
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        // 检查状态值是否合法
+        if (status != 0 && status != 1 && status != 2) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 400);
+            response.put("message", "状态值不合法，0-禁用，1-启用，2-锁定");
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        // 更新用户状态
+        SysUser user = userService.findById(id);
+        if (user == null) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        user.setStatus(status);
+        userService.update(user);
+        
+        // TODO: 若禁用则使当前会话失效
+        // 这里需要实现会话失效的逻辑，例如清除Redis中的token等
+        
+        String message = "";
+        switch (status) {
+            case 0:
+                message = "用户禁用成功";
+                break;
+            case 1:
+                message = "用户启用成功";
+                break;
+            case 2:
+                message = "用户锁定成功";
+                break;
+        }
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", message);
+        response.put("data", null);
+        return ResponseEntity.ok(response);
+    }
 }
