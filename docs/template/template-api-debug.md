@@ -546,3 +546,50 @@ curl -X POST http://localhost:8080/api/template \
     "path": "/test"
   }'
 ```
+
+## 模板表删除sql
+
+```mysql
+-- ============================================
+-- 船舶 PDM 接口测试工具 - 模板表删除脚本（含外键关联）
+-- 删除顺序：先子表后父表，避免外键约束冲突
+-- 兼容MySQL 5.7/8.0
+-- ============================================
+
+-- 步骤1: 禁用外键检查（避免删除顺序导致的约束错误）
+-- ----------------------------
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- 步骤2: 删除所有表（IF EXISTS 确保表不存在也不报错）
+-- ----------------------------
+-- 子表（按字母顺序，它们之间无外键依赖）
+DROP TABLE IF EXISTS template_assertion;
+DROP TABLE IF EXISTS template_environment;
+DROP TABLE IF EXISTS template_favorite;
+DROP TABLE IF EXISTS template_form_data;
+DROP TABLE IF EXISTS template_header;
+DROP TABLE IF EXISTS template_history;
+DROP TABLE IF EXISTS template_import_export;
+DROP TABLE IF EXISTS template_parameter;
+DROP TABLE IF EXISTS template_post_processor;
+DROP TABLE IF EXISTS template_pre_processor;
+DROP TABLE IF EXISTS template_share;
+DROP TABLE IF EXISTS template_usage_log;
+DROP TABLE IF EXISTS template_variable;
+
+-- 主表
+DROP TABLE IF EXISTS interface_template;
+
+-- 根表
+DROP TABLE IF EXISTS template_folder;
+
+-- 步骤3: 恢复外键检查
+-- ----------------------------
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- ============================================
+-- 删除完成
+-- ============================================
+
+```
+

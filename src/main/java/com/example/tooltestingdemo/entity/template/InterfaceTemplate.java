@@ -112,6 +112,15 @@ public class InterfaceTemplate {
     @TableField(value = "business_scene")
     private String businessScene;
 
+    @TableField(value = "file_count")
+    private Integer fileCount;
+
+    @TableField(value = "has_request_file")
+    private Integer hasRequestFile;
+
+    @TableField(value = "has_response_file")
+    private Integer hasResponseFile;
+
     @TableField(value = "status")
     private Integer status;
 

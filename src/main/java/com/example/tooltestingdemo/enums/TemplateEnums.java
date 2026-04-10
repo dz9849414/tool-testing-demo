@@ -330,9 +330,11 @@ public class TemplateEnums {
     @AllArgsConstructor
     public enum TemplateStatus {
         DRAFT(0, "草稿"),
-        PUBLISHED(1, "已发布"),
-        ARCHIVED(2, "已归档"),
-        DISABLED(3, "已禁用");
+        PENDING_REVIEW(1, "待审核"),
+        PUBLISHED(2, "已发布"),
+        ARCHIVED(3, "已归档"),
+        DISABLED(4, "已禁用"),
+        REJECTED(5, "已驳回");
 
         private final int code;
         private final String desc;
@@ -344,6 +346,20 @@ public class TemplateEnums {
                 }
             }
             return null;
+        }
+        
+        /**
+         * 是否可编辑的状态
+         */
+        public boolean isEditable() {
+            return this == DRAFT || this == REJECTED;
+        }
+        
+        /**
+         * 是否可提交审核的状态
+         */
+        public boolean isSubmittable() {
+            return this == DRAFT || this == REJECTED;
         }
     }
 

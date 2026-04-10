@@ -18,10 +18,10 @@ import java.util.Map;
 public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
 
     /**
-     * 创建模板（包含所有关联信息）
+     * 创建模板（默认创建为草稿状态）
      * 
      * @param dto 模板DTO（包含关联数据）
-     * @return 创建后的模板VO
+     * @return 创建后的模板VO（状态为草稿）
      */
     InterfaceTemplateVO createTemplate(InterfaceTemplateDTO dto);
 
@@ -107,4 +107,49 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
      * @return 是否成功
      */
     boolean moveTemplate(Long id, Long folderId);
+
+    /**
+     * 保存草稿（不校验必填项，仅保存当前内容）
+     * 自动生成或递增版本号（V1.0 -> V1.1 -> V1.2）
+     * 
+     * @param dto 模板DTO
+     * @return 保存后的模板VO
+     */
+    InterfaceTemplateVO saveDraft(InterfaceTemplateDTO dto);
+
+    /**
+     * 保存草稿（更新现有模板）
+     * 
+     * @param id 模板ID
+     * @param dto 模板DTO
+     * @return 保存后的模板VO
+     */
+    InterfaceTemplateVO saveDraft(Long id, InterfaceTemplateDTO dto);
+
+    /**
+     * 提交审核（校验必填项，通过后状态变为待审核）
+     * 自动生成或递增主版本号（V1.5 -> V2.0）
+     * 
+     * @param id 模板ID
+     * @param dto 模板DTO
+     * @return 提交后的模板VO
+     */
+    InterfaceTemplateVO submitForReview(Long id, InterfaceTemplateDTO dto);
+
+    /**
+     * 审核通过
+     * 
+     * @param id 模板ID
+     * @return 是否成功
+     */
+    boolean approveTemplate(Long id);
+
+    /**
+     * 审核驳回
+     * 
+     * @param id 模板ID
+     * @param reason 驳回原因
+     * @return 是否成功
+     */
+    boolean rejectTemplate(Long id, String reason);
 }

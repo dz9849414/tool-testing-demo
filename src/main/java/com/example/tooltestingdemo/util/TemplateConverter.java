@@ -402,4 +402,63 @@ public class TemplateConverter {
                 .map(TemplateConverter::toVO)
                 .collect(Collectors.toList());
     }
+
+    // ==================== TemplateFile 转换 ====================
+
+    public static TemplateFile toEntity(TemplateFileDTO dto) {
+        if (dto == null) {
+            return null;
+        }
+        TemplateFile entity = new TemplateFile();
+        BeanUtils.copyProperties(dto, entity);
+        return entity;
+    }
+
+    public static List<TemplateFile> toFileEntityList(List<TemplateFileDTO> dtos) {
+        if (CollectionUtils.isEmpty(dtos)) {
+            return new ArrayList<>();
+        }
+        return dtos.stream()
+                .map(TemplateConverter::toEntity)
+                .collect(Collectors.toList());
+    }
+
+    public static TemplateFileVO toVO(TemplateFile entity) {
+        if (entity == null) {
+            return null;
+        }
+        TemplateFileVO vo = new TemplateFileVO();
+        BeanUtils.copyProperties(entity, vo);
+        // 格式化文件大小显示
+        vo.setFileSizeDisplay(formatFileSize(entity.getFileSize()));
+        return vo;
+    }
+
+    public static List<TemplateFileVO> toFileVOList(List<TemplateFile> entities) {
+        if (CollectionUtils.isEmpty(entities)) {
+            return new ArrayList<>();
+        }
+        return entities.stream()
+                .map(TemplateConverter::toVO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 格式化文件大小
+     */
+    private static String formatFileSize(Long size) {
+        if (size == null || size < 0) {
+            return "0 B";
+        }
+        if (size < 1024) {
+            return size + " B";
+        }
+        if (size < 1024 * 1024) {
+            return String.format("%.2f KB", size / 1024.0);
+        }
+        if (size < 1024 * 1024 * 1024) {
+            return String.format("%.2f MB", size / (1024.0 * 1024));
+        }
+        return String.format("%.2f GB", size / (1024.0 * 1024 * 1024));
+    }
 }

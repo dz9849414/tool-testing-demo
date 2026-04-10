@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateFileMapper">
+
+    <!-- 
+        文件位置：src/main/resources/mapper/template/TemplateFileMapper.xml
+        命名空间：com.example.tooltestingdemo.mapper.template.TemplateFileMapper
+    -->
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.example.tooltestingdemo.entity.template.TemplateFile">
+        <id column="id" property="id"/>
+        <result column="template_id" property="templateId"/>
+        <result column="file_name" property="fileName"/>
+        <result column="file_original_name" property="fileOriginalName"/>
+        <result column="file_path" property="filePath"/>
+        <result column="file_url" property="fileUrl"/>
+        <result column="file_size" property="fileSize"/>
+        <result column="file_type" property="fileType"/>
+        <result column="file_extension" property="fileExtension"/>
+        <result column="file_category" property="fileCategory"/>
+        <result column="file_description" property="fileDescription"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="create_id" property="createId"/>
+        <result column="create_name" property="createName"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_id" property="updateId"/>
+        <result column="update_name" property="updateName"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="is_deleted" property="isDeleted"/>
+        <result column="deleted_by" property="deletedBy"/>
+        <result column="deleted_time" property="deletedTime"/>
+    </resultMap>
+
+    <!-- 根据模板ID查询文件列表 -->
+    <select id="selectByTemplateId" resultMap="BaseResultMap">
+        SELECT * FROM template_file 
+        WHERE template_id = #{templateId} 
+        AND is_deleted = 0 
+        ORDER BY sort_order ASC, create_time DESC
+    </select>
+
+    <!-- 根据模板ID和文件类别查询 -->
+    <select id="selectByTemplateIdAndCategory" resultMap="BaseResultMap">
+        SELECT * FROM template_file 
+        WHERE template_id = #{templateId} 
+        AND file_category = #{fileCategory}
+        AND is_deleted = 0 
+        ORDER BY sort_order ASC, create_time DESC
+    </select>
+
+    <!-- 批量插入文件 -->
+    <insert id="batchInsert">
+        INSERT INTO template_file (
+            template_id, file_name, file_original_name, file_path, file_url,
+            file_size, file_type, file_extension, file_category, file_description,
+            sort_order, create_id, create_name, create_time, is_deleted
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.templateId}, #{item.fileName}, #{item.fileOriginalName}, #{item.filePath}, #{item.fileUrl},
+                #{item.fileSize}, #{item.fileType}, #{item.fileExtension}, #{item.fileCategory}, #{item.fileDescription},
+                #{item.sortOrder}, #{item.createId}, #{item.createName}, #{item.createTime}, #{item.isDeleted}
+            )
+        </foreach>
+    </insert>
+
+</mapper>

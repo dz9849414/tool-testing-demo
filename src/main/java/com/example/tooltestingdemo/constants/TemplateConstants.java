@@ -18,6 +18,18 @@ public final class TemplateConstants {
     public static final String PROTOCOL_MQTT = "MQTT";
     public static final String PROTOCOL_TCP = "TCP";
     public static final String PROTOCOL_UDP = "UDP";
+    
+    // ==================== 数据库类型 ====================
+    public static final String PROTOCOL_SQL = "SQL";
+    public static final String PROTOCOL_MYSQL = "MYSQL";
+    public static final String PROTOCOL_POSTGRESQL = "POSTGRESQL";
+    public static final String PROTOCOL_ORACLE = "ORACLE";
+    public static final String PROTOCOL_SQLSERVER = "SQLSERVER";
+    
+    // ==================== 脚本类型 ====================
+    public static final String PROTOCOL_SCRIPT = "SCRIPT";
+    public static final String PROTOCOL_JS = "JS";
+    public static final String PROTOCOL_GROOVY = "GROOVY";
 
     // ==================== HTTP 方法 ====================
     public static final String METHOD_GET = "GET";
