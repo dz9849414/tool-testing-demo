@@ -21,6 +21,11 @@ public interface SysUserService {
     SysUser findByUsername(String username);
     
     /**
+     * 根据邮箱查找用户
+     */
+    SysUser findByEmail(String email);
+    
+    /**
      * 查找所有用户
      */
     List<SysUser> findAll();

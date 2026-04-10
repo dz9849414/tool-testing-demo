@@ -116,6 +116,27 @@ public class SysUserController {
             }
         }
         
+        // 检查是否尝试修改status字段
+        if (user.getStatus() != null) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 400);
+            response.put("message", "不能更改用户状态");
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        // 检查邮箱是否已存在（排除当前用户）
+        if (user.getEmail() != null) {
+            SysUser existingUser = userService.findByEmail(user.getEmail());
+            if (existingUser != null && !existingUser.getId().equals(id)) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("code", 400);
+                response.put("message", "邮箱已存在");
+                response.put("data", null);
+                return ResponseEntity.badRequest().body(response);
+            }
+        }
+        
         SysUser updatedUser = userService.update(user);
         if (updatedUser == null) {
             return ResponseEntity.notFound().build();
