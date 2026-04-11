@@ -61,7 +61,8 @@ public class CustomUserDetailsService implements UserDetailsService {
             }
         }
         
-        return new User(
+        return new CustomUserDetails(
+                user.getId(),
                 user.getUsername(),
                 user.getPassword(),
                 authorities

@@ -4,6 +4,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import com.example.tooltestingdemo.security.CustomUserDetails;
 
 import java.util.Collection;
 
@@ -18,8 +19,9 @@ public class SecurityService {
      */
     public String getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated()) {
-            return authentication.getName();
+        if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() instanceof CustomUserDetails) {
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+            return userDetails.getUserId();
         }
         return null;
     }
@@ -37,8 +39,9 @@ public class SecurityService {
      */
     public String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated()) {
-            return authentication.getName();
+        if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() instanceof CustomUserDetails) {
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+            return userDetails.getUsername();
         }
         return null;
     }
@@ -52,9 +55,22 @@ public class SecurityService {
     }
     
     /**
+     * 检查当前用户是否是admin
+     */
+    public boolean isAdmin() {
+        String currentUserId = getCurrentUserId();
+        return "admin".equals(currentUserId);
+    }
+    
+    /**
      * 检查用户是否拥有指定权限或其父级权限
      */
     public boolean hasPermission(String permission) {
+        // 如果是admin用户，直接返回true
+        if (isAdmin()) {
+            return true;
+        }
+        
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null) {
             return false;
