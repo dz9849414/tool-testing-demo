@@ -242,11 +242,18 @@ INSERT INTO `sys_permission` (`id`, `name`, `code`, `description`, `module`, `ty
                                                                                                                        ('p6', '角色管理API', 'system:role:api', '角色管理接口权限', 'system', 'API', 'p3', 3, 1),
                                                                                                                        ('p7', '权限管理API', 'system:permission:api', '权限管理接口权限', 'system', 'API', 'p4', 3, 1);
 
+-- 插入日志管理权限
+INSERT INTO `sys_permission` (`id`, `name`, `code`, `description`, `module`, `type`, `parent_id`, `level`, `sort`) VALUES
+('p8', '日志管理', 'system:log', '日志管理', 'system', 'MENU', 'p1', 2, 4),
+('p9', '日志管理API', 'system:log:api', '日志管理接口权限', 'system', 'API', 'p8', 3, 1);
+
 -- 为admin角色分配API权限
 INSERT INTO `sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
                                                                                                        ('rp5', 'admin', 'p5', NOW(), 'admin'),
                                                                                                        ('rp6', 'admin', 'p6', NOW(), 'admin'),
-                                                                                                       ('rp7', 'admin', 'p7', NOW(), 'admin');
+                                                                                                       ('rp7', 'admin', 'p7', NOW(), 'admin'),
+                                                                                                       ('rp8', 'admin', 'p8', NOW(), 'admin'),
+                                                                                                       ('rp9', 'admin', 'p9', NOW(), 'admin');
 
 -- 为manager角色分配部分API权限
 INSERT INTO `sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
