@@ -5,6 +5,7 @@ import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import jakarta.annotation.PostConstruct;
 
 import javax.crypto.SecretKey;
 import java.time.ZoneId;
@@ -24,8 +25,24 @@ public class JwtUtil {
     @Value("${jwt.expiration}")
     private Long expiration;
     
+    private SecretKey signingKey;
+    
+    @PostConstruct
+    public void init() {
+        // 确保密钥长度足够，至少32字节
+        String key = secret;
+        if (key.length() < 32) {
+            // 如果密钥太短，用空格填充
+            key = String.format("%-32s", key);
+        } else if (key.length() > 32) {
+            // 如果密钥太长，截取前32字节
+            key = key.substring(0, 32);
+        }
+        signingKey = Keys.hmacShaKeyFor(key.getBytes());
+    }
+    
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes());
+        return signingKey;
     }
     
     /**
@@ -39,7 +56,7 @@ public class JwtUtil {
                 .setSubject(username)
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .signWith(getSigningKey())
                 .compact();
     }
     
