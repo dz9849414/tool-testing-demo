@@ -4,7 +4,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.entity.SysRole;
 import com.example.tooltestingdemo.service.SysRoleService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import com.example.tooltestingdemo.common.Result;
+import com.example.tooltestingdemo.common.ErrorStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,9 +29,9 @@ public class SysRoleController {
      */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<SysRole>> getAllRoles() {
+    public Result<List<SysRole>> getAllRoles() {
         List<SysRole> roles = roleService.list();
-        return ResponseEntity.ok(roles);
+        return Result.success("获取角色列表成功", roles);
     }
     
     /**
@@ -38,12 +39,12 @@ public class SysRoleController {
      */
     @GetMapping("/page")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Page<SysRole>> getRolesByPage(
+    public Result<Page<SysRole>> getRolesByPage(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
         Page<SysRole> pageParam = new Page<>(page, size);
         Page<SysRole> roles = roleService.page(pageParam);
-        return ResponseEntity.ok(roles);
+        return Result.success("获取角色列表成功", roles);
     }
     
     /**
@@ -51,12 +52,12 @@ public class SysRoleController {
      */
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<SysRole> getRoleById(@PathVariable String id) {
+    public Result<SysRole> getRoleById(@PathVariable String id) {
         SysRole role = roleService.getById(id);
         if (role == null) {
-            return ResponseEntity.notFound().build();
+            return Result.error(ErrorStatus.NOT_FOUND, "角色不存在");
         }
-        return ResponseEntity.ok(role);
+        return Result.success("获取角色信息成功", role);
     }
     
     /**
@@ -64,9 +65,9 @@ public class SysRoleController {
      */
     @GetMapping("/type/{type}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<SysRole>> getRolesByType(@PathVariable String type) {
+    public Result<List<SysRole>> getRolesByType(@PathVariable String type) {
         List<SysRole> roles = roleService.findByType(type);
-        return ResponseEntity.ok(roles);
+        return Result.success("获取角色列表成功", roles);
     }
     
     /**
@@ -74,9 +75,9 @@ public class SysRoleController {
      */
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasRole('ADMIN') or @securityService.isCurrentUser(#userId)")
-    public ResponseEntity<List<SysRole>> getRolesByUserId(@PathVariable String userId) {
+    public Result<List<SysRole>> getRolesByUserId(@PathVariable String userId) {
         List<SysRole> roles = roleService.findByUserId(userId);
-        return ResponseEntity.ok(roles);
+        return Result.success("获取角色列表成功", roles);
     }
     
     /**
@@ -84,18 +85,14 @@ public class SysRoleController {
      */
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> createRole(@RequestBody SysRole role) {
+    public Result<Boolean> createRole(@RequestBody SysRole role) {
         // 检查名称和作用域的唯一性
         if (roleService.existsByNameAndScope(role.getName(), role.getScopeId(), null)) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 400);
-            response.put("message", "角色名称在当前作用域下已存在");
-            response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            return Result.error(ErrorStatus.BAD_REQUEST, "角色名称在当前作用域下已存在");
         }
         
         Boolean savedRole = roleService.save(role);
-        return ResponseEntity.ok(savedRole);
+        return Result.success("创建角色成功", savedRole);
     }
     
     /**
@@ -103,32 +100,24 @@ public class SysRoleController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> updateRole(@PathVariable String id, @RequestBody SysRole role) {
+    public Result<SysRole> updateRole(@PathVariable String id, @RequestBody SysRole role) {
         // 检查是否是admin角色
         if ("admin".equals(id)) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 400);
-            response.put("message", "不能修改admin角色");
-            response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            return Result.error(ErrorStatus.BAD_REQUEST, "不能修改admin角色");
         }
         
         role.setId(id);
         
         // 检查名称和作用域的唯一性
         if (roleService.existsByNameAndScope(role.getName(), role.getScopeId(), id)) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 400);
-            response.put("message", "角色名称在当前作用域下已存在");
-            response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            return Result.error(ErrorStatus.BAD_REQUEST, "角色名称在当前作用域下已存在");
         }
         
         boolean updated = roleService.updateById(role);
         if (!updated) {
-            return ResponseEntity.notFound().build();
+            return Result.error(ErrorStatus.NOT_FOUND, "角色不存在");
         }
-        return ResponseEntity.ok(roleService.getById(id));
+        return Result.success("更新角色信息成功", roleService.getById(id));
     }
     
     /**
@@ -136,30 +125,22 @@ public class SysRoleController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> deleteRole(@PathVariable String id) {
+    public Result<String> deleteRole(@PathVariable String id) {
         // 检查是否是admin角色
         if ("admin".equals(id)) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 400);
-            response.put("message", "不能删除admin角色");
-            response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            return Result.error(ErrorStatus.BAD_REQUEST, "不能删除admin角色");
         }
         
         SysRole role = roleService.getById(id);
         if (role == null) {
-            return ResponseEntity.notFound().build();
+            return Result.error(ErrorStatus.NOT_FOUND, "角色不存在");
         }
         
         boolean deleted = roleService.removeById(id);
         if (!deleted) {
-            return ResponseEntity.badRequest().body("删除角色失败");
+            return Result.error(ErrorStatus.BAD_REQUEST, "删除角色失败");
         }
-        Map<String, Object> response = new HashMap<>();
-        response.put("code", 200);
-        response.put("message", "角色删除成功");
-        response.put("data", null);
-        return ResponseEntity.ok(response);
+        return Result.success("角色删除成功");
     }
     
     /**
@@ -167,14 +148,10 @@ public class SysRoleController {
      */
     @PostMapping("/{roleId}/permissions")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> assignPermissions(@PathVariable String roleId, @RequestBody List<String> permissionIds) {
+    public Result<String> assignPermissions(@PathVariable String roleId, @RequestBody List<String> permissionIds) {
         // 检查是否是admin角色
         if ("admin".equals(roleId)) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 400);
-            response.put("message", "不能为admin角色分配权限");
-            response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            return Result.error(ErrorStatus.BAD_REQUEST, "不能为admin角色分配权限");
         }
         
         // 检查权限列表中是否包含admin权限
@@ -186,20 +163,12 @@ public class SysRoleController {
                 }
             }
             if (!adminPermissions.isEmpty()) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("code", 400);
-                response.put("message", "不能分配admin权限");
-                response.put("data", adminPermissions);
-                return ResponseEntity.badRequest().body(response);
+                return Result.error(ErrorStatus.BAD_REQUEST, "不能分配admin权限");
             }
         }
         
         roleService.assignPermissions(roleId, permissionIds);
-        Map<String, Object> response = new HashMap<>();
-        response.put("code", 200);
-        response.put("message", "权限分配成功");
-        response.put("data", null);
-        return ResponseEntity.ok(response);
+        return Result.success("权限分配成功");
     }
     
     /**
@@ -207,22 +176,14 @@ public class SysRoleController {
      */
     @PostMapping("/{roleId}/users")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> assignUsers(@PathVariable String roleId, @RequestBody List<String> userIds) {
+    public Result<String> assignUsers(@PathVariable String roleId, @RequestBody List<String> userIds) {
         // 检查是否是admin角色
         if ("admin".equals(roleId)) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 400);
-            response.put("message", "不能为admin角色分配用户");
-            response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            return Result.error(ErrorStatus.BAD_REQUEST, "不能为admin角色分配用户");
         }
         
         roleService.assignUsers(roleId, userIds);
-        Map<String, Object> response = new HashMap<>();
-        response.put("code", 200);
-        response.put("message", "用户分配成功");
-        response.put("data", null);
-        return ResponseEntity.ok(response);
+        return Result.success("用户分配成功");
     }
     
     /**
@@ -230,14 +191,10 @@ public class SysRoleController {
      */
     @DeleteMapping("/{roleId}/permissions")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> removePermissions(@PathVariable String roleId, @RequestBody List<String> permissionIds) {
+    public Result<String> removePermissions(@PathVariable String roleId, @RequestBody List<String> permissionIds) {
         // 检查是否是admin角色
         if ("admin".equals(roleId)) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 400);
-            response.put("message", "不能从admin角色中移除权限");
-            response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            return Result.error(ErrorStatus.BAD_REQUEST, "不能从admin角色中移除权限");
         }
         
         // 检查权限列表中是否包含admin权限
@@ -249,20 +206,12 @@ public class SysRoleController {
                 }
             }
             if (!adminPermissions.isEmpty()) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("code", 400);
-                response.put("message", "不能操作admin权限");
-                response.put("data", adminPermissions);
-                return ResponseEntity.badRequest().body(response);
+                return Result.error(ErrorStatus.BAD_REQUEST, "不能操作admin权限");
             }
         }
         
         roleService.removePermissions(roleId, permissionIds);
-        Map<String, Object> response = new HashMap<>();
-        response.put("code", 200);
-        response.put("message", "权限移除成功");
-        response.put("data", null);
-        return ResponseEntity.ok(response);
+        return Result.success("权限移除成功");
     }
     
     /**
@@ -270,22 +219,14 @@ public class SysRoleController {
      */
     @DeleteMapping("/{roleId}/users")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> removeUsers(@PathVariable String roleId, @RequestBody List<String> userIds) {
+    public Result<String> removeUsers(@PathVariable String roleId, @RequestBody List<String> userIds) {
         // 检查是否是admin角色
         if ("admin".equals(roleId)) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 400);
-            response.put("message", "不能从admin角色中移除用户");
-            response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            return Result.error(ErrorStatus.BAD_REQUEST, "不能从admin角色中移除用户");
         }
         
         roleService.removeUsers(roleId, userIds);
-        Map<String, Object> response = new HashMap<>();
-        response.put("code", 200);
-        response.put("message", "用户移除成功");
-        response.put("data", null);
-        return ResponseEntity.ok(response);
+        return Result.success("用户移除成功");
     }
     
     /**
@@ -293,9 +234,9 @@ public class SysRoleController {
      */
     @GetMapping("/status/{status}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<SysRole>> getRolesByStatus(@PathVariable Integer status) {
+    public Result<List<SysRole>> getRolesByStatus(@PathVariable Integer status) {
         List<SysRole> roles = roleService.findByStatus(status);
-        return ResponseEntity.ok(roles);
+        return Result.success("获取角色列表成功", roles);
     }
     
     /**
@@ -303,13 +244,9 @@ public class SysRoleController {
      */
     @PutMapping("/{roleId}/enable")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> enableRole(@PathVariable String roleId) {
+    public Result<String> enableRole(@PathVariable String roleId) {
         roleService.enableRole(roleId);
-        Map<String, Object> response = new HashMap<>();
-        response.put("code", 200);
-        response.put("message", "角色启用成功");
-        response.put("data", null);
-        return ResponseEntity.ok(response);
+        return Result.success("角色启用成功");
     }
     
     /**
@@ -317,12 +254,8 @@ public class SysRoleController {
      */
     @PutMapping("/{roleId}/disable")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> disableRole(@PathVariable String roleId) {
+    public Result<String> disableRole(@PathVariable String roleId) {
         roleService.disableRole(roleId);
-        Map<String, Object> response = new HashMap<>();
-        response.put("code", 200);
-        response.put("message", "角色禁用成功");
-        response.put("data", null);
-        return ResponseEntity.ok(response);
+        return Result.success("角色禁用成功");
     }
 }

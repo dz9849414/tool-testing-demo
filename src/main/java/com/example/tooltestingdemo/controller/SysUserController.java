@@ -6,7 +6,8 @@ import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.service.SysUserService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import com.example.tooltestingdemo.common.Result;
+import com.example.tooltestingdemo.common.ErrorStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,9 +30,9 @@ public class SysUserController {
      */
     @GetMapping
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
-    public ResponseEntity<List<SysUser>> getAllUsers() {
+    public Result<List<SysUser>> getAllUsers() {
         List<SysUser> users = userService.findAll();
-        return ResponseEntity.ok(users);
+        return Result.success("获取用户列表成功", users);
     }
     
     /**
@@ -39,12 +40,12 @@ public class SysUserController {
      */
     @GetMapping("/page")
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
-    public ResponseEntity<Page<SysUser>> getUsersByPage(
+    public Result<Page<SysUser>> getUsersByPage(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
         Page<SysUser> pageParam = new Page<>(page, size);
         Page<SysUser> users = userService.findAll(pageParam);
-        return ResponseEntity.ok(users);
+        return Result.success("获取用户列表成功", users);
     }
     
     /**
@@ -52,12 +53,12 @@ public class SysUserController {
      */
     @GetMapping("/{id}")
     @PreAuthorize("@securityService.hasPermission('system:user:api') or @securityService.isCurrentUser(#id)")
-    public ResponseEntity<SysUser> getUserById(@PathVariable String id) {
+    public Result<SysUser> getUserById(@PathVariable String id) {
         SysUser user = userService.findById(id);
         if (user == null) {
-            return ResponseEntity.notFound().build();
+            return Result.error(ErrorStatus.NOT_FOUND, "用户不存在");
         }
-        return ResponseEntity.ok(user);
+        return Result.success("获取用户信息成功", user);
     }
     
     /**
@@ -65,26 +66,22 @@ public class SysUserController {
      */
     @PostMapping
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
-    public ResponseEntity<?> createUser(@RequestBody SysUser user) {
+    public Result<SysUser> createUser(@RequestBody SysUser user) {
         // 检查是否尝试创建用户名为admin的用户
         if ("admin".equals(user.getUsername())) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 400);
-            response.put("message", "不能创建用户名为admin的用户");
-            response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            return Result.error(400, "不能创建用户名为admin的用户");
         }
         
         if (userService.existsByUsername(user.getUsername())) {
-            return ResponseEntity.badRequest().body("用户名已存在");
+            return Result.error(400, "用户名已存在");
         }
         
         if (user.getEmail() != null && userService.existsByEmail(user.getEmail())) {
-            return ResponseEntity.badRequest().body("邮箱已存在");
+            return Result.error(400, "邮箱已存在");
         }
         
         SysUser savedUser = userService.save(user);
-        return ResponseEntity.ok(savedUser);
+        return Result.success("创建用户成功", savedUser);
     }
     
     /**
@@ -93,56 +90,40 @@ public class SysUserController {
     @PutMapping("/{id}")
     @PreAuthorize("@securityService.hasPermission('system:user:api') or @securityService.isCurrentUser(#id)")
     @PermissionCheck(type = "update")
-    public ResponseEntity<?> updateUser(@PathVariable String id, @RequestBody SysUser user) {
+    public Result<SysUser> updateUser(@PathVariable String id, @RequestBody SysUser user) {
         user.setId(id);
         
         // 检查是否是admin用户
         if ("admin".equals(id)) {
             // 检查是否尝试修改admin的用户名
             if (user.getUsername() != null && !"admin".equals(user.getUsername())) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("code", 400);
-                response.put("message", "不能更改admin用户名");
-                response.put("data", null);
-                return ResponseEntity.badRequest().body(response);
+                return Result.error(400, "不能更改admin用户名");
             }
         } else {
             // 检查是否尝试将用户名改为admin
             if ("admin".equals(user.getUsername())) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("code", 400);
-                response.put("message", "不能将用户名改为admin");
-                response.put("data", null);
-                return ResponseEntity.badRequest().body(response);
+                return Result.error(400, "不能将用户名改为admin");
             }
         }
         
         // 检查是否尝试修改status字段
         if (user.getStatus() != null) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 400);
-            response.put("message", "不能更改用户状态");
-            response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            return Result.error(400, "不能更改用户状态");
         }
         
         // 检查邮箱是否已存在（排除当前用户）
         if (user.getEmail() != null) {
             SysUser existingUser = userService.findByEmail(user.getEmail());
             if (existingUser != null && !existingUser.getId().equals(id)) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("code", 400);
-                response.put("message", "邮箱已存在");
-                response.put("data", null);
-                return ResponseEntity.badRequest().body(response);
+                return Result.error(400, "邮箱已存在");
             }
         }
         
         SysUser updatedUser = userService.update(user);
         if (updatedUser == null) {
-            return ResponseEntity.notFound().build();
+            return Result.error(404, "用户不存在");
         }
-        return ResponseEntity.ok(updatedUser);
+        return Result.success("更新用户信息成功", updatedUser);
     }
     
     /**
@@ -151,17 +132,15 @@ public class SysUserController {
     @DeleteMapping("/{id}")
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
     @PermissionCheck(type = "delete")
-    public ResponseEntity<?> deleteUser(@PathVariable String id) {
+    public Result<String> deleteUser(@PathVariable String id) {
         SysUser user = userService.findById(id);
         if (user == null) {
-            return ResponseEntity.notFound().build();
+            return Result.error(ErrorStatus.NOT_FOUND, "用户不存在");
         }
         
         userService.deleteById(id);
         
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "用户删除成功");
-        return ResponseEntity.ok(response);
+        return Result.success("用户删除成功");
     }
     
     /**
@@ -169,9 +148,9 @@ public class SysUserController {
      */
     @GetMapping("/status/{status}")
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
-    public ResponseEntity<List<SysUser>> getUsersByStatus(@PathVariable Integer status) {
+    public Result<List<SysUser>> getUsersByStatus(@PathVariable Integer status) {
         List<SysUser> users = userService.findByStatus(status);
-        return ResponseEntity.ok(users);
+        return Result.success("获取用户列表成功", users);
     }
     
     /**
@@ -179,31 +158,31 @@ public class SysUserController {
      */
     @GetMapping("/role/{roleId}")
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
-    public ResponseEntity<List<SysUser>> getUsersByRoleId(@PathVariable String roleId) {
+    public Result<List<SysUser>> getUsersByRoleId(@PathVariable String roleId) {
         List<SysUser> users = userService.findByRoleId(roleId);
-        return ResponseEntity.ok(users);
+        return Result.success("获取用户列表成功", users);
     }
     
     /**
      * 检查用户名是否存在
      */
     @GetMapping("/check-username")
-    public ResponseEntity<Map<String, Boolean>> checkUsernameExists(@RequestParam String username) {
+    public Result<Map<String, Boolean>> checkUsernameExists(@RequestParam String username) {
         boolean exists = userService.existsByUsername(username);
         Map<String, Boolean> response = new HashMap<>();
         response.put("exists", exists);
-        return ResponseEntity.ok(response);
+        return Result.success("检查用户名成功", response);
     }
     
     /**
      * 检查邮箱是否存在
      */
     @GetMapping("/check-email")
-    public ResponseEntity<Map<String, Boolean>> checkEmailExists(@RequestParam String email) {
+    public Result<Map<String, Boolean>> checkEmailExists(@RequestParam String email) {
         boolean exists = userService.existsByEmail(email);
         Map<String, Boolean> response = new HashMap<>();
         response.put("exists", exists);
-        return ResponseEntity.ok(response);
+        return Result.success("检查邮箱成功", response);
     }
     
     /**
@@ -212,7 +191,7 @@ public class SysUserController {
     @PutMapping("/{id}/approve")
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
     @PermissionCheck(type = "approve")
-    public ResponseEntity<?> approveUser(@PathVariable String id, @RequestParam Integer status) {
+    public Result<String> approveUser(@PathVariable String id, @RequestParam Integer status) {
         // 获取当前登录用户（审批人）
         org.springframework.security.core.Authentication authentication = 
             org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
@@ -221,16 +200,14 @@ public class SysUserController {
         // 获取审批人ID
         com.example.tooltestingdemo.entity.SysUser approver = userService.findByUsername(approverUsername);
         if (approver == null) {
-            return ResponseEntity.badRequest().body("审批人不存在");
+            return Result.error(400, "审批人不存在");
         }
         
         // 更新用户状态并记录审批人信息
         userService.updateUserStatusWithApproval(id, status, approver.getId());
         
         String message = status == 1 ? "用户审批通过" : "用户审批拒绝";
-        Map<String, String> response = new HashMap<>();
-        response.put("message", message);
-        return ResponseEntity.ok(response);
+        return Result.success(message);
     }
     
     /**
@@ -238,21 +215,13 @@ public class SysUserController {
      */
     @PutMapping("/{id}/password")
     @PreAuthorize("@securityService.hasPermission('system:user:api') or @securityService.isCurrentUser(#id)")
-    public ResponseEntity<?> changePassword(@PathVariable String id, @RequestBody PasswordChangeRequest request) {
+    public Result<String> changePassword(@PathVariable String id, @RequestBody PasswordChangeRequest request) {
         boolean success = userService.changePassword(id, request.getOldPassword(), request.getNewPassword());
         if (!success) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 400);
-            response.put("message", "旧密码错误");
-            response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            return Result.error(400, "旧密码错误");
         }
         
-        Map<String, Object> response = new HashMap<>();
-        response.put("code", 200);
-        response.put("message", "密码修改成功");
-        response.put("data", null);
-        return ResponseEntity.ok(response);
+        return Result.success("密码修改成功");
     }
     
     @Data
@@ -266,13 +235,9 @@ public class SysUserController {
      */
     @GetMapping("/{id}/permissions")
     @PreAuthorize("@securityService.hasPermission('system:user:api') or @securityService.isCurrentUser(#id)")
-    public ResponseEntity<java.util.Map<String, Object>> getUserPermissions(@PathVariable String id) {
+    public Result<java.util.Map<String, java.util.List<String>>> getUserPermissions(@PathVariable String id) {
         java.util.Map<String, java.util.List<String>> permissions = userService.getPermissionsByUserIdGrouped(id);
-        java.util.Map<String, Object> response = new java.util.HashMap<>();
-        response.put("code", 200);
-        response.put("message", "获取权限列表成功");
-        response.put("data", permissions);
-        return ResponseEntity.ok(response);
+        return Result.success("获取权限列表成功", permissions);
     }
     
     /**
@@ -281,14 +246,10 @@ public class SysUserController {
     @PostMapping("/{id}/roles")
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
     @PermissionCheck(type = "assignRoles")
-    public ResponseEntity<?> assignRoles(@PathVariable String id, @RequestBody List<String> roleIds) {
+    public Result<String> assignRoles(@PathVariable String id, @RequestBody List<String> roleIds) {
         // 检查是否包含admin角色
         if (roleIds != null && roleIds.contains("admin")) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 400);
-            response.put("message", "不能分配admin角色");
-            response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            return Result.error(ErrorStatus.BAD_REQUEST, "不能分配admin角色");
         }
         
         // 获取当前登录用户（操作人）
@@ -299,17 +260,13 @@ public class SysUserController {
         // 获取操作人ID
         com.example.tooltestingdemo.entity.SysUser operator = userService.findByUsername(operatorUsername);
         if (operator == null) {
-            return ResponseEntity.badRequest().body("操作人不存在");
+            return Result.error(ErrorStatus.BAD_REQUEST, "操作人不存在");
         }
         
         // 为用户分配角色
         userService.assignRoles(id, roleIds, operator.getId());
         
-        Map<String, Object> response = new HashMap<>();
-        response.put("code", 200);
-        response.put("message", "角色分配成功");
-        response.put("data", null);
-        return ResponseEntity.ok(response);
+        return Result.success("角色分配成功");
     }
     
     /**
@@ -318,29 +275,21 @@ public class SysUserController {
     @PutMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     @PermissionCheck(type = "update")
-    public ResponseEntity<?> updateUserStatus(@PathVariable String id, @RequestParam Integer status) {
+    public Result<String> updateUserStatus(@PathVariable String id, @RequestParam Integer status) {
         // 检查是否是admin用户
         if ("admin".equals(id)) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 400);
-            response.put("message", "不能修改admin用户状态");
-            response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            return Result.error(ErrorStatus.BAD_REQUEST, "不能修改admin用户");
         }
         
         // 检查状态值是否合法
         if (status != 0 && status != 1 && status != 2) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 400);
-            response.put("message", "状态值不合法，0-禁用，1-启用，2-锁定");
-            response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            return Result.error(ErrorStatus.BAD_REQUEST, "状态值不合法，0-禁用，1-启用，2-锁定");
         }
         
         // 更新用户状态
         SysUser user = userService.findById(id);
         if (user == null) {
-            return ResponseEntity.notFound().build();
+            return Result.error(404, "用户不存在");
         }
         
         user.setStatus(status);
@@ -362,10 +311,6 @@ public class SysUserController {
                 break;
         }
         
-        Map<String, Object> response = new HashMap<>();
-        response.put("code", 200);
-        response.put("message", message);
-        response.put("data", null);
-        return ResponseEntity.ok(response);
+        return Result.success(message);
     }
 }

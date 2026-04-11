@@ -79,6 +79,20 @@ public class Result<T> implements Serializable {
         result.setMessage(message);
         return result;
     }
+
+    public static <T> Result<T> error(ErrorStatus errorStatus) {
+        Result<T> result = new Result<>();
+        result.setCode(errorStatus.getCode());
+        result.setMessage(errorStatus.getDefaultMessage());
+        return result;
+    }
+
+    public static <T> Result<T> error(ErrorStatus errorStatus, String message) {
+        Result<T> result = new Result<>();
+        result.setCode(errorStatus.getCode());
+        result.setMessage(message != null ? message : errorStatus.getDefaultMessage());
+        return result;
+    }
     
     public static <T> Result<T> error(Integer code, String message, T data) {
         Result<T> result = new Result<>();
