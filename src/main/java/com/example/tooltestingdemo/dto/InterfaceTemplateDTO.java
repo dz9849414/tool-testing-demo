@@ -223,4 +223,11 @@ public class InterfaceTemplateDTO {
      * 变量定义列表
      */
     private List<TemplateVariableDTO> variables;
+
+    // ==================== 文件附件 ====================
+
+    /**
+     * 文件附件列表（新增/更新时使用）
+     */
+    private List<TemplateFileDTO> files;
 }

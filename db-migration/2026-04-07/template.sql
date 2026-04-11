@@ -632,3 +632,63 @@ INSERT INTO template_folder (id, parent_id, name, description, sort_order, creat
 -- 设置自增起始值
 ALTER TABLE template_folder AUTO_INCREMENT = 100;
 ALTER TABLE interface_template AUTO_INCREMENT = 1000;
+-- ============================================
+-- 模板文件附件表
+-- ============================================
+
+-- 创建模板文件附件表
+CREATE TABLE IF NOT EXISTS `template_file` (
+                                               `id`                  BIGINT NOT NULL AUTO_INCREMENT COMMENT '文件ID',
+                                               `template_id`         BIGINT NOT NULL COMMENT '模板ID',
+                                               `file_name`           VARCHAR(255) NOT NULL COMMENT '文件名（存储后的文件名）',
+    `file_original_name`  VARCHAR(255) COMMENT '原始文件名',
+    `file_path`           VARCHAR(500) NOT NULL COMMENT '文件存储路径',
+    `file_url`            VARCHAR(500) COMMENT '文件访问URL',
+    `file_size`           BIGINT COMMENT '文件大小（字节）',
+    `file_type`           VARCHAR(100) COMMENT '文件MIME类型',
+    `file_extension`      VARCHAR(50) COMMENT '文件扩展名',
+    `file_category`       VARCHAR(50) DEFAULT 'ATTACHMENT' COMMENT '文件类别：ATTACHMENT-附件/REQUEST-请求文件/RESPONSE-响应文件',
+    `file_description`    VARCHAR(500) COMMENT '文件描述',
+    `sort_order`          INT DEFAULT 0 COMMENT '排序号',
+    `create_id`           BIGINT NOT NULL DEFAULT 1 COMMENT '创建人ID',
+    `create_name`         VARCHAR(50) DEFAULT '' COMMENT '创建人姓名',
+    `create_time`         DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_id`           BIGINT DEFAULT 0 COMMENT '修改人ID',
+    `update_name`         VARCHAR(50) DEFAULT '' COMMENT '修改人姓名',
+    `update_time`         DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `is_deleted`          TINYINT NOT NULL DEFAULT 0 COMMENT '是否删除：0-未删除 1-已删除',
+    `deleted_by`          BIGINT DEFAULT 0 COMMENT '删除人ID',
+    `deleted_time`        DATETIME COMMENT '删除时间（软删除）',
+    PRIMARY KEY (`id`),
+    INDEX `idx_template_id` (`template_id`),
+    INDEX `idx_file_category` (`file_category`),
+    INDEX `idx_is_deleted` (`is_deleted`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板文件附件表';
+
+-- ============================================
+-- 模板主表添加文件相关字段
+-- ============================================
+
+-- 添加文件数量字段（如果不存在）
+SET @exist := (SELECT COUNT(*) FROM information_schema.columns
+               WHERE table_name = 'interface_template' AND column_name = 'file_count');
+SET @sql := IF(@exist = 0, 'ALTER TABLE `interface_template` ADD COLUMN `file_count` INT DEFAULT 0 COMMENT ''文件数量'' AFTER `business_scene`', 'SELECT ''Column file_count already exists''');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- 添加是否有请求文件标记（如果不存在）
+SET @exist := (SELECT COUNT(*) FROM information_schema.columns
+               WHERE table_name = 'interface_template' AND column_name = 'has_request_file');
+SET @sql := IF(@exist = 0, 'ALTER TABLE `interface_template` ADD COLUMN `has_request_file` INT DEFAULT 0 COMMENT ''是否有请求文件：0-否 1-是'' AFTER `file_count`', 'SELECT ''Column has_request_file already exists''');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- 添加是否有响应文件标记（如果不存在）
+SET @exist := (SELECT COUNT(*) FROM information_schema.columns
+               WHERE table_name = 'interface_template' AND column_name = 'has_response_file');
+SET @sql := IF(@exist = 0, 'ALTER TABLE `interface_template` ADD COLUMN `has_response_file` INT DEFAULT 0 COMMENT ''是否有响应文件：0-否 1-是'' AFTER `has_request_file`', 'SELECT ''Column has_response_file already exists''');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

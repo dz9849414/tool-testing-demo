@@ -48,6 +48,21 @@ public class GlobalExceptionHandler {
     }
     
     /**
+     * 处理模板校验异常
+     */
+    @ExceptionHandler(TemplateValidationException.class)
+    public ResponseEntity<Map<String, Object>> handleTemplateValidationException(TemplateValidationException e) {
+        log.warn("模板校验失败: {} - {}", e.getErrorType().getCode(), e.getMessage());
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", "校验失败");
+        response.put("errorType", e.getErrorType().getCode());
+        response.put("errorDesc", e.getErrorType().getDesc());
+        response.put("message", e.getMessage());
+        response.put("errors", e.getErrors());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    /**
      * 处理运行时异常
      */
     @ExceptionHandler(RuntimeException.class)

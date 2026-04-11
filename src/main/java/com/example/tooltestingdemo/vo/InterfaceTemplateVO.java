@@ -180,6 +180,21 @@ public class InterfaceTemplateVO {
     private String businessScene;
 
     /**
+     * 文件数量
+     */
+    private Integer fileCount;
+
+    /**
+     * 是否有请求文件
+     */
+    private Integer hasRequestFile;
+
+    /**
+     * 是否有响应文件
+     */
+    private Integer hasResponseFile;
+
+    /**
      * 状态
      */
     private Integer status;
@@ -290,4 +305,9 @@ public class InterfaceTemplateVO {
      * 历史版本列表
      */
     private List<TemplateHistoryVO> histories;
+
+    /**
+     * 文件附件列表
+     */
+    private List<TemplateFileVO> files;
 }

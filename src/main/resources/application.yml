@@ -4,7 +4,7 @@ server:
 spring:
   application:
     name: tool-testing-demo
-  
+
   # 时区配置
   jackson:
     time-zone: Asia/Shanghai
@@ -14,7 +14,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/tool_testing?useSSL=false&serverTimezone=Asia/Shanghai
     username: root
-    password: Shop123123
+    password: root
   
   # MyBatis Plus配置
   mybatis-plus:
@@ -41,6 +41,26 @@ security:
     - /swagger-ui/**
     - /v3/api-docs/**
     - /webjars/**
+
+# 文件上传配置
+app:
+  file:
+    # 文件上传路径（绝对路径，默认使用用户目录下的 tool-testing-uploads 文件夹）
+    # 示例：C:\Users\用户名\tool-testing-uploads 或 /home/用户名/tool-testing-uploads
+    upload-path: D:\file
+    # 文件访问基础URL（可选）
+    base-url: 
+    # 最大文件大小
+    max-file-size: 10MB
+    # 最大请求大小
+    max-request-size: 100MB
+
+# Spring 文件上传配置
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 100MB
 
 # 日志配置
 logging:

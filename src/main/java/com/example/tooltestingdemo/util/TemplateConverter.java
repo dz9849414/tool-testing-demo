@@ -2,404 +2,246 @@ package com.example.tooltestingdemo.util;
 
 import com.example.tooltestingdemo.dto.*;
 import com.example.tooltestingdemo.entity.template.*;
-import com.example.tooltestingdemo.entity.template.TemplateFavorite;
 import com.example.tooltestingdemo.vo.*;
-import com.example.tooltestingdemo.vo.TemplateFavoriteVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.util.CollectionUtils;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * 模板对象转换工具类
- * 
- * 文件位置：src/main/java/com/example/tooltestingdemo/util/TemplateConverter.java
+ * 模板对象转换工具类 - 使用泛型减少重复代码
  */
 public class TemplateConverter {
 
-    // ==================== InterfaceTemplate 转换 ====================
+    // ==================== 通用转换方法 ====================
 
-    /**
-     * DTO -> Entity
-     */
+    private static <S, T> T convert(S source, Class<T> targetClass) {
+        if (source == null) return null;
+        try {
+            T target = targetClass.getDeclaredConstructor().newInstance();
+            BeanUtils.copyProperties(source, target);
+            return target;
+        } catch (Exception e) {
+            throw new RuntimeException("对象转换失败", e);
+        }
+    }
+
+    private static <S, T> List<T> convertList(List<S> sources, Function<S, T> converter) {
+        if (CollectionUtils.isEmpty(sources)) return Collections.emptyList();
+        return sources.stream().map(converter).collect(Collectors.toList());
+    }
+
+    // ==================== InterfaceTemplate ====================
+
     public static InterfaceTemplate toEntity(InterfaceTemplateDTO dto) {
-        if (dto == null) {
-            return null;
-        }
-        InterfaceTemplate entity = new InterfaceTemplate();
-        BeanUtils.copyProperties(dto, entity);
-        return entity;
+        return convert(dto, InterfaceTemplate.class);
     }
 
-    /**
-     * Entity -> VO
-     */
     public static InterfaceTemplateVO toVO(InterfaceTemplate entity) {
-        if (entity == null) {
-            return null;
-        }
-        InterfaceTemplateVO vo = new InterfaceTemplateVO();
-        BeanUtils.copyProperties(entity, vo);
-        return vo;
+        return convert(entity, InterfaceTemplateVO.class);
     }
 
-    /**
-     * Entity列表 -> VO列表
-     */
     public static List<InterfaceTemplateVO> toVOList(List<InterfaceTemplate> entities) {
-        if (CollectionUtils.isEmpty(entities)) {
-            return new ArrayList<>();
-        }
-        return entities.stream()
-                .map(TemplateConverter::toVO)
-                .collect(Collectors.toList());
+        return convertList(entities, TemplateConverter::toVO);
     }
 
-    // ==================== TemplateHeader 转换 ====================
+    // ==================== TemplateHeader ====================
 
     public static TemplateHeader toEntity(TemplateHeaderDTO dto) {
-        if (dto == null) {
-            return null;
-        }
-        TemplateHeader entity = new TemplateHeader();
-        BeanUtils.copyProperties(dto, entity);
-        return entity;
-    }
-
-    public static List<TemplateHeader> toHeaderEntityList(List<TemplateHeaderDTO> dtos) {
-        if (CollectionUtils.isEmpty(dtos)) {
-            return new ArrayList<>();
-        }
-        return dtos.stream()
-                .map(TemplateConverter::toEntity)
-                .collect(Collectors.toList());
+        return convert(dto, TemplateHeader.class);
     }
 
     public static TemplateHeaderVO toVO(TemplateHeader entity) {
-        if (entity == null) {
-            return null;
-        }
-        TemplateHeaderVO vo = new TemplateHeaderVO();
-        BeanUtils.copyProperties(entity, vo);
-        return vo;
+        return convert(entity, TemplateHeaderVO.class);
+    }
+
+    public static List<TemplateHeader> toHeaderEntityList(List<TemplateHeaderDTO> dtos) {
+        return convertList(dtos, TemplateConverter::toEntity);
     }
 
     public static List<TemplateHeaderVO> toHeaderVOList(List<TemplateHeader> entities) {
-        if (CollectionUtils.isEmpty(entities)) {
-            return new ArrayList<>();
-        }
-        return entities.stream()
-                .map(TemplateConverter::toVO)
-                .collect(Collectors.toList());
+        return convertList(entities, TemplateConverter::toVO);
     }
 
-    // ==================== TemplateParameter 转换 ====================
+    // ==================== TemplateParameter ====================
 
     public static TemplateParameter toEntity(TemplateParameterDTO dto) {
-        if (dto == null) {
-            return null;
-        }
-        TemplateParameter entity = new TemplateParameter();
-        BeanUtils.copyProperties(dto, entity);
-        return entity;
-    }
-
-    public static List<TemplateParameter> toParameterEntityList(List<TemplateParameterDTO> dtos) {
-        if (CollectionUtils.isEmpty(dtos)) {
-            return new ArrayList<>();
-        }
-        return dtos.stream()
-                .map(TemplateConverter::toEntity)
-                .collect(Collectors.toList());
+        return convert(dto, TemplateParameter.class);
     }
 
     public static TemplateParameterVO toVO(TemplateParameter entity) {
-        if (entity == null) {
-            return null;
-        }
-        TemplateParameterVO vo = new TemplateParameterVO();
-        BeanUtils.copyProperties(entity, vo);
-        return vo;
+        return convert(entity, TemplateParameterVO.class);
+    }
+
+    public static List<TemplateParameter> toParameterEntityList(List<TemplateParameterDTO> dtos) {
+        return convertList(dtos, TemplateConverter::toEntity);
     }
 
     public static List<TemplateParameterVO> toParameterVOList(List<TemplateParameter> entities) {
-        if (CollectionUtils.isEmpty(entities)) {
-            return new ArrayList<>();
-        }
-        return entities.stream()
-                .map(TemplateConverter::toVO)
-                .collect(Collectors.toList());
+        return convertList(entities, TemplateConverter::toVO);
     }
 
-    // ==================== TemplateFormData 转换 ====================
+    // ==================== TemplateFormData ====================
 
     public static TemplateFormData toEntity(TemplateFormDataDTO dto) {
-        if (dto == null) {
-            return null;
-        }
-        TemplateFormData entity = new TemplateFormData();
-        BeanUtils.copyProperties(dto, entity);
-        return entity;
-    }
-
-    public static List<TemplateFormData> toFormDataEntityList(List<TemplateFormDataDTO> dtos) {
-        if (CollectionUtils.isEmpty(dtos)) {
-            return new ArrayList<>();
-        }
-        return dtos.stream()
-                .map(TemplateConverter::toEntity)
-                .collect(Collectors.toList());
+        return convert(dto, TemplateFormData.class);
     }
 
     public static TemplateFormDataVO toVO(TemplateFormData entity) {
-        if (entity == null) {
-            return null;
-        }
-        TemplateFormDataVO vo = new TemplateFormDataVO();
-        BeanUtils.copyProperties(entity, vo);
-        return vo;
+        return convert(entity, TemplateFormDataVO.class);
+    }
+
+    public static List<TemplateFormData> toFormDataEntityList(List<TemplateFormDataDTO> dtos) {
+        return convertList(dtos, TemplateConverter::toEntity);
     }
 
     public static List<TemplateFormDataVO> toFormDataVOList(List<TemplateFormData> entities) {
-        if (CollectionUtils.isEmpty(entities)) {
-            return new ArrayList<>();
-        }
-        return entities.stream()
-                .map(TemplateConverter::toVO)
-                .collect(Collectors.toList());
+        return convertList(entities, TemplateConverter::toVO);
     }
 
-    // ==================== TemplateAssertion 转换 ====================
+    // ==================== TemplateAssertion ====================
 
     public static TemplateAssertion toEntity(TemplateAssertionDTO dto) {
-        if (dto == null) {
-            return null;
-        }
-        TemplateAssertion entity = new TemplateAssertion();
-        BeanUtils.copyProperties(dto, entity);
-        return entity;
-    }
-
-    public static List<TemplateAssertion> toAssertionEntityList(List<TemplateAssertionDTO> dtos) {
-        if (CollectionUtils.isEmpty(dtos)) {
-            return new ArrayList<>();
-        }
-        return dtos.stream()
-                .map(TemplateConverter::toEntity)
-                .collect(Collectors.toList());
+        return convert(dto, TemplateAssertion.class);
     }
 
     public static TemplateAssertionVO toVO(TemplateAssertion entity) {
-        if (entity == null) {
-            return null;
-        }
-        TemplateAssertionVO vo = new TemplateAssertionVO();
-        BeanUtils.copyProperties(entity, vo);
-        return vo;
+        return convert(entity, TemplateAssertionVO.class);
+    }
+
+    public static List<TemplateAssertion> toAssertionEntityList(List<TemplateAssertionDTO> dtos) {
+        return convertList(dtos, TemplateConverter::toEntity);
     }
 
     public static List<TemplateAssertionVO> toAssertionVOList(List<TemplateAssertion> entities) {
-        if (CollectionUtils.isEmpty(entities)) {
-            return new ArrayList<>();
-        }
-        return entities.stream()
-                .map(TemplateConverter::toVO)
-                .collect(Collectors.toList());
+        return convertList(entities, TemplateConverter::toVO);
     }
 
-    // ==================== TemplatePreProcessor 转换 ====================
+    // ==================== TemplatePreProcessor ====================
 
     public static TemplatePreProcessor toEntity(TemplatePreProcessorDTO dto) {
-        if (dto == null) {
-            return null;
-        }
-        TemplatePreProcessor entity = new TemplatePreProcessor();
-        BeanUtils.copyProperties(dto, entity);
-        return entity;
-    }
-
-    public static List<TemplatePreProcessor> toPreProcessorEntityList(List<TemplatePreProcessorDTO> dtos) {
-        if (CollectionUtils.isEmpty(dtos)) {
-            return new ArrayList<>();
-        }
-        return dtos.stream()
-                .map(TemplateConverter::toEntity)
-                .collect(Collectors.toList());
+        return convert(dto, TemplatePreProcessor.class);
     }
 
     public static TemplatePreProcessorVO toVO(TemplatePreProcessor entity) {
-        if (entity == null) {
-            return null;
-        }
-        TemplatePreProcessorVO vo = new TemplatePreProcessorVO();
-        BeanUtils.copyProperties(entity, vo);
-        return vo;
+        return convert(entity, TemplatePreProcessorVO.class);
+    }
+
+    public static List<TemplatePreProcessor> toPreProcessorEntityList(List<TemplatePreProcessorDTO> dtos) {
+        return convertList(dtos, TemplateConverter::toEntity);
     }
 
     public static List<TemplatePreProcessorVO> toPreProcessorVOList(List<TemplatePreProcessor> entities) {
-        if (CollectionUtils.isEmpty(entities)) {
-            return new ArrayList<>();
-        }
-        return entities.stream()
-                .map(TemplateConverter::toVO)
-                .collect(Collectors.toList());
+        return convertList(entities, TemplateConverter::toVO);
     }
 
-    // ==================== TemplatePostProcessor 转换 ====================
+    // ==================== TemplatePostProcessor ====================
 
     public static TemplatePostProcessor toEntity(TemplatePostProcessorDTO dto) {
-        if (dto == null) {
-            return null;
-        }
-        TemplatePostProcessor entity = new TemplatePostProcessor();
-        BeanUtils.copyProperties(dto, entity);
-        return entity;
-    }
-
-    public static List<TemplatePostProcessor> toPostProcessorEntityList(List<TemplatePostProcessorDTO> dtos) {
-        if (CollectionUtils.isEmpty(dtos)) {
-            return new ArrayList<>();
-        }
-        return dtos.stream()
-                .map(TemplateConverter::toEntity)
-                .collect(Collectors.toList());
+        return convert(dto, TemplatePostProcessor.class);
     }
 
     public static TemplatePostProcessorVO toVO(TemplatePostProcessor entity) {
-        if (entity == null) {
-            return null;
-        }
-        TemplatePostProcessorVO vo = new TemplatePostProcessorVO();
-        BeanUtils.copyProperties(entity, vo);
-        return vo;
+        return convert(entity, TemplatePostProcessorVO.class);
+    }
+
+    public static List<TemplatePostProcessor> toPostProcessorEntityList(List<TemplatePostProcessorDTO> dtos) {
+        return convertList(dtos, TemplateConverter::toEntity);
     }
 
     public static List<TemplatePostProcessorVO> toPostProcessorVOList(List<TemplatePostProcessor> entities) {
-        if (CollectionUtils.isEmpty(entities)) {
-            return new ArrayList<>();
-        }
-        return entities.stream()
-                .map(TemplateConverter::toVO)
-                .collect(Collectors.toList());
+        return convertList(entities, TemplateConverter::toVO);
     }
 
-    // ==================== TemplateVariable 转换 ====================
+    // ==================== TemplateVariable ====================
 
     public static TemplateVariable toEntity(TemplateVariableDTO dto) {
-        if (dto == null) {
-            return null;
-        }
-        TemplateVariable entity = new TemplateVariable();
-        BeanUtils.copyProperties(dto, entity);
-        return entity;
-    }
-
-    public static List<TemplateVariable> toVariableEntityList(List<TemplateVariableDTO> dtos) {
-        if (CollectionUtils.isEmpty(dtos)) {
-            return new ArrayList<>();
-        }
-        return dtos.stream()
-                .map(TemplateConverter::toEntity)
-                .collect(Collectors.toList());
+        return convert(dto, TemplateVariable.class);
     }
 
     public static TemplateVariableVO toVO(TemplateVariable entity) {
-        if (entity == null) {
-            return null;
-        }
-        TemplateVariableVO vo = new TemplateVariableVO();
-        BeanUtils.copyProperties(entity, vo);
-        return vo;
+        return convert(entity, TemplateVariableVO.class);
+    }
+
+    public static List<TemplateVariable> toVariableEntityList(List<TemplateVariableDTO> dtos) {
+        return convertList(dtos, TemplateConverter::toEntity);
     }
 
     public static List<TemplateVariableVO> toVariableVOList(List<TemplateVariable> entities) {
-        if (CollectionUtils.isEmpty(entities)) {
-            return new ArrayList<>();
-        }
-        return entities.stream()
-                .map(TemplateConverter::toVO)
-                .collect(Collectors.toList());
+        return convertList(entities, TemplateConverter::toVO);
     }
 
-    // ==================== TemplateEnvironment 转换 ====================
+    // ==================== TemplateEnvironment ====================
 
     public static TemplateEnvironmentVO toVO(TemplateEnvironment entity) {
-        if (entity == null) {
-            return null;
-        }
-        TemplateEnvironmentVO vo = new TemplateEnvironmentVO();
-        BeanUtils.copyProperties(entity, vo);
-        return vo;
+        return convert(entity, TemplateEnvironmentVO.class);
     }
 
     public static List<TemplateEnvironmentVO> toEnvironmentVOList(List<TemplateEnvironment> entities) {
-        if (CollectionUtils.isEmpty(entities)) {
-            return new ArrayList<>();
-        }
-        return entities.stream()
-                .map(TemplateConverter::toVO)
-                .collect(Collectors.toList());
+        return convertList(entities, TemplateConverter::toVO);
     }
 
-    // ==================== TemplateFolder 转换 ====================
+    // ==================== TemplateFolder ====================
 
     public static TemplateFolderVO toVO(TemplateFolder entity) {
-        if (entity == null) {
-            return null;
-        }
-        TemplateFolderVO vo = new TemplateFolderVO();
-        BeanUtils.copyProperties(entity, vo);
-        return vo;
+        return convert(entity, TemplateFolderVO.class);
     }
 
     public static List<TemplateFolderVO> toFolderVOList(List<TemplateFolder> entities) {
-        if (CollectionUtils.isEmpty(entities)) {
-            return new ArrayList<>();
-        }
-        return entities.stream()
-                .map(TemplateConverter::toVO)
-                .collect(Collectors.toList());
+        return convertList(entities, TemplateConverter::toVO);
     }
 
-    // ==================== TemplateHistory 转换 ====================
+    // ==================== TemplateHistory ====================
 
     public static TemplateHistoryVO toVO(TemplateHistory entity) {
-        if (entity == null) {
-            return null;
-        }
-        TemplateHistoryVO vo = new TemplateHistoryVO();
-        BeanUtils.copyProperties(entity, vo);
-        return vo;
+        return convert(entity, TemplateHistoryVO.class);
     }
 
     public static List<TemplateHistoryVO> toHistoryVOList(List<TemplateHistory> entities) {
-        if (CollectionUtils.isEmpty(entities)) {
-            return new ArrayList<>();
-        }
-        return entities.stream()
-                .map(TemplateConverter::toVO)
-                .collect(Collectors.toList());
+        return convertList(entities, TemplateConverter::toVO);
     }
 
-    // ==================== TemplateFavorite 转换 ====================
+    // ==================== TemplateFavorite ====================
 
     public static TemplateFavoriteVO toVO(TemplateFavorite entity) {
-        if (entity == null) {
-            return null;
-        }
-        TemplateFavoriteVO vo = new TemplateFavoriteVO();
-        BeanUtils.copyProperties(entity, vo);
-        return vo;
+        return convert(entity, TemplateFavoriteVO.class);
     }
 
     public static List<TemplateFavoriteVO> toFavoriteVOList(List<TemplateFavorite> entities) {
-        if (CollectionUtils.isEmpty(entities)) {
-            return new ArrayList<>();
-        }
-        return entities.stream()
-                .map(TemplateConverter::toVO)
-                .collect(Collectors.toList());
+        return convertList(entities, TemplateConverter::toVO);
+    }
+
+    // ==================== TemplateFile ====================
+
+    public static TemplateFile toEntity(TemplateFileDTO dto) {
+        return convert(dto, TemplateFile.class);
+    }
+
+    public static TemplateFileVO toVO(TemplateFile entity) {
+        if (entity == null) return null;
+        TemplateFileVO vo = convert(entity, TemplateFileVO.class);
+        vo.setFileSizeDisplay(formatFileSize(entity.getFileSize()));
+        return vo;
+    }
+
+    public static List<TemplateFile> toFileEntityList(List<TemplateFileDTO> dtos) {
+        return convertList(dtos, TemplateConverter::toEntity);
+    }
+
+    public static List<TemplateFileVO> toFileVOList(List<TemplateFile> entities) {
+        return convertList(entities, TemplateConverter::toVO);
+    }
+
+    // ==================== 工具方法 ====================
+
+    private static String formatFileSize(Long size) {
+        if (size == null || size < 0) return "0 B";
+        if (size < 1024) return size + " B";
+        if (size < 1024 * 1024) return String.format("%.2f KB", size / 1024.0);
+        if (size < 1024 * 1024 * 1024) return String.format("%.2f MB", size / (1024.0 * 1024));
+        return String.format("%.2f GB", size / (1024.0 * 1024 * 1024));
     }
 }
