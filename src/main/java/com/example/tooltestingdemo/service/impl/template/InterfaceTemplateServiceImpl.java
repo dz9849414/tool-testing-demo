@@ -22,9 +22,9 @@ import org.springframework.util.CollectionUtils;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -87,14 +87,8 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         Page<InterfaceTemplateVO> voPage = new Page<>(entityPage.getCurrent(), entityPage.getSize(), entityPage.getTotal());
         voPage.setPages(entityPage.getPages());
         voPage.setRecords(entityPage.getRecords().stream()
-            .map(template -> {
-                InterfaceTemplateVO vo = TemplateConverter.toVO(template);
-                List<TemplateFile> files = fileMapper.selectByTemplateId(template.getId());
-                vo.setFileCount(files.size());
-                vo.setHasRequestFile(files.stream().anyMatch(f -> "REQUEST".equals(f.getFileCategory())) ? 1 : 0);
-                vo.setHasResponseFile(files.stream().anyMatch(f -> "RESPONSE".equals(f.getFileCategory())) ? 1 : 0);
-                return vo;
-            }).collect(Collectors.toList()));
+            .map(this::enrichTemplateVO)
+            .collect(Collectors.toList()));
         
         return voPage;
     }
@@ -120,7 +114,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         return getTemplateDetail(copy.getId());
     }
 
-    // ========== 状态变更（一行一个） ==========
+    // ========== 状态变更 ==========
 
     @Override
     public boolean publishTemplate(Long id) {
@@ -195,17 +189,26 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     @Override
     public boolean approveTemplate(Long id) {
         return checkAndUpdateStatus(id, TemplateEnums.TemplateStatus.PENDING_REVIEW.getCode(),
-            TemplateEnums.TemplateStatus.PUBLISHED.getCode(), "只有待审核状态的模板可以审核通过", "PUBLISH", "审核通过");
+            TemplateEnums.TemplateStatus.PUBLISHED.getCode(), "只有待审核状态的模板可以审核通过", "APPROVE", "审核通过");
     }
 
     @Override
     public boolean rejectTemplate(Long id, String reason) {
         return checkAndUpdateStatus(id, TemplateEnums.TemplateStatus.PENDING_REVIEW.getCode(),
-            TemplateEnums.TemplateStatus.REJECTED.getCode(), "只有待审核状态的模板可以驳回", "ARCHIVE", 
+            TemplateEnums.TemplateStatus.REJECTED.getCode(), "只有待审核状态的模板可以驳回", "REJECT", 
             "审核驳回，原因：" + Optional.ofNullable(reason).orElse("无"));
     }
 
     // ========== 私有方法 ==========
+
+    private InterfaceTemplateVO enrichTemplateVO(InterfaceTemplate template) {
+        InterfaceTemplateVO vo = TemplateConverter.toVO(template);
+        List<TemplateFile> files = fileMapper.selectByTemplateId(template.getId());
+        vo.setFileCount(files.size());
+        vo.setHasRequestFile(files.stream().anyMatch(f -> "REQUEST".equals(f.getFileCategory())) ? 1 : 0);
+        vo.setHasResponseFile(files.stream().anyMatch(f -> "RESPONSE".equals(f.getFileCategory())) ? 1 : 0);
+        return vo;
+    }
 
     private InterfaceTemplateVO saveDraftInternal(InterfaceTemplateDTO dto, Long id) {
         boolean isUpdate = id != null;
@@ -291,47 +294,30 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         }).orElse(false);
     }
 
+    // ========== 关联数据操作 ==========
+
     private void saveRelatedData(Long templateId, InterfaceTemplateDTO dto) {
-        Optional.ofNullable(dto.getHeaders()).filter(l -> !l.isEmpty()).ifPresent(l -> {
-            List<TemplateHeader> list = TemplateConverter.toHeaderEntityList(l);
-            list.forEach(h -> h.setTemplateId(templateId));
-            headerMapper.batchInsert(list);
-        });
-        
-        Optional.ofNullable(dto.getParameters()).filter(l -> !l.isEmpty()).ifPresent(l -> {
-            List<TemplateParameter> list = TemplateConverter.toParameterEntityList(l);
-            list.forEach(p -> p.setTemplateId(templateId));
-            parameterMapper.batchInsert(list);
-        });
-        
-        Optional.ofNullable(dto.getFormDataList()).filter(l -> !l.isEmpty()).ifPresent(l -> {
-            List<TemplateFormData> list = TemplateConverter.toFormDataEntityList(l);
-            list.forEach(f -> f.setTemplateId(templateId));
-            formDataMapper.batchInsert(list);
-        });
-        
-        Optional.ofNullable(dto.getAssertions()).filter(l -> !l.isEmpty()).ifPresent(l -> {
-            List<TemplateAssertion> list = TemplateConverter.toAssertionEntityList(l);
-            list.forEach(a -> a.setTemplateId(templateId));
-            assertionMapper.batchInsert(list);
-        });
-        
-        Optional.ofNullable(dto.getPreProcessors()).filter(l -> !l.isEmpty()).ifPresent(l -> {
-            List<TemplatePreProcessor> list = TemplateConverter.toPreProcessorEntityList(l);
-            list.forEach(p -> p.setTemplateId(templateId));
-            preProcessorMapper.batchInsert(list);
-        });
-        
-        Optional.ofNullable(dto.getPostProcessors()).filter(l -> !l.isEmpty()).ifPresent(l -> {
-            List<TemplatePostProcessor> list = TemplateConverter.toPostProcessorEntityList(l);
-            list.forEach(p -> p.setTemplateId(templateId));
-            postProcessorMapper.batchInsert(list);
-        });
-        
-        Optional.ofNullable(dto.getVariables()).filter(l -> !l.isEmpty()).ifPresent(l -> {
-            List<TemplateVariable> list = TemplateConverter.toVariableEntityList(l);
-            list.forEach(v -> v.setTemplateId(templateId));
-            variableMapper.batchInsert(list);
+        insertBatch(dto.getHeaders(), TemplateConverter::toHeaderEntityList, 
+            h -> h.setTemplateId(templateId), headerMapper::batchInsert);
+        insertBatch(dto.getParameters(), TemplateConverter::toParameterEntityList, 
+            p -> p.setTemplateId(templateId), parameterMapper::batchInsert);
+        insertBatch(dto.getFormDataList(), TemplateConverter::toFormDataEntityList, 
+            f -> f.setTemplateId(templateId), formDataMapper::batchInsert);
+        insertBatch(dto.getAssertions(), TemplateConverter::toAssertionEntityList, 
+            a -> a.setTemplateId(templateId), assertionMapper::batchInsert);
+        insertBatch(dto.getPreProcessors(), TemplateConverter::toPreProcessorEntityList, 
+            p -> p.setTemplateId(templateId), preProcessorMapper::batchInsert);
+        insertBatch(dto.getPostProcessors(), TemplateConverter::toPostProcessorEntityList, 
+            p -> p.setTemplateId(templateId), postProcessorMapper::batchInsert);
+        insertBatch(dto.getVariables(), TemplateConverter::toVariableEntityList, 
+            v -> v.setTemplateId(templateId), variableMapper::batchInsert);
+    }
+
+    private <D, E> void insertBatch(List<D> data, java.util.function.Function<List<D>, List<E>> converter,
+                                     Consumer<E> setter, Consumer<List<E>> inserter) {
+        Optional.ofNullable(data).filter(l -> !l.isEmpty()).map(converter).ifPresent(list -> {
+            list.forEach(setter);
+            inserter.accept(list);
         });
     }
 
@@ -353,51 +339,50 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     }
 
     private void copyRelatedData(Long sourceId, Long targetId) {
-        copyList(headerMapper.selectByTemplateId(sourceId), targetId, headerMapper::batchInsert);
-        copyList(parameterMapper.selectByTemplateId(sourceId), targetId, parameterMapper::batchInsert);
-        copyList(formDataMapper.selectByTemplateId(sourceId), targetId, formDataMapper::batchInsert);
-        copyList(assertionMapper.selectByTemplateId(sourceId), targetId, assertionMapper::batchInsert);
-        copyList(preProcessorMapper.selectByTemplateId(sourceId), targetId, preProcessorMapper::batchInsert);
-        copyList(postProcessorMapper.selectByTemplateId(sourceId), targetId, postProcessorMapper::batchInsert);
-        copyList(variableMapper.selectByTemplateId(sourceId), targetId, variableMapper::batchInsert);
+        copyEntities(headerMapper.selectByTemplateId(sourceId), targetId, 
+            h -> { h.setId(null); h.setTemplateId(targetId); }, headerMapper::batchInsert);
+        copyEntities(parameterMapper.selectByTemplateId(sourceId), targetId, 
+            p -> { p.setId(null); p.setTemplateId(targetId); }, parameterMapper::batchInsert);
+        copyEntities(formDataMapper.selectByTemplateId(sourceId), targetId, 
+            f -> { f.setId(null); f.setTemplateId(targetId); }, formDataMapper::batchInsert);
+        copyEntities(assertionMapper.selectByTemplateId(sourceId), targetId, 
+            a -> { a.setId(null); a.setTemplateId(targetId); }, assertionMapper::batchInsert);
+        copyEntities(preProcessorMapper.selectByTemplateId(sourceId), targetId, 
+            p -> { p.setId(null); p.setTemplateId(targetId); }, preProcessorMapper::batchInsert);
+        copyEntities(postProcessorMapper.selectByTemplateId(sourceId), targetId, 
+            p -> { p.setId(null); p.setTemplateId(targetId); }, postProcessorMapper::batchInsert);
+        copyEntities(variableMapper.selectByTemplateId(sourceId), targetId, 
+            v -> { v.setId(null); v.setTemplateId(targetId); }, variableMapper::batchInsert);
         
-        // 复制文件（需复制物理文件）
-        List<TemplateFile> files = fileMapper.selectByTemplateId(sourceId);
-        if (!CollectionUtils.isEmpty(files)) {
-            files.forEach(file -> {
-                try {
-                    Path sourcePath = Paths.get(file.getFilePath());
-                    String newName = UUID.randomUUID().toString().replace("-", "") + "." + file.getFileExtension();
-                    Path targetPath = sourcePath.getParent().resolve(newName);
-                    Files.copy(sourcePath, targetPath);
-                    
-                    file.setId(null);
-                    file.setTemplateId(targetId);
-                    file.setFileName(newName);
-                    file.setFilePath(targetPath.toString());
-                    fileMapper.insert(file);
-                } catch (Exception e) {
-                    log.warn("复制文件失败: {}", file.getFileOriginalName(), e);
-                }
-            });
-        }
+        copyFiles(sourceId, targetId);
     }
 
-    private <T> void copyList(List<T> list, Long targetId, Consumer<List<T>> inserter) {
+    private <T> void copyEntities(List<T> list, Long targetId, Consumer<T> preparer, Consumer<List<T>> inserter) {
         if (CollectionUtils.isEmpty(list)) return;
-        list.forEach(item -> {
+        list.forEach(preparer);
+        inserter.accept(list);
+    }
+
+    private void copyFiles(Long sourceId, Long targetId) {
+        List<TemplateFile> files = fileMapper.selectByTemplateId(sourceId);
+        if (CollectionUtils.isEmpty(files)) return;
+        
+        files.forEach(file -> {
             try {
-                Field idField = item.getClass().getDeclaredField("id");
-                idField.setAccessible(true);
-                idField.set(item, null);
-                Field tidField = item.getClass().getDeclaredField("templateId");
-                tidField.setAccessible(true);
-                tidField.set(item, targetId);
+                Path sourcePath = Paths.get(file.getFilePath());
+                String newName = UUID.randomUUID().toString().replace("-", "") + "." + file.getFileExtension();
+                Path targetPath = sourcePath.getParent().resolve(newName);
+                Files.copy(sourcePath, targetPath);
+                
+                file.setId(null);
+                file.setTemplateId(targetId);
+                file.setFileName(newName);
+                file.setFilePath(targetPath.toString());
+                fileMapper.insert(file);
             } catch (Exception e) {
-                log.warn("复制数据失败", e);
+                log.warn("复制文件失败: {}", file.getFileOriginalName(), e);
             }
         });
-        inserter.accept(list);
     }
 
     private void deleteRelatedData(Long templateId) {
@@ -409,6 +394,10 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         postProcessorMapper.deleteByTemplateId(templateId);
         variableMapper.deleteByTemplateId(templateId);
         
+        deleteFiles(templateId);
+    }
+
+    private void deleteFiles(Long templateId) {
         fileMapper.selectByTemplateId(templateId).forEach(file -> {
             try {
                 Files.deleteIfExists(Paths.get(file.getFilePath()));
@@ -427,10 +416,8 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         h.setChangeSummary(summary);
         h.setOperationType(opType);
         h.setCanRollback(1);
-        if (h.getCreateId() == null) {
-            h.setCreateId(1L);
-            h.setCreateName("管理员");
-        }
+        h.setCreateId(Optional.ofNullable(template.getCreateId()).orElse(1L));
+        h.setCreateName(Optional.ofNullable(template.getCreateName()).orElse("管理员"));
         historyMapper.insert(h);
     }
 }

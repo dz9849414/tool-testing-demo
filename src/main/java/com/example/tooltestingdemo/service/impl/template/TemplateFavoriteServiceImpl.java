@@ -16,8 +16,6 @@ import java.util.List;
 
 /**
  * 模板收藏/关注 Service 实现类
- * 
- * 文件位置：src/main/java/com/example/tooltestingdemo/service/impl/template/TemplateFavoriteServiceImpl.java
  */
 @Slf4j
 @Service
@@ -25,92 +23,84 @@ import java.util.List;
 public class TemplateFavoriteServiceImpl extends ServiceImpl<TemplateFavoriteMapper, TemplateFavorite> 
         implements TemplateFavoriteService {
 
+    private final TemplateFavoriteMapper favoriteMapper;
+
+    private static final int TYPE_FAVORITE = 1;
+    private static final int TYPE_FOLLOW = 2;
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TemplateFavoriteVO favoriteTemplate(Long userId, Long templateId, String remark) {
-        // 检查是否已收藏
         if (isFavorited(userId, templateId)) {
             throw new RuntimeException("已收藏该模板");
         }
-        
-        TemplateFavorite favorite = new TemplateFavorite();
-        favorite.setCreateId(userId);
-        favorite.setTemplateId(templateId);
-        favorite.setFavoriteType(1); // 收藏
-        favorite.setRemark(remark);
-        
-        save(favorite);
-        log.info("收藏模板成功: userId={}, templateId={}", userId, templateId);
-        return TemplateConverter.toVO(favorite);
+        return saveFavorite(userId, templateId, TYPE_FAVORITE, remark, "收藏");
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean unfavoriteTemplate(Long userId, Long templateId) {
-        LambdaQueryWrapper<TemplateFavorite> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(TemplateFavorite::getCreateId, userId)
-               .eq(TemplateFavorite::getTemplateId, templateId)
-               .eq(TemplateFavorite::getFavoriteType, 1);
-        
-        boolean result = remove(wrapper);
-        if (result) {
-            log.info("取消收藏成功: userId={}, templateId={}", userId, templateId);
-        }
-        return result;
+        return removeByType(userId, templateId, TYPE_FAVORITE, "取消收藏");
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TemplateFavoriteVO followTemplate(Long userId, Long templateId) {
-        // 检查是否已关注
-        LambdaQueryWrapper<TemplateFavorite> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(TemplateFavorite::getCreateId, userId)
-               .eq(TemplateFavorite::getTemplateId, templateId)
-               .eq(TemplateFavorite::getFavoriteType, 2);
-        
-        if (count(wrapper) > 0) {
+        if (existsByType(userId, templateId, TYPE_FOLLOW)) {
             throw new RuntimeException("已关注该模板");
         }
-        
-        TemplateFavorite follow = new TemplateFavorite();
-        follow.setCreateId(userId);
-        follow.setTemplateId(templateId);
-        follow.setFavoriteType(2); // 关注
-        
-        save(follow);
-        log.info("关注模板成功: userId={}, templateId={}", userId, templateId);
-        return TemplateConverter.toVO(follow);
+        return saveFavorite(userId, templateId, TYPE_FOLLOW, null, "关注");
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean unfollowTemplate(Long userId, Long templateId) {
-        LambdaQueryWrapper<TemplateFavorite> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(TemplateFavorite::getCreateId, userId)
-               .eq(TemplateFavorite::getTemplateId, templateId)
-               .eq(TemplateFavorite::getFavoriteType, 2);
-        
-        boolean result = remove(wrapper);
-        if (result) {
-            log.info("取消关注成功: userId={}, templateId={}", userId, templateId);
-        }
-        return result;
+        return removeByType(userId, templateId, TYPE_FOLLOW, "取消关注");
     }
 
     @Override
     public List<TemplateFavoriteVO> getUserFavorites(Long userId) {
-        List<TemplateFavorite> favorites = baseMapper.selectFavoritesByUserId(userId);
-        return TemplateConverter.toFavoriteVOList(favorites);
+        return TemplateConverter.toFavoriteVOList(favoriteMapper.selectFavoritesByUserId(userId));
     }
 
     @Override
     public List<TemplateFavoriteVO> getUserFollows(Long userId) {
-        List<TemplateFavorite> follows = baseMapper.selectFollowsByUserId(userId);
-        return TemplateConverter.toFavoriteVOList(follows);
+        return TemplateConverter.toFavoriteVOList(favoriteMapper.selectFollowsByUserId(userId));
     }
 
     @Override
     public boolean isFavorited(Long userId, Long templateId) {
-        return baseMapper.checkFavoriteExists(userId, templateId) > 0;
+        return favoriteMapper.checkFavoriteExists(userId, templateId) > 0;
+    }
+
+    private TemplateFavoriteVO saveFavorite(Long userId, Long templateId, int type, String remark, String action) {
+        TemplateFavorite favorite = new TemplateFavorite();
+        favorite.setCreateId(userId);
+        favorite.setTemplateId(templateId);
+        favorite.setFavoriteType(type);
+        favorite.setRemark(remark);
+        
+        save(favorite);
+        log.info("{}模板成功: userId={}, templateId={}", action, userId, templateId);
+        return TemplateConverter.toVO(favorite);
+    }
+
+    private boolean removeByType(Long userId, Long templateId, int type, String action) {
+        LambdaQueryWrapper<TemplateFavorite> wrapper = new LambdaQueryWrapper<>()
+            .eq(TemplateFavorite::getCreateId, userId)
+            .eq(TemplateFavorite::getTemplateId, templateId)
+            .eq(TemplateFavorite::getFavoriteType, type);
+        
+        boolean result = remove(wrapper);
+        if (result) log.info("{}成功: userId={}, templateId={}", action, userId, templateId);
+        return result;
+    }
+
+    private boolean existsByType(Long userId, Long templateId, int type) {
+        LambdaQueryWrapper<TemplateFavorite> wrapper = new LambdaQueryWrapper<>()
+            .eq(TemplateFavorite::getCreateId, userId)
+            .eq(TemplateFavorite::getTemplateId, templateId)
+            .eq(TemplateFavorite::getFavoriteType, type);
+        return count(wrapper) > 0;
     }
 }

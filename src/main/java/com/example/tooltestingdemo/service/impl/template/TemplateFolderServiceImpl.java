@@ -13,11 +13,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 模板分类/文件夹 Service 实现类
- * 
- * 文件位置：src/main/java/com/example/tooltestingdemo/service/impl/template/TemplateFolderServiceImpl.java
  */
 @Slf4j
 @Service
@@ -26,28 +25,22 @@ public class TemplateFolderServiceImpl extends ServiceImpl<TemplateFolderMapper,
 
     @Override
     public List<TemplateFolderVO> getFolderTree(Long parentId) {
-        // 查询指定父ID下的所有文件夹
-        List<TemplateFolder> folders = lambdaQuery()
-                .eq(TemplateFolder::getParentId, parentId == null ? 0L : parentId)
+        return TemplateConverter.toFolderVOList(
+            lambdaQuery()
+                .eq(TemplateFolder::getParentId, Optional.ofNullable(parentId).orElse(0L))
                 .eq(TemplateFolder::getStatus, 1)
                 .orderByAsc(TemplateFolder::getSortOrder)
-                .list();
-        
-        return TemplateConverter.toFolderVOList(folders);
+                .list()
+        );
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TemplateFolderVO createFolder(TemplateFolder folder) {
-        if (folder.getParentId() == null) {
-            folder.setParentId(0L);
-        }
-        if (folder.getSortOrder() == null) {
-            folder.setSortOrder(0);
-        }
+        folder.setParentId(Optional.ofNullable(folder.getParentId()).orElse(0L));
+        folder.setSortOrder(Optional.ofNullable(folder.getSortOrder()).orElse(0));
         folder.setStatus(TemplateEnums.TemplateStatus.PUBLISHED.getCode());
         
-        // 设置创建人（如果未设置）
         if (folder.getCreateId() == null) {
             folder.setCreateId(1L);
             folder.setCreateName("管理员");
@@ -67,7 +60,6 @@ public class TemplateFolderServiceImpl extends ServiceImpl<TemplateFolderMapper,
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteFolder(Long id) {
-        // 逻辑删除
         TemplateFolder folder = new TemplateFolder();
         folder.setId(id);
         folder.setIsDeleted(1);
@@ -87,7 +79,6 @@ public class TemplateFolderServiceImpl extends ServiceImpl<TemplateFolderMapper,
 
     @Override
     public TemplateFolderVO getFolderDetail(Long id) {
-        TemplateFolder folder = getById(id);
-        return TemplateConverter.toVO(folder);
+        return TemplateConverter.toVO(getById(id));
     }
 }

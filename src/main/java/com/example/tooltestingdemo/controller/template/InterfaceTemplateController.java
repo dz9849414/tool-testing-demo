@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.dto.InterfaceTemplateDTO;
+import com.example.tooltestingdemo.entity.template.InterfaceTemplate;
 import com.example.tooltestingdemo.entity.template.TemplateFile;
 import com.example.tooltestingdemo.service.template.InterfaceTemplateService;
 import com.example.tooltestingdemo.service.template.TemplateFileService;
@@ -58,7 +59,7 @@ public class InterfaceTemplateController {
             @RequestParam(required = false) String protocolType,
             @RequestParam(required = false) Integer status) {
         
-        Page<com.example.tooltestingdemo.entity.template.InterfaceTemplate> page = new Page<>(current, size);
+        Page<InterfaceTemplate> page = new Page<>(current, size);
         IPage<InterfaceTemplateVO> result = templateService.pageTemplates(page, folderId, keyword, protocolType, status);
         return Result.success(result);
     }

@@ -9,6 +9,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * 模板校验工具类
@@ -25,90 +26,57 @@ public class TemplateValidator {
     public void validateRequired(InterfaceTemplateDTO dto, Long excludeId) {
         List<String> errors = new ArrayList<>();
 
-        // 校验名称
-        if (!StringUtils.hasText(dto.getName())) {
-            errors.add("模板名称不能为空");
-        } else if (dto.getName().length() > 100) {
-            errors.add("模板名称不能超过100个字符");
-        } else {
-            // 校验名称是否重复
-            if (isNameDuplicate(dto.getName(), excludeId)) {
-                throw new TemplateValidationException(
-                    TemplateValidationException.ErrorType.NAME_DUPLICATE,
-                    "模板名称【" + dto.getName() + "】已存在，请更换名称"
-                );
-            }
-        }
+        validateField(errors, dto.getName(), "模板名称不能为空",
+            name -> name.length() <= 100, "模板名称不能超过100个字符");
 
-        // 校验协议类型
-        if (!StringUtils.hasText(dto.getProtocolType())) {
-            errors.add("协议类型不能为空");
-        }
+        validateField(errors, dto.getProtocolType(), "协议类型不能为空", null, null);
+        validateField(errors, dto.getMethod(), "请求方法不能为空", null, null);
+        validateField(errors, dto.getPath(), "请求路径不能为空", null, null);
 
-        // 校验请求方法
-        if (!StringUtils.hasText(dto.getMethod())) {
-            errors.add("请求方法不能为空");
-        }
+        checkDuplicate(dto.getName(), excludeId);
 
-        // 校验路径
-        if (!StringUtils.hasText(dto.getPath())) {
-            errors.add("请求路径不能为空");
-        }
-
-        // 如果有错误，抛出异常
         if (!errors.isEmpty()) {
-            throw new TemplateValidationException(
-                TemplateValidationException.ErrorType.REQUIRED_FIELD_EMPTY,
-                errors
-            );
+            throw new TemplateValidationException(TemplateValidationException.ErrorType.REQUIRED_FIELD_EMPTY, errors);
         }
     }
 
     /**
      * 轻量校验（用于保存草稿）
-     * 只校验最基本的规则
      */
     public void validateDraft(InterfaceTemplateDTO dto, Long excludeId) {
         List<String> errors = new ArrayList<>();
 
-        // 校验名称（草稿也要求名称必填，只是其他字段不强制）
-        if (!StringUtils.hasText(dto.getName())) {
-            errors.add("模板名称不能为空");
-        } else {
-            if (dto.getName().length() > 100) {
-                errors.add("模板名称不能超过100个字符");
-            }
-            // 校验名称是否重复（关键！）
-            if (isNameDuplicate(dto.getName(), excludeId)) {
-                throw new TemplateValidationException(
-                    TemplateValidationException.ErrorType.NAME_DUPLICATE,
-                    "模板名称【" + dto.getName() + "】已存在，请更换名称"
-                );
-            }
-        }
+        validateField(errors, dto.getName(), "模板名称不能为空",
+            name -> name.length() <= 100, "模板名称不能超过100个字符");
 
-        // 如果有描述，校验长度
+        checkDuplicate(dto.getName(), excludeId);
+
         if (StringUtils.hasText(dto.getDescription()) && dto.getDescription().length() > 500) {
             errors.add("模板描述不能超过500个字符");
         }
 
         if (!errors.isEmpty()) {
-            throw new TemplateValidationException(
-                TemplateValidationException.ErrorType.VALIDATION_FAILED,
-                errors
-            );
+            throw new TemplateValidationException(TemplateValidationException.ErrorType.VALIDATION_FAILED, errors);
         }
     }
 
-    /**
-     * 检查名称是否重复
-     */
-    private boolean isNameDuplicate(String name, Long excludeId) {
-        if (excludeId != null) {
-            // 更新时排除自身
-            return templateMapper.selectByNameAndMethod(name, null) != null 
-                && !excludeId.equals(templateMapper.selectByNameAndMethod(name, null).getId());
+    private void validateField(List<String> errors, String value, String requiredMsg,
+                               Predicate<String> extraCheck, String extraMsg) {
+        if (!StringUtils.hasText(value)) {
+            errors.add(requiredMsg);
+        } else if (extraCheck != null && !extraCheck.test(value)) {
+            errors.add(extraMsg);
         }
-        return templateMapper.selectByNameAndMethod(name, null) != null;
+    }
+
+    private void checkDuplicate(String name, Long excludeId) {
+        if (!StringUtils.hasText(name)) return;
+        var existing = templateMapper.selectByNameAndMethod(name, null);
+        if (existing != null && (excludeId == null || !excludeId.equals(existing.getId()))) {
+            throw new TemplateValidationException(
+                TemplateValidationException.ErrorType.NAME_DUPLICATE,
+                "模板名称【" + name + "】已存在，请更换名称"
+            );
+        }
     }
 }
