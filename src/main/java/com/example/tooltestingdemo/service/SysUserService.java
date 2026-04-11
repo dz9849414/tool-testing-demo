@@ -99,4 +99,9 @@ public interface SysUserService {
      * 获取用户的权限列表
      */
     List<String> getPermissionsByUserId(String userId);
+
+    /**
+     * 获取用户的权限列表，按模块分组
+     */
+    java.util.Map<String, java.util.List<String>> getPermissionsByUserIdGrouped(String userId);
 }

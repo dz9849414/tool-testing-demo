@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.annotation.PermissionCheck;
 import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.service.SysUserService;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -254,10 +255,24 @@ public class SysUserController {
         return ResponseEntity.ok(response);
     }
     
-    @lombok.Data
+    @Data
     public static class PasswordChangeRequest {
         private String oldPassword;
         private String newPassword;
+    }
+
+    /**
+     * 获取用户的权限列表，按模块分组
+     */
+    @GetMapping("/{id}/permissions")
+    @PreAuthorize("@securityService.hasPermission('system:user:api') or @securityService.isCurrentUser(#id)")
+    public ResponseEntity<java.util.Map<String, Object>> getUserPermissions(@PathVariable String id) {
+        java.util.Map<String, java.util.List<String>> permissions = userService.getPermissionsByUserIdGrouped(id);
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("code", 200);
+        response.put("message", "获取权限列表成功");
+        response.put("data", permissions);
+        return ResponseEntity.ok(response);
     }
     
     /**

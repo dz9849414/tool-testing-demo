@@ -174,4 +174,24 @@ public class SysUserServiceImpl implements SysUserService {
     public List<String> getPermissionsByUserId(String userId) {
         return userMapper.selectPermissionsByUserId(userId);
     }
+
+    @Override
+    public java.util.Map<String, java.util.List<String>> getPermissionsByUserIdGrouped(String userId) {
+        List<String> permissions = userMapper.selectPermissionsByUserId(userId);
+        java.util.Map<String, java.util.List<String>> groupedPermissions = new java.util.HashMap<>();
+
+        for (String permission : permissions) {
+            // 提取模块名（权限编码的第一部分）
+            String[] parts = permission.split(":");
+            if (parts.length > 0) {
+                String module = parts[0];
+                if (!groupedPermissions.containsKey(module)) {
+                    groupedPermissions.put(module, new java.util.ArrayList<>());
+                }
+                groupedPermissions.get(module).add(permission);
+            }
+        }
+
+        return groupedPermissions;
+    }
 }
