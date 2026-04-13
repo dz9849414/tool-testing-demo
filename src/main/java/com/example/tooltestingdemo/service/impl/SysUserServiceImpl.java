@@ -29,7 +29,41 @@ public class SysUserServiceImpl implements SysUserService {
     
     @Override
     public SysUser findById(String id) {
-        return userMapper.selectById(id);
+        // 获取当前登录用户
+        org.springframework.security.core.Authentication authentication = 
+            org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+        
+        // 获取当前用户信息
+        com.example.tooltestingdemo.entity.SysUser currentUser = userMapper.selectByUsername(currentUsername);
+        if (currentUser == null) {
+            return null;
+        }
+        
+        // 如果是查询自己的信息，直接返回
+        if (currentUser.getId().equals(id)) {
+            return userMapper.selectById(id);
+        }
+        
+        // 获取当前用户的角色列表
+        List<String> currentRoles = userMapper.selectRolesByUserId(currentUser.getId());
+        
+        // 获取目标用户信息
+        SysUser targetUser = userMapper.selectById(id);
+        if (targetUser == null) {
+            return null;
+        }
+        
+        // 获取目标用户的角色列表
+        List<String> targetRoles = userMapper.selectRolesByUserId(targetUser.getId());
+        
+        // 检查当前用户是否有权限查看目标用户
+        if (canViewUser(currentRoles, targetRoles)) {
+            return targetUser;
+        }
+        
+        // 没有权限，返回null
+        return null;
     }
     
     @Override
@@ -44,12 +78,86 @@ public class SysUserServiceImpl implements SysUserService {
     
     @Override
     public List<SysUser> findAll() {
-        return userMapper.selectList(new QueryWrapper<>());
+        // 获取当前登录用户
+        org.springframework.security.core.Authentication authentication = 
+            org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+        
+        // 获取当前用户信息
+        com.example.tooltestingdemo.entity.SysUser currentUser = userMapper.selectByUsername(currentUsername);
+        if (currentUser == null) {
+            return new java.util.ArrayList<>();
+        }
+        
+        // 获取当前用户的角色列表
+        List<String> currentRoles = userMapper.selectRolesByUserId(currentUser.getId());
+        
+        // 执行查询
+        List<SysUser> users = userMapper.selectList(new QueryWrapper<>());
+        
+        // 根据角色权限过滤结果
+        List<SysUser> filteredUsers = new java.util.ArrayList<>();
+        for (SysUser user : users) {
+            // 总是可以查看自己
+            if (user.getId().equals(currentUser.getId())) {
+                filteredUsers.add(user);
+                continue;
+            }
+            
+            // 获取用户的角色列表
+            List<String> userRoles = userMapper.selectRolesByUserId(user.getId());
+            
+            // 检查当前用户是否有权限查看该用户
+            if (canViewUser(currentRoles, userRoles)) {
+                filteredUsers.add(user);
+            }
+        }
+        
+        return filteredUsers;
     }
     
     @Override
     public Page<SysUser> findAll(Page<SysUser> page) {
-        return userMapper.selectPage(page, new QueryWrapper<>());
+        // 获取当前登录用户
+        org.springframework.security.core.Authentication authentication = 
+            org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+        
+        // 获取当前用户信息
+        com.example.tooltestingdemo.entity.SysUser currentUser = userMapper.selectByUsername(currentUsername);
+        if (currentUser == null) {
+            return new Page<>();
+        }
+        
+        // 获取当前用户的角色列表
+        List<String> currentRoles = userMapper.selectRolesByUserId(currentUser.getId());
+        
+        // 执行分页查询
+        Page<SysUser> usersPage = userMapper.selectPage(page, new QueryWrapper<>());
+        
+        // 根据角色权限过滤结果
+        List<SysUser> filteredUsers = new java.util.ArrayList<>();
+        for (SysUser user : usersPage.getRecords()) {
+            // 总是可以查看自己
+            if (user.getId().equals(currentUser.getId())) {
+                filteredUsers.add(user);
+                continue;
+            }
+            
+            // 获取用户的角色列表
+            List<String> userRoles = userMapper.selectRolesByUserId(user.getId());
+            
+            // 检查当前用户是否有权限查看该用户
+            if (canViewUser(currentRoles, userRoles)) {
+                filteredUsers.add(user);
+            }
+        }
+        
+        // 创建新的分页结果
+        Page<SysUser> filteredPage = new Page<>(page.getCurrent(), page.getSize(), usersPage.getTotal());
+        filteredPage.setRecords(filteredUsers);
+        
+        return filteredPage;
     }
     
     @Override
@@ -71,6 +179,13 @@ public class SysUserServiceImpl implements SysUserService {
             existingUser.setOrganizationId(user.getOrganizationId());
             existingUser.setStatus(user.getStatus());
             existingUser.setSource(user.getSource());
+            
+            // 如果密码不为空，则更新密码并编码
+            if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+                org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder passwordEncoder = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
+                existingUser.setPassword(passwordEncoder.encode(user.getPassword()));
+            }
+            
             userMapper.updateById(existingUser);
             return existingUser;
         }
@@ -95,12 +210,82 @@ public class SysUserServiceImpl implements SysUserService {
     
     @Override
     public List<SysUser> findByStatus(Integer status) {
-        return userMapper.selectByStatus(status);
+        // 获取当前登录用户
+        org.springframework.security.core.Authentication authentication = 
+            org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+        
+        // 获取当前用户信息
+        com.example.tooltestingdemo.entity.SysUser currentUser = userMapper.selectByUsername(currentUsername);
+        if (currentUser == null) {
+            return new java.util.ArrayList<>();
+        }
+        
+        // 获取当前用户的角色列表
+        List<String> currentRoles = userMapper.selectRolesByUserId(currentUser.getId());
+        
+        // 执行查询
+        List<SysUser> users = userMapper.selectByStatus(status);
+        
+        // 根据角色权限过滤结果
+        List<SysUser> filteredUsers = new java.util.ArrayList<>();
+        for (SysUser user : users) {
+            // 总是可以查看自己
+            if (user.getId().equals(currentUser.getId())) {
+                filteredUsers.add(user);
+                continue;
+            }
+            
+            // 获取用户的角色列表
+            List<String> userRoles = userMapper.selectRolesByUserId(user.getId());
+            
+            // 检查当前用户是否有权限查看该用户
+            if (canViewUser(currentRoles, userRoles)) {
+                filteredUsers.add(user);
+            }
+        }
+        
+        return filteredUsers;
     }
     
     @Override
     public List<SysUser> findByRoleId(String roleId) {
-        return userMapper.selectByRoleId(roleId);
+        // 获取当前登录用户
+        org.springframework.security.core.Authentication authentication = 
+            org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+        
+        // 获取当前用户信息
+        com.example.tooltestingdemo.entity.SysUser currentUser = userMapper.selectByUsername(currentUsername);
+        if (currentUser == null) {
+            return new java.util.ArrayList<>();
+        }
+        
+        // 获取当前用户的角色列表
+        List<String> currentRoles = userMapper.selectRolesByUserId(currentUser.getId());
+        
+        // 执行查询
+        List<SysUser> users = userMapper.selectByRoleId(roleId);
+        
+        // 根据角色权限过滤结果
+        List<SysUser> filteredUsers = new java.util.ArrayList<>();
+        for (SysUser user : users) {
+            // 总是可以查看自己
+            if (user.getId().equals(currentUser.getId())) {
+                filteredUsers.add(user);
+                continue;
+            }
+            
+            // 获取用户的角色列表
+            List<String> userRoles = userMapper.selectRolesByUserId(user.getId());
+            
+            // 检查当前用户是否有权限查看该用户
+            if (canViewUser(currentRoles, userRoles)) {
+                filteredUsers.add(user);
+            }
+        }
+        
+        return filteredUsers;
     }
     
     @Override

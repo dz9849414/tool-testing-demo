@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.common.ErrorStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -24,12 +26,13 @@ import java.util.Map;
 public class SysUserController {
     
     private final SysUserService userService;
+    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     
     /**
      * 获取所有用户列表
      */
     @GetMapping
-    @PreAuthorize("@securityService.hasPermission('system:user:api')")
+    @PermissionCheck(perm = "system:user:api",type = "view" , or = true)
     public Result<List<SysUser>> getAllUsers() {
         List<SysUser> users = userService.findAll();
         return Result.success("获取用户列表成功", users);
@@ -39,7 +42,7 @@ public class SysUserController {
      * 分页获取用户列表
      */
     @GetMapping("/page")
-    @PreAuthorize("@securityService.hasPermission('system:user:api')")
+    @PermissionCheck(type = "view", perm = "system:user:api", or = true)
     public Result<Page<SysUser>> getUsersByPage(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -52,7 +55,7 @@ public class SysUserController {
      * 根据ID获取用户信息
      */
     @GetMapping("/{id}")
-    @PreAuthorize("@securityService.hasPermission('system:user:api') or @securityService.isCurrentUser(#id)")
+    @PermissionCheck(type = "view", perm = "system:user:api", or = true, allowCurrentUser = true)
     public Result<SysUser> getUserById(@PathVariable String id) {
         SysUser user = userService.findById(id);
         if (user == null) {
@@ -79,7 +82,8 @@ public class SysUserController {
         if (user.getEmail() != null && userService.existsByEmail(user.getEmail())) {
             return Result.error(400, "邮箱已存在");
         }
-        
+
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         SysUser savedUser = userService.save(user);
         return Result.success("创建用户成功", savedUser);
     }
@@ -147,7 +151,7 @@ public class SysUserController {
      * 根据状态获取用户列表
      */
     @GetMapping("/status/{status}")
-    @PreAuthorize("@securityService.hasPermission('system:user:api')")
+    @PermissionCheck(type = "view", perm = "system:user:api", or = true)
     public Result<List<SysUser>> getUsersByStatus(@PathVariable Integer status) {
         List<SysUser> users = userService.findByStatus(status);
         return Result.success("获取用户列表成功", users);
@@ -157,7 +161,7 @@ public class SysUserController {
      * 根据角色ID获取用户列表
      */
     @GetMapping("/role/{roleId}")
-    @PreAuthorize("@securityService.hasPermission('system:user:api')")
+    @PermissionCheck(type = "view", perm = "system:user:api", or = true)
     public Result<List<SysUser>> getUsersByRoleId(@PathVariable String roleId) {
         List<SysUser> users = userService.findByRoleId(roleId);
         return Result.success("获取用户列表成功", users);

@@ -1,6 +1,7 @@
 package com.example.tooltestingdemo.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.tooltestingdemo.annotation.PermissionCheck;
 import com.example.tooltestingdemo.entity.SysRole;
 import com.example.tooltestingdemo.service.SysRoleService;
 import lombok.RequiredArgsConstructor;
@@ -100,6 +101,7 @@ public class SysRoleController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
+    @PermissionCheck(type = "update")
     public Result<SysRole> updateRole(@PathVariable String id, @RequestBody SysRole role) {
         // 检查是否是admin角色
         if ("admin".equals(id)) {
@@ -148,6 +150,7 @@ public class SysRoleController {
      */
     @PostMapping("/{roleId}/permissions")
     @PreAuthorize("hasRole('ADMIN')")
+    @PermissionCheck(type = "assignPermissions")
     public Result<String> assignPermissions(@PathVariable String roleId, @RequestBody List<String> permissionIds) {
         // 检查是否是admin角色
         if ("admin".equals(roleId)) {
@@ -176,6 +179,7 @@ public class SysRoleController {
      */
     @PostMapping("/{roleId}/users")
     @PreAuthorize("hasRole('ADMIN')")
+    @PermissionCheck(type = "assignUsersToRole")
     public Result<String> assignUsers(@PathVariable String roleId, @RequestBody List<String> userIds) {
         // 检查是否是admin角色
         if ("admin".equals(roleId)) {
@@ -191,6 +195,7 @@ public class SysRoleController {
      */
     @DeleteMapping("/{roleId}/permissions")
     @PreAuthorize("hasRole('ADMIN')")
+    @PermissionCheck(type = "removePermissions")
     public Result<String> removePermissions(@PathVariable String roleId, @RequestBody List<String> permissionIds) {
         // 检查是否是admin角色
         if ("admin".equals(roleId)) {
@@ -219,6 +224,7 @@ public class SysRoleController {
      */
     @DeleteMapping("/{roleId}/users")
     @PreAuthorize("hasRole('ADMIN')")
+    @PermissionCheck(type = "removeUsersFromRole")
     public Result<String> removeUsers(@PathVariable String roleId, @RequestBody List<String> userIds) {
         // 检查是否是admin角色
         if ("admin".equals(roleId)) {

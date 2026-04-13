@@ -1,6 +1,8 @@
 package com.example.tooltestingdemo.aspect;
 
 import com.example.tooltestingdemo.annotation.PermissionCheck;
+import com.example.tooltestingdemo.common.Result;
+import com.example.tooltestingdemo.common.ErrorStatus;
 import com.example.tooltestingdemo.service.SecurityService;
 import com.example.tooltestingdemo.service.SysUserService;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -8,15 +10,11 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 权限检查切面
@@ -46,14 +44,49 @@ public class PermissionCheckAspect {
         String type = permissionCheck.type();
         String targetUserIdParam = permissionCheck.targetUserIdParam();
         String roleIdsParam = permissionCheck.roleIdsParam();
+        String perm = permissionCheck.perm();
+        boolean or = permissionCheck.or();
+        boolean allowCurrentUser = permissionCheck.allowCurrentUser();
         
         // 获取方法参数
-        Map<String, Object> params = getMethodParams(joinPoint);
+        java.util.Map<String, Object> params = getMethodParams(joinPoint);
         
-        // 检查权限
-        ResponseEntity<?> errorResponse = checkPermission(type, params, targetUserIdParam, roleIdsParam);
-        if (errorResponse != null) {
-            return errorResponse;
+        // 检查是否是当前用户查看自己的信息
+        if (allowCurrentUser && isCurrentUser(params.get(targetUserIdParam))) {
+            // 当前用户查看自己的信息，允许通过
+            return joinPoint.proceed();
+        }
+        
+        // 检查类型权限
+        Result<?> typeErrorResponse = checkPermission(type, params, targetUserIdParam, roleIdsParam);
+        
+        // 检查编码权限
+        Result<?> permErrorResponse = null;
+        if (!perm.isEmpty()) {
+            permErrorResponse = checkPermissionByCode(perm);
+        }
+        
+        // 对于view类型，如果指定了perm，需要检查权限编码
+        if ("view".equals(type) && !perm.isEmpty()) {
+            if (permErrorResponse != null) {
+                return permErrorResponse;
+            }
+        } else {
+            // 根据or参数决定权限检查逻辑
+            if (or) {
+                // 满足其一即可通过
+                if (typeErrorResponse != null && permErrorResponse != null) {
+                    return typeErrorResponse; // 返回类型检查的错误信息
+                }
+            } else {
+                // 需要同时满足
+                if (typeErrorResponse != null) {
+                    return typeErrorResponse;
+                }
+                if (permErrorResponse != null) {
+                    return permErrorResponse;
+                }
+            }
         }
         
         // 执行原方法
@@ -61,10 +94,55 @@ public class PermissionCheckAspect {
     }
     
     /**
+     * 检查是否是当前用户
+     */
+    private boolean isCurrentUser(Object targetUserId) {
+        if (targetUserId == null) {
+            return false;
+        }
+        
+        // 获取当前登录用户
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        // 获取当前用户信息
+        com.example.tooltestingdemo.entity.SysUser currentUser = userService.findByUsername(currentUsername);
+        if (currentUser == null) {
+            return false;
+        }
+        
+        // 检查目标用户ID是否与当前用户ID相同
+        return currentUser.getId().equals(targetUserId.toString());
+    }
+    
+    /**
+     * 根据权限编码检查权限
+     */
+    private Result<?> checkPermissionByCode(String perm) {
+        // 获取当前登录用户
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        // 获取当前用户信息
+        com.example.tooltestingdemo.entity.SysUser currentUser = userService.findByUsername(currentUsername);
+        if (currentUser == null) {
+            return createErrorResponse("用户不存在");
+        }
+
+        // 获取当前用户的权限列表
+        List<String> permissions = userService.getPermissionsByUserId(currentUser.getId());
+        if (permissions == null || !permissions.contains(perm)) {
+            return createErrorResponse("无权限访问该接口");
+        }
+
+        return null;
+    }
+    
+    /**
      * 获取方法参数
      */
-    private Map<String, Object> getMethodParams(ProceedingJoinPoint joinPoint) {
-        Map<String, Object> params = new HashMap<>();
+    private java.util.Map<String, Object> getMethodParams(ProceedingJoinPoint joinPoint) {
+        java.util.Map<String, Object> params = new java.util.HashMap<>();
         // 这里简化处理，实际项目中可以通过反射获取方法参数名
         // 或者使用Spring的MethodParameterNameDiscoverer
         Object[] args = joinPoint.getArgs();
@@ -82,8 +160,12 @@ public class PermissionCheckAspect {
     /**
      * 检查权限
      */
-    private ResponseEntity<?> checkPermission(String type, Map<String, Object> params, String targetUserIdParam, String roleIdsParam) {
+    private Result<?> checkPermission(String type, java.util.Map<String, Object> params, String targetUserIdParam, String roleIdsParam) {
         switch (type) {
+            case "view":
+                // 对于view类型，如果指定了perm，则跳过角色检查，只检查权限编码
+                // 因为权限编码检查已经在checkPermissionByCode中处理了
+                return null;
             case "update":
             case "delete":
             case "approve":
@@ -91,20 +173,121 @@ public class PermissionCheckAspect {
             case "assignRoles":
                 String targetUserId = params.get(targetUserIdParam).toString();
                 List<String> roleIds = (List<String>) params.get(roleIdsParam);
-                ResponseEntity<?> updateCheck = checkUpdatePermission(targetUserId);
+                Result<?> updateCheck = checkUpdatePermission(targetUserId);
                 if (updateCheck != null) {
                     return updateCheck;
                 }
                 return checkRolePermission(roleIds);
+            case "assignPermissions":
+            case "removePermissions":
+                return checkPermissionManagementPermission();
+            case "assignUsersToRole":
+            case "removeUsersFromRole":
+                return checkRoleManagementPermission();
             default:
                 return null;
         }
     }
     
     /**
+     * 检查查看权限
+     */
+    private Result<?> checkViewPermission() {
+        // 获取当前登录用户
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        // 获取当前用户信息
+        com.example.tooltestingdemo.entity.SysUser currentUser = userService.findByUsername(currentUsername);
+        if (currentUser == null) {
+            return createErrorResponse("用户不存在");
+        }
+
+        // 获取当前用户的角色列表
+        List<String> currentRoles = userService.getRolesByUserId(currentUser.getId());
+        if (currentRoles == null || currentRoles.isEmpty()) {
+            return createErrorResponse("无权限查看用户列表");
+        }
+
+        // 检查当前用户是否有管理员或经理角色
+        boolean isAdmin = currentRoles.contains("admin");
+        boolean isManager = currentRoles.contains("manager");
+        if (isAdmin || isManager) {
+            // 管理员和经理可以查看用户列表
+            return null;
+        }
+
+        // 普通用户不能查看用户列表
+        return createErrorResponse("无权限查看用户列表");
+    }
+    
+    /**
+     * 检查权限管理权限
+     */
+    private Result<?> checkPermissionManagementPermission() {
+        // 获取当前登录用户
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        // 获取当前用户信息
+        com.example.tooltestingdemo.entity.SysUser currentUser = userService.findByUsername(currentUsername);
+        if (currentUser == null) {
+            return createErrorResponse("用户不存在");
+        }
+
+        // 获取当前用户的角色列表
+        List<String> currentRoles = userService.getRolesByUserId(currentUser.getId());
+        if (currentRoles == null || currentRoles.isEmpty()) {
+            return createErrorResponse("无权限管理权限");
+        }
+
+        // 检查当前用户是否有管理员角色
+        boolean isAdmin = currentRoles.contains("admin");
+        if (isAdmin) {
+            // 管理员可以管理所有权限
+            return null;
+        }
+
+        // 非管理员不能管理权限
+        return createErrorResponse("只有管理员可以管理权限");
+    }
+    
+    /**
+     * 检查角色管理权限
+     */
+    private Result<?> checkRoleManagementPermission() {
+        // 获取当前登录用户
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        // 获取当前用户信息
+        com.example.tooltestingdemo.entity.SysUser currentUser = userService.findByUsername(currentUsername);
+        if (currentUser == null) {
+            return createErrorResponse("用户不存在");
+        }
+
+        // 获取当前用户的角色列表
+        List<String> currentRoles = userService.getRolesByUserId(currentUser.getId());
+        if (currentRoles == null || currentRoles.isEmpty()) {
+            return createErrorResponse("无权限管理角色");
+        }
+
+        // 检查当前用户是否有管理员或经理角色
+        boolean isAdmin = currentRoles.contains("admin");
+        boolean isManager = currentRoles.contains("manager");
+        if (isAdmin || isManager) {
+            // 管理员和经理可以管理角色
+            return null;
+        }
+
+        // 普通用户不能管理角色
+        return createErrorResponse("无权限管理角色");
+    }
+    
+    /**
      * 检查更新权限，防止越级更新
      */
-    private ResponseEntity<?> checkUpdatePermission(String targetUserId) {
+    private Result<?> checkUpdatePermission(String targetUserId) {
         // 获取当前登录用户
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String currentUsername = authentication.getName();
@@ -159,7 +342,7 @@ public class PermissionCheckAspect {
     /**
      * 检查角色分配权限，防止分配高于自己权限的角色
      */
-    private ResponseEntity<?> checkRolePermission(List<String> roleIds) {
+    private Result<?> checkRolePermission(List<String> roleIds) {
         // 获取当前登录用户
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String currentUsername = authentication.getName();
@@ -202,11 +385,7 @@ public class PermissionCheckAspect {
     /**
      * 创建错误响应
      */
-    private ResponseEntity<?> createErrorResponse(String message) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("code", 403);
-        response.put("message", message);
-        response.put("data", null);
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    private Result<?> createErrorResponse(String message) {
+        return Result.error(ErrorStatus.FORBIDDEN, message);
     }
 }
