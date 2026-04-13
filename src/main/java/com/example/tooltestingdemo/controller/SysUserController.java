@@ -157,15 +157,15 @@ public class SysUserController {
         return Result.success("获取用户列表成功", users);
     }
     
-    /**
-     * 根据角色ID获取用户列表
-     */
-    @GetMapping("/role/{roleId}")
-    @PermissionCheck(type = "view", perm = "system:user:api", or = true)
-    public Result<List<SysUser>> getUsersByRoleId(@PathVariable String roleId) {
-        List<SysUser> users = userService.findByRoleId(roleId);
-        return Result.success("获取用户列表成功", users);
-    }
+    /** 
+      * 根据角色ID获取用户列表 
+      */ 
+     @GetMapping("/role/{roleId}") 
+     @PreAuthorize("hasRole('ADMIN') or @permissionCheckAspect.checkPermission('system:user:api')") 
+     public Result<List<SysUser>> getUsersByRoleId(@PathVariable String roleId) { 
+         List<SysUser> users = userService.findByRoleId(roleId); 
+         return Result.success("获取用户列表成功", users); 
+     }
     
     /**
      * 检查用户名是否存在
