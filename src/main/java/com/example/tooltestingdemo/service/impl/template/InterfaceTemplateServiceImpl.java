@@ -24,7 +24,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -52,6 +51,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     // ========== 基础 CRUD ==========
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public InterfaceTemplateVO createTemplate(InterfaceTemplateDTO dto) {
         return saveDraft(dto);
     }
@@ -212,7 +212,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
 
     private InterfaceTemplateVO saveDraftInternal(InterfaceTemplateDTO dto, Long id) {
         boolean isUpdate = id != null;
-        
+
         InterfaceTemplate existing = isUpdate ? getById(id) : null;
         if (isUpdate && existing == null) {
             throw new RuntimeException("模板不存在");
