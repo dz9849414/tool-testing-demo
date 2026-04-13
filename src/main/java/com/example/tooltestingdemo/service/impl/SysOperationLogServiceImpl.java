@@ -97,4 +97,63 @@ public class SysOperationLogServiceImpl extends ServiceImpl<SysOperationLogMappe
                 .last("LIMIT " + limit);
         return list(queryWrapper);
     }
+    
+    @Override
+    public List<SysOperationLog> getOperationLogsByRoleId(String roleId) {
+        LambdaQueryWrapper<SysOperationLog> queryWrapper = new LambdaQueryWrapper<>();
+        if (roleId != null) {
+            queryWrapper.eq(SysOperationLog::getRoleId, roleId);
+        } else {
+            queryWrapper.isNull(SysOperationLog::getRoleId);
+        }
+        queryWrapper.orderByDesc(SysOperationLog::getCreateTime);
+        return list(queryWrapper);
+    }
+    
+    @Override
+    public List<SysOperationLog> getOperationLogsByRoleIdAndTimeRange(String roleId, LocalDateTime startTime, LocalDateTime endTime) {
+        LambdaQueryWrapper<SysOperationLog> queryWrapper = new LambdaQueryWrapper<>();
+        if (roleId != null) {
+            queryWrapper.eq(SysOperationLog::getRoleId, roleId);
+        } else {
+            queryWrapper.isNull(SysOperationLog::getRoleId);
+        }
+        
+        if (startTime != null) {
+            queryWrapper.ge(SysOperationLog::getCreateTime, startTime);
+        }
+        
+        if (endTime != null) {
+            queryWrapper.le(SysOperationLog::getCreateTime, endTime);
+        }
+        
+        queryWrapper.orderByDesc(SysOperationLog::getCreateTime);
+        return list(queryWrapper);
+    }
+    
+    @Override
+    public Page<SysOperationLog> getOperationLogsByRoleIdAndPage(Page<SysOperationLog> page, String roleId, LocalDateTime startTime, LocalDateTime endTime, String module) {
+        LambdaQueryWrapper<SysOperationLog> queryWrapper = new LambdaQueryWrapper<>();
+        
+        if (roleId != null) {
+            queryWrapper.eq(SysOperationLog::getRoleId, roleId);
+        } else {
+            queryWrapper.isNull(SysOperationLog::getRoleId);
+        }
+        
+        if (startTime != null) {
+            queryWrapper.ge(SysOperationLog::getCreateTime, startTime);
+        }
+        
+        if (endTime != null) {
+            queryWrapper.le(SysOperationLog::getCreateTime, endTime);
+        }
+        
+        if (module != null) {
+            queryWrapper.eq(SysOperationLog::getModule, module);
+        }
+        
+        queryWrapper.orderByDesc(SysOperationLog::getCreateTime);
+        return page(page, queryWrapper);
+    }
 }

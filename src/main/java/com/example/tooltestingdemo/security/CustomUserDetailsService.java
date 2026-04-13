@@ -50,6 +50,9 @@ public class CustomUserDetailsService implements UserDetailsService {
         } else {
             // 默认角色
             authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+            // 如果没有角色，添加默认角色到角色列表
+            roles = new ArrayList<>();
+            roles.add("user");
         }
         
         // 获取用户的权限列表
@@ -65,6 +68,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 user.getId(),
                 user.getUsername(),
                 user.getPassword(),
+                roles,
                 authorities
         );
     }

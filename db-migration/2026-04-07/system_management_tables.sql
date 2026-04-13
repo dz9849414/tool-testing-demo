@@ -125,6 +125,7 @@ CREATE TABLE `sys_operation_log` (
     `id` VARCHAR(50) NOT NULL COMMENT '日志ID',
     `user_id` VARCHAR(50) COMMENT '操作用户ID',
     `username` VARCHAR(64) COMMENT '操作用户名',
+    `role_id` VARCHAR(50) COMMENT '角色ID',
     `operation` VARCHAR(128) NOT NULL COMMENT '操作内容',
     `module` VARCHAR(64) COMMENT '操作模块',
     `method` VARCHAR(128) COMMENT '操作方法',
@@ -138,6 +139,7 @@ CREATE TABLE `sys_operation_log` (
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (`id`),
     KEY `idx_user_id` (`user_id`),
+    KEY `idx_role_id` (`role_id`),
     KEY `idx_module` (`module`),
     KEY `idx_create_time` (`create_time`),
     KEY `idx_status` (`status`)

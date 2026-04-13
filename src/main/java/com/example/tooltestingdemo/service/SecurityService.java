@@ -90,4 +90,19 @@ public class SecurityService {
         }
         return false;
     }
+    
+    /**
+     * 获取当前登录用户的角色ID
+     */
+    public String getCurrentUserRoleId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() instanceof CustomUserDetails) {
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+            // 获取用户的第一个角色ID（如果有多个角色，这里只取第一个）
+            if (!userDetails.getRoles().isEmpty()) {
+                return userDetails.getRoles().get(0);
+            }
+        }
+        return null;
+    }
 }

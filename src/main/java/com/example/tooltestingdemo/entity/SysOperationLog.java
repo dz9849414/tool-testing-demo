@@ -21,6 +21,9 @@ public class SysOperationLog {
     @TableField(value = "username")
     private String username;
     
+    @TableField(value = "role_id")
+    private String roleId;
+    
     @TableField(value = "operation")
     private String operation;
     

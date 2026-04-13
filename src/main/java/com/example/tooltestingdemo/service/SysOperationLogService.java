@@ -40,4 +40,19 @@ public interface SysOperationLogService {
      * 查询最近的操作日志
      */
     List<SysOperationLog> getRecentOperationLogs(Integer limit);
+    
+    /**
+     * 根据角色ID查询操作日志
+     */
+    List<SysOperationLog> getOperationLogsByRoleId(String roleId);
+    
+    /**
+     * 根据角色ID和时间范围查询操作日志
+     */
+    List<SysOperationLog> getOperationLogsByRoleIdAndTimeRange(String roleId, LocalDateTime startTime, LocalDateTime endTime);
+    
+    /**
+     * 分页查询角色操作日志
+     */
+    Page<SysOperationLog> getOperationLogsByRoleIdAndPage(Page<SysOperationLog> page, String roleId, LocalDateTime startTime, LocalDateTime endTime, String module);
 }

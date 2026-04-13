@@ -115,12 +115,52 @@ public class SysOperationLogController {
     /**
      * 根据模块获取操作日志
      */
-    @GetMapping("/module/{module}")
+    @GetMapping("/module")
     @PreAuthorize("@securityService.hasPermission('system:log:api')")
     public Result<List<SysOperationLog>> getOperationLogsByModule(
-            @PathVariable String module) {
-
+            @RequestParam String module) {
         List<SysOperationLog> logs = operationLogService.getOperationLogsByModule(module);
         return Result.success("获取模块操作日志成功", logs);
+    }
+    
+    /**
+     * 根据角色ID获取操作日志（支持分页和搜索）
+     * 功能描述：系统集中展示指定角色的操作日志，包括登录、配置修改、任务执行等行为
+     * 输入：角色ID、时间范围（可选）、模块（可选）、页码、每页大小
+     * 输出：分页的结构化操作日志列表（含时间、操作类型、详情）
+     */
+    @GetMapping("/role/{roleId}")
+    @PreAuthorize("@securityService.hasPermission('system:log:api')")
+    public Result<Page<SysOperationLog>> getRoleOperationLogs(
+            @PathVariable String roleId,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime,
+            @RequestParam(required = false) String module,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+        LocalDateTime start = null;
+        LocalDateTime end = null;
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        
+        // 解析时间范围参数
+        if (startTime != null) {
+            try {
+                start = LocalDateTime.parse(startTime, formatter);
+            } catch (Exception e) {
+                return Result.error(ErrorStatus.BAD_REQUEST, "开始时间格式错误，应为 yyyy-MM-dd HH:mm:ss");
+            }
+        }
+        
+        if (endTime != null) {
+            try {
+                end = LocalDateTime.parse(endTime, formatter);
+            } catch (Exception e) {
+                return Result.error(ErrorStatus.BAD_REQUEST, "结束时间格式错误，应为 yyyy-MM-dd HH:mm:ss");
+            }
+        }
+        
+        Page<SysOperationLog> pageParam = new Page<>(page, size);
+        Page<SysOperationLog> logs = operationLogService.getOperationLogsByRoleIdAndPage(pageParam, roleId, start, end, module);
+        return Result.success("获取角色操作日志成功", logs);
     }
 }

@@ -72,6 +72,7 @@ public class OperationLogAspect {
         // 获取当前用户
         String userId = securityService.getCurrentUserId();
         String username = securityService.getCurrentUsername();
+        String roleId = securityService.getCurrentUserRoleId();
 
         if (userId == null) {
             userId = "anonymous";
@@ -80,11 +81,16 @@ public class OperationLogAspect {
         if (username == null) {
             username = "anonymous";
         }
+        
+        if (roleId == null) {
+            roleId = "anonymous";
+        }
 
         // 构建操作日志
         SysOperationLog operationLog = new SysOperationLog();
         operationLog.setUserId(userId);
         operationLog.setUsername(username);
+        operationLog.setRoleId(roleId);
         operationLog.setModule(getModuleName(joinPoint));
         operationLog.setOperation(getOperationName(joinPoint));
         operationLog.setMethod(joinPoint.getSignature().getName());
