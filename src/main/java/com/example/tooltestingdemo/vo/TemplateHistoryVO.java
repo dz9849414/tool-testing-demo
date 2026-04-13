@@ -65,4 +65,14 @@ public class TemplateHistoryVO {
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
+
+    /**
+     * 模板快照（JSON字符串）
+     */
+    private String templateSnapshot;
+
+    /**
+     * 模板快照数据（解析后的完整模板数据）
+     */
+    private InterfaceTemplateVO templateData;
 }

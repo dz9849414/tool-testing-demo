@@ -8,6 +8,7 @@ import com.example.tooltestingdemo.entity.template.*;
 import com.example.tooltestingdemo.enums.TemplateEnums;
 import com.example.tooltestingdemo.mapper.template.*;
 import com.example.tooltestingdemo.service.template.InterfaceTemplateService;
+import com.alibaba.fastjson2.JSON;
 import com.example.tooltestingdemo.util.TemplateConverter;
 import com.example.tooltestingdemo.util.TemplateValidator;
 import com.example.tooltestingdemo.util.VersionGenerator;
@@ -24,7 +25,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -52,6 +52,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     // ========== 基础 CRUD ==========
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public InterfaceTemplateVO createTemplate(InterfaceTemplateDTO dto) {
         return saveDraft(dto);
     }
@@ -61,11 +62,13 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     public boolean updateTemplate(Long id, InterfaceTemplateDTO dto) {
         return Optional.ofNullable(getById(id)).map(template -> {
             BeanUtils.copyProperties(dto, template, "id", "version", "status", "createTime");
+            String newVersion = VersionGenerator.incrementMinorVersion(template.getVersion());
+            template.setVersion(newVersion);
             updateById(template);
             deleteRelatedData(id);
             saveRelatedData(id, dto);
-            saveHistory(template, "UPDATE", "更新模板");
-            log.info("更新模板成功: id={}", id);
+            saveHistory(template, "UPDATE", "更新模板，版本号：" + newVersion);
+            log.info("更新模板成功: id={}, version={}", id, newVersion);
             return true;
         }).orElse(false);
     }
@@ -212,7 +215,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
 
     private InterfaceTemplateVO saveDraftInternal(InterfaceTemplateDTO dto, Long id) {
         boolean isUpdate = id != null;
-        
+
         InterfaceTemplate existing = isUpdate ? getById(id) : null;
         if (isUpdate && existing == null) {
             throw new RuntimeException("模板不存在");
@@ -418,6 +421,13 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         h.setCanRollback(1);
         h.setCreateId(Optional.ofNullable(template.getCreateId()).orElse(1L));
         h.setCreateName(Optional.ofNullable(template.getCreateName()).orElse("管理员"));
+        
+        // 保存完整模板快照
+        InterfaceTemplateVO templateVO = getTemplateDetail(template.getId());
+        if (templateVO != null) {
+            h.setTemplateSnapshot(JSON.toJSONString(templateVO));
+        }
+        
         historyMapper.insert(h);
     }
 }

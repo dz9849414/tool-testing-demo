@@ -1,5 +1,7 @@
 package com.example.tooltestingdemo.service.template;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.entity.template.TemplateHistory;
 import com.example.tooltestingdemo.vo.TemplateHistoryVO;
@@ -53,4 +55,14 @@ public interface TemplateHistoryService extends IService<TemplateHistory> {
      * @return 清理数量
      */
     int cleanOldHistories(Long templateId, int keepCount);
+
+    /**
+     * 分页查询模板历史记录
+     * 
+     * @param page 分页参数
+     * @param templateId 模板ID
+     * @param operationType 操作类型（可选）
+     * @return 分页结果
+     */
+    IPage<TemplateHistoryVO> pageHistories(Page<TemplateHistory> page, Long templateId, String operationType);
 }

@@ -72,14 +72,15 @@
         SELECT
             <include refid="Base_Column_List"/>
         FROM interface_template
-        WHERE is_deleted = 0 OR is_deleted IS NULL
-        <if test="folderId != null">
+        WHERE (is_deleted = 0 or is_deleted IS NULL)
+        <if test="folderId != null and folderId !='' ">
             AND folder_id = #{folderId}
         </if>
         <if test="keyword != null and keyword != ''">
             AND (name LIKE CONCAT('%', #{keyword}, '%') 
                 OR description LIKE CONCAT('%', #{keyword}, '%')
                 OR tags LIKE CONCAT('%', #{keyword}, '%'))
+
         </if>
         <if test="protocolType != null and protocolType != ''">
             AND protocol_type = #{protocolType}

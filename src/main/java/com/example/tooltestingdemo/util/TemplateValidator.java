@@ -27,13 +27,13 @@ public class TemplateValidator {
         List<String> errors = new ArrayList<>();
 
         validateField(errors, dto.getName(), "模板名称不能为空",
-            name -> name.length() <= 100, "模板名称不能超过100个字符");
+                name -> name.length() <= 100, "模板名称不能超过100个字符");
 
         validateField(errors, dto.getProtocolType(), "协议类型不能为空", null, null);
         validateField(errors, dto.getMethod(), "请求方法不能为空", null, null);
         validateField(errors, dto.getPath(), "请求路径不能为空", null, null);
 
-        checkDuplicate(dto.getName(), excludeId);
+        checkDuplicate(dto.getName(), dto.getMethod(), excludeId);
 
         if (!errors.isEmpty()) {
             throw new TemplateValidationException(TemplateValidationException.ErrorType.REQUIRED_FIELD_EMPTY, errors);
@@ -47,9 +47,9 @@ public class TemplateValidator {
         List<String> errors = new ArrayList<>();
 
         validateField(errors, dto.getName(), "模板名称不能为空",
-            name -> name.length() <= 100, "模板名称不能超过100个字符");
+                name -> name.length() <= 100, "模板名称不能超过100个字符");
 
-        checkDuplicate(dto.getName(), excludeId);
+        checkDuplicate(dto.getName(), dto.getMethod(), excludeId);
 
         if (StringUtils.hasText(dto.getDescription()) && dto.getDescription().length() > 500) {
             errors.add("模板描述不能超过500个字符");
@@ -69,13 +69,19 @@ public class TemplateValidator {
         }
     }
 
-    private void checkDuplicate(String name, Long excludeId) {
+    /**
+     * 验证模板名称是否重复
+     * @param name
+     * @param method
+     * @param excludeId
+     */
+    private void checkDuplicate(String name, String method, Long excludeId) {
         if (!StringUtils.hasText(name)) return;
-        var existing = templateMapper.selectByNameAndMethod(name, null);
+        var existing = templateMapper.selectByNameAndMethod(name, method);
         if (existing != null && (excludeId == null || !excludeId.equals(existing.getId()))) {
             throw new TemplateValidationException(
-                TemplateValidationException.ErrorType.NAME_DUPLICATE,
-                "模板名称【" + name + "】已存在，请更换名称"
+                    TemplateValidationException.ErrorType.NAME_DUPLICATE,
+                    "模板名称【" + name + "】已存在，请更换名称"
             );
         }
     }
