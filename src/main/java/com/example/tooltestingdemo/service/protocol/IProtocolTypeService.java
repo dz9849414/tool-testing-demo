@@ -3,6 +3,8 @@ package com.example.tooltestingdemo.service.protocol;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 
+import java.util.List;
+
 /**
  * <p>
  * 协议类型主表 服务类
@@ -13,4 +15,7 @@ import com.example.tooltestingdemo.entity.protocol.ProtocolType;
  */
 public interface IProtocolTypeService extends IService<ProtocolType> {
 
+    ProtocolType createProtocolTyp(ProtocolType protocolType);
+
+    List<ProtocolType> getProtocolTypeList(ProtocolType protocolType);
 }

@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @since 2026-04-13
  */
 @RestController
-@RequestMapping("/system/testDataSample")
+@RequestMapping("/protocol/testDataSample")
 public class TestDataSampleController {
 
 }
