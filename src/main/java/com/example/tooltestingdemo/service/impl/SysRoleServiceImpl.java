@@ -3,10 +3,12 @@ package com.example.tooltestingdemo.service.impl;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.entity.SysRole;
 import com.example.tooltestingdemo.entity.SysRolePermission;
+import com.example.tooltestingdemo.entity.SysPermission;
 import com.example.tooltestingdemo.entity.SysUserRole;
 import com.example.tooltestingdemo.mapper.SysRoleMapper;
 import com.example.tooltestingdemo.mapper.SysRolePermissionMapper;
 import com.example.tooltestingdemo.mapper.SysUserRoleMapper;
+import com.example.tooltestingdemo.mapper.SysPermissionMapper;
 import com.example.tooltestingdemo.service.SysRoleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     private final SysRoleMapper roleMapper;
     private final SysRolePermissionMapper rolePermissionMapper;
     private final SysUserRoleMapper userRoleMapper;
+    private final SysPermissionMapper permissionMapper;
     
     @Override
     public SysRole findByName(String name) {
@@ -168,6 +171,11 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             role.setStatus(status);
             super.updateById(role);
         }
+    }
+    
+    @Override
+    public List<SysPermission> getPermissionsByRoleId(String roleId) {
+        return permissionMapper.selectByRoleId(roleId);
     }
     
     public boolean updateRole(SysRole role) {

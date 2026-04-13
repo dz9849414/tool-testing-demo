@@ -1,6 +1,7 @@
 package com.example.tooltestingdemo.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.example.tooltestingdemo.entity.SysPermission;
 import com.example.tooltestingdemo.entity.SysRole;
 
 import java.util.List;
@@ -99,4 +100,9 @@ public interface SysRoleService extends IService<SysRole> {
      * 删除角色
      */
     boolean deleteRole(String id);
+    
+    /**
+     * 获取角色的权限列表
+     */
+    List<SysPermission> getPermissionsByRoleId(String roleId);
 }

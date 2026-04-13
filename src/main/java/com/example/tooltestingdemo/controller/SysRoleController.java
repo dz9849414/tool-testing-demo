@@ -2,6 +2,7 @@ package com.example.tooltestingdemo.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.annotation.PermissionCheck;
+import com.example.tooltestingdemo.entity.SysPermission;
 import com.example.tooltestingdemo.entity.SysRole;
 import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.service.SysRoleService;
@@ -296,6 +297,16 @@ public class SysRoleController {
         Map<String, Boolean> response = new HashMap<>();
         response.put("exists", exists);
         return Result.success("检查角色名称成功", response);
+    }
+    
+    /**
+     * 获取角色的权限列表
+     */
+    @GetMapping("/{roleId}/permissions")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Result<List<SysPermission>> getRolePermissions(@PathVariable String roleId) {
+        List<SysPermission> permissions = roleService.getPermissionsByRoleId(roleId);
+        return Result.success("获取角色权限列表成功", permissions);
     }
     
     /**
