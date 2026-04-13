@@ -1,6 +1,9 @@
 package com.example.tooltestingdemo.controller.template;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.common.Result;
+import com.example.tooltestingdemo.entity.template.TemplateHistory;
 import com.example.tooltestingdemo.service.template.TemplateHistoryService;
 import com.example.tooltestingdemo.vo.TemplateHistoryVO;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +37,29 @@ public class TemplateHistoryController {
     public Result<List<TemplateHistoryVO>> getHistories(@PathVariable Long templateId) {
         List<TemplateHistoryVO> histories = historyService.getHistoriesByTemplateId(templateId);
         return Result.success(histories);
+    }
+
+    /**
+     * 分页查询模板历史版本列表
+     * 
+     * 接口地址：GET /api/template/history/page/{templateId}
+     * 
+     * @param templateId 模板ID
+     * @param current 当前页（默认1）
+     * @param size 每页条数（默认10）
+     * @param operationType 操作类型（可选：CREATE/UPDATE/DELETE/PUBLISH/ARCHIVE/COPY）
+     * @return 分页历史版本VO列表
+     */
+    @GetMapping("/page/{templateId}")
+    public Result<IPage<TemplateHistoryVO>> pageHistories(
+            @PathVariable Long templateId,
+            @RequestParam(defaultValue = "1") Long current,
+            @RequestParam(defaultValue = "10") Long size,
+            @RequestParam(required = false) String operationType) {
+        
+        Page<TemplateHistory> page = new Page<>(current, size);
+        IPage<TemplateHistoryVO> result = historyService.pageHistories(page, templateId, operationType);
+        return Result.success(result);
     }
 
     /**

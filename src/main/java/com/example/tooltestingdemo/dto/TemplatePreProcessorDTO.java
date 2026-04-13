@@ -1,5 +1,6 @@
 package com.example.tooltestingdemo.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 /**
@@ -8,6 +9,7 @@ import lombok.Data;
  * 文件位置：src/main/java/com/example/tooltestingdemo/dto/TemplatePreProcessorDTO.java
  */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class TemplatePreProcessorDTO {
 
     /**

@@ -1,10 +1,15 @@
 package com.example.tooltestingdemo.service.impl.template;
 
+import com.alibaba.fastjson2.JSON;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.entity.template.TemplateHistory;
 import com.example.tooltestingdemo.mapper.template.TemplateHistoryMapper;
 import com.example.tooltestingdemo.service.template.TemplateHistoryService;
 import com.example.tooltestingdemo.util.TemplateConverter;
+import com.example.tooltestingdemo.vo.InterfaceTemplateVO;
 import com.example.tooltestingdemo.vo.TemplateHistoryVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,12 +32,16 @@ public class TemplateHistoryServiceImpl extends ServiceImpl<TemplateHistoryMappe
 
     @Override
     public List<TemplateHistoryVO> getHistoriesByTemplateId(Long templateId) {
-        return TemplateConverter.toHistoryVOList(historyMapper.selectByTemplateId(templateId));
+        List<TemplateHistoryVO> voList = TemplateConverter.toHistoryVOList(historyMapper.selectByTemplateId(templateId));
+        voList.forEach(this::enrichTemplateData);
+        return voList;
     }
 
     @Override
     public TemplateHistoryVO getHistoryDetail(Long historyId) {
-        return TemplateConverter.toVO(getById(historyId));
+        TemplateHistoryVO vo = TemplateConverter.toVO(getById(historyId));
+        enrichTemplateData(vo);
+        return vo;
     }
 
     @Override
@@ -73,5 +82,42 @@ public class TemplateHistoryServiceImpl extends ServiceImpl<TemplateHistoryMappe
         
         log.info("清理历史版本成功: templateId={}, deleteCount={}", templateId, deleteCount);
         return deleteCount;
+    }
+
+    @Override
+    public IPage<TemplateHistoryVO> pageHistories(Page<TemplateHistory> page, Long templateId, String operationType) {
+        LambdaQueryWrapper<TemplateHistory> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(TemplateHistory::getTemplateId, templateId);
+        if (operationType != null && !operationType.isEmpty()) {
+            wrapper.eq(TemplateHistory::getOperationType, operationType);
+        }
+        wrapper.orderByDesc(TemplateHistory::getCreateTime);
+        
+        IPage<TemplateHistory> resultPage = historyMapper.selectPage(page, wrapper);
+        
+        List<TemplateHistoryVO> voList = TemplateConverter.toHistoryVOList(resultPage.getRecords());
+        
+        IPage<TemplateHistoryVO> voPage = new Page<>();
+        voPage.setCurrent(resultPage.getCurrent());
+        voPage.setSize(resultPage.getSize());
+        voPage.setTotal(resultPage.getTotal());
+        voPage.setPages(resultPage.getPages());
+        voPage.setRecords(voList);
+        
+        voList.forEach(this::enrichTemplateData);
+        
+        return voPage;
+    }
+
+    private void enrichTemplateData(TemplateHistoryVO vo) {
+        if (vo == null || !org.springframework.util.StringUtils.hasText(vo.getTemplateSnapshot())) {
+            return;
+        }
+        try {
+            InterfaceTemplateVO templateData = JSON.parseObject(vo.getTemplateSnapshot(), InterfaceTemplateVO.class);
+            vo.setTemplateData(templateData);
+        } catch (Exception e) {
+            log.warn("解析模板快照失败: historyId={}, error={}", vo.getId(), e.getMessage());
+        }
     }
 }
