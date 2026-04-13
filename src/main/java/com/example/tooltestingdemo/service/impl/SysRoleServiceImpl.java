@@ -43,7 +43,8 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     
     @Override
     public SysRole findByNameAndScopeId(String name, String scopeId) {
-        return roleMapper.selectByNameAndScopeId(name, scopeId);
+        List<SysRole> roles = roleMapper.selectByNameAndScopeId(name, scopeId);
+        return roles != null && !roles.isEmpty() ? roles.get(0) : null;
     }
     
     @Override
@@ -64,11 +65,19 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     
     @Override
     public boolean existsByNameAndScope(String name, String scopeId, String excludeId) {
-        SysRole role = roleMapper.selectByNameAndScopeId(name, scopeId);
-        if (role == null) {
+        List<SysRole> roles = roleMapper.selectByNameAndScopeId(name, scopeId);
+        if (roles == null || roles.isEmpty()) {
             return false;
         }
-        return excludeId == null || !role.getId().equals(excludeId);
+        
+        // 检查是否存在排除ID之外的角色
+        for (SysRole role : roles) {
+            if (excludeId == null || !role.getId().equals(excludeId)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
     
     @Override

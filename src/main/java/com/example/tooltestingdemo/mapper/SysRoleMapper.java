@@ -33,10 +33,18 @@ public interface SysRoleMapper extends BaseMapper<SysRole> {
     List<SysRole> selectByScopeId(@Param("scopeId") String scopeId);
     
     /**
-     * 根据角色名称和作用域ID查找角色
+     * 根据角色名称和作用域ID查找角色列表
      */
-    @Select("SELECT * FROM sys_role WHERE name = #{name} AND scope_id = #{scopeId}")
-    SysRole selectByNameAndScopeId(@Param("name") String name, @Param("scopeId") String scopeId);
+    @Select({"<script>",
+            "SELECT * FROM sys_role WHERE name = #{name}",
+            "<if test='scopeId != null'>",
+            "AND scope_id = #{scopeId}",
+            "</if>",
+            "<if test='scopeId == null'>",
+            "AND scope_id IS NULL",
+            "</if>",
+            "</script>"})
+    List<SysRole> selectByNameAndScopeId(@Param("name") String name, @Param("scopeId") String scopeId);
     
     /**
      * 根据用户ID查找角色列表

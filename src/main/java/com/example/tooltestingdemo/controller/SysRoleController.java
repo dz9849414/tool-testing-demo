@@ -92,6 +92,16 @@ public class SysRoleController {
             return Result.error(ErrorStatus.BAD_REQUEST, "角色名称在当前作用域下已存在");
         }
         
+        // 检查id（编码）的唯一性
+        if (role.getId() != null && !role.getId().isEmpty()) {
+            if (roleService.getById(role.getId()) != null) {
+                return Result.error(ErrorStatus.BAD_REQUEST, "角色编码已存在");
+            }
+        } else {
+            // 如果id没传入，系统自动生成
+            role.setId("role_" + System.currentTimeMillis());
+        }
+        
         Boolean savedRole = roleService.save(role);
         return Result.success("创建角色成功", savedRole);
     }
@@ -263,5 +273,20 @@ public class SysRoleController {
     public Result<String> disableRole(@PathVariable String roleId) {
         roleService.disableRole(roleId);
         return Result.success("角色禁用成功");
+    }
+    
+    /**
+     * 检查角色名称是否已存在
+     */
+    @GetMapping("/check-name")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Result<Map<String, Boolean>> checkNameExists(
+            @RequestParam String name,
+            @RequestParam(required = false) String scopeId,
+            @RequestParam(required = false) String excludeId) {
+        boolean exists = roleService.existsByNameAndScope(name, scopeId, excludeId);
+        Map<String, Boolean> response = new HashMap<>();
+        response.put("exists", exists);
+        return Result.success("检查角色名称成功", response);
     }
 }

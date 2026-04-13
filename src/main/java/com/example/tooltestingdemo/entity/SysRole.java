@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Data
 public class SysRole {
     
-    @TableId(value = "id", type = IdType.ASSIGN_ID)
+    @TableId(value = "id", type = IdType.INPUT)
     private String id;
     
     @TableField(value = "name")
