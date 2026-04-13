@@ -178,6 +178,23 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         return permissionMapper.selectByRoleId(roleId);
     }
     
+    @Override
+    @Transactional
+    public void batchUpdateRoleStatus(List<String> roleIds, Integer status) {
+        for (String roleId : roleIds) {
+            // 跳过admin角色
+            if ("admin".equals(roleId)) {
+                continue;
+            }
+            
+            SysRole role = getById(roleId);
+            if (role != null) {
+                role.setStatus(status);
+                super.updateById(role);
+            }
+        }
+    }
+    
     public boolean updateRole(SysRole role) {
         if (role == null) {
             return false;

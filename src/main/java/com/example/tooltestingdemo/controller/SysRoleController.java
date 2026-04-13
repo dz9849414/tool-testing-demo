@@ -310,6 +310,21 @@ public class SysRoleController {
     }
     
     /**
+     * 批量更新角色状态
+     */
+    @PostMapping("/batch/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Result<String> batchUpdateRoleStatus(@RequestParam List<String> roleIds, @RequestParam Integer status) {
+        // 检查状态值是否合法
+        if (status != 0 && status != 1) {
+            return Result.error(ErrorStatus.BAD_REQUEST, "状态值必须是0（禁用）或1（启用）");
+        }
+        
+        roleService.batchUpdateRoleStatus(roleIds, status);
+        return Result.success(status == 1 ? "角色批量启用成功" : "角色批量禁用成功");
+    }
+    
+    /**
      * 查询角色关联的用户列表
      */
     @GetMapping("/{roleId}/users")

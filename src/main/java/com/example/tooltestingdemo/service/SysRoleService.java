@@ -105,4 +105,9 @@ public interface SysRoleService extends IService<SysRole> {
      * 获取角色的权限列表
      */
     List<SysPermission> getPermissionsByRoleId(String roleId);
+    
+    /**
+     * 批量更新角色状态
+     */
+    void batchUpdateRoleStatus(List<String> roleIds, Integer status);
 }
