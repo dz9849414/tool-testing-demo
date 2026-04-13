@@ -161,6 +161,15 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         }
     }
     
+    @Override
+    public void updateRoleStatus(String roleId, Integer status) {
+        SysRole role = getById(roleId);
+        if (role != null) {
+            role.setStatus(status);
+            super.updateById(role);
+        }
+    }
+    
     public boolean updateRole(SysRole role) {
         if (role == null) {
             return false;

@@ -86,6 +86,11 @@ public interface SysRoleService extends IService<SysRole> {
     void disableRole(String roleId);
     
     /**
+     * 更新角色状态
+     */
+    void updateRoleStatus(String roleId, Integer status);
+    
+    /**
      * 更新角色
      */
     boolean updateRole(SysRole role);

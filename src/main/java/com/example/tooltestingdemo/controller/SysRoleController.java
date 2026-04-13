@@ -264,23 +264,23 @@ public class SysRoleController {
     }
     
     /**
-     * 启用角色
+     * 更新角色状态
      */
-    @PutMapping("/{roleId}/enable")
+    @PutMapping("/{roleId}/status")
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<String> enableRole(@PathVariable String roleId) {
-        roleService.enableRole(roleId);
-        return Result.success("角色启用成功");
-    }
-    
-    /**
-     * 禁用角色
-     */
-    @PutMapping("/{roleId}/disable")
-    @PreAuthorize("hasRole('ADMIN')")
-    public Result<String> disableRole(@PathVariable String roleId) {
-        roleService.disableRole(roleId);
-        return Result.success("角色禁用成功");
+    public Result<String> updateRoleStatus(@PathVariable String roleId, @RequestParam Integer status) {
+        // 检查是否是admin角色
+        if ("admin".equals(roleId)) {
+            return Result.error(ErrorStatus.BAD_REQUEST, "不能修改admin角色的状态");
+        }
+        
+        // 检查状态值是否合法
+        if (status != 0 && status != 1) {
+            return Result.error(ErrorStatus.BAD_REQUEST, "状态值必须是0（禁用）或1（启用）");
+        }
+        
+        roleService.updateRoleStatus(roleId, status);
+        return Result.success(status == 1 ? "角色启用成功" : "角色禁用成功");
     }
     
     /**
