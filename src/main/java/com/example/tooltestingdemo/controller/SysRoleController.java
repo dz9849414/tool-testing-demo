@@ -3,7 +3,9 @@ package com.example.tooltestingdemo.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.annotation.PermissionCheck;
 import com.example.tooltestingdemo.entity.SysRole;
+import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.service.SysRoleService;
+import com.example.tooltestingdemo.service.SysUserService;
 import lombok.RequiredArgsConstructor;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.common.ErrorStatus;
@@ -24,6 +26,7 @@ import java.util.Map;
 public class SysRoleController {
     
     private final SysRoleService roleService;
+    private final SysUserService userService;
     
     /**
      * 获取所有角色列表
@@ -293,5 +296,22 @@ public class SysRoleController {
         Map<String, Boolean> response = new HashMap<>();
         response.put("exists", exists);
         return Result.success("检查角色名称成功", response);
+    }
+    
+    /**
+     * 查询角色关联的用户列表
+     */
+    @GetMapping("/{roleId}/users")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Result<List<SysUser>> getRoleUsers(@PathVariable String roleId) {
+        // 检查角色是否存在
+        SysRole role = roleService.getById(roleId);
+        if (role == null) {
+            return Result.error(ErrorStatus.NOT_FOUND, "角色不存在");
+        }
+        
+        // 查询角色关联的用户列表
+        List<SysUser> users = userService.findByRoleId(roleId);
+        return Result.success("获取角色关联用户列表成功", users);
     }
 }
