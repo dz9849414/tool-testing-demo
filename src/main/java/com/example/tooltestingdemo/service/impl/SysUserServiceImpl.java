@@ -194,4 +194,72 @@ public class SysUserServiceImpl implements SysUserService {
 
         return groupedPermissions;
     }
+
+    @Override
+    public List<SysUser> searchUsers(String keyword) {
+        // 获取当前登录用户
+        org.springframework.security.core.Authentication authentication = 
+            org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+        
+        // 获取当前用户信息
+        com.example.tooltestingdemo.entity.SysUser currentUser = userMapper.selectByUsername(currentUsername);
+        if (currentUser == null) {
+            return new java.util.ArrayList<>();
+        }
+        
+        // 获取当前用户的角色列表
+        List<String> currentRoles = userMapper.selectRolesByUserId(currentUser.getId());
+        
+        // 执行搜索
+        QueryWrapper<SysUser> queryWrapper = new QueryWrapper<>();
+        if (keyword != null && !keyword.isEmpty()) {
+            queryWrapper.likeRight("username", keyword)
+                    .or().likeRight("real_name", keyword)
+                    .or().likeRight("email", keyword);
+        }
+        List<SysUser> users = userMapper.selectList(queryWrapper);
+        
+        // 根据角色权限过滤搜索结果
+        List<SysUser> filteredUsers = new java.util.ArrayList<>();
+        for (SysUser user : users) {
+            // 总是可以查看自己
+            if (user.getId().equals(currentUser.getId())) {
+                filteredUsers.add(user);
+                continue;
+            }
+            
+            // 获取用户的角色列表
+            List<String> userRoles = userMapper.selectRolesByUserId(user.getId());
+            
+            // 检查当前用户是否有权限查看该用户
+            if (canViewUser(currentRoles, userRoles)) {
+                filteredUsers.add(user);
+            }
+        }
+        
+        return filteredUsers;
+    }
+    
+    /**
+     * 检查当前用户是否有权限查看目标用户
+     */
+    private boolean canViewUser(List<String> currentRoles, List<String> targetRoles) {
+        // 如果当前用户是admin，可以查看所有用户
+        if (currentRoles != null && currentRoles.contains("admin")) {
+            return true;
+        }
+        
+        // 如果当前用户是manager，可以查看普通用户，但不能查看其他manager
+        if (currentRoles != null && currentRoles.contains("manager")) {
+            // 检查目标用户是否包含manager角色
+            if (targetRoles != null && targetRoles.contains("manager")) {
+                return false;
+            }
+            return true;
+        }
+        
+        // 普通用户只能查看自己
+        return false;
+    }
 }

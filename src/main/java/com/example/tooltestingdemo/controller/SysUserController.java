@@ -186,6 +186,19 @@ public class SysUserController {
     }
     
     /**
+     * 搜索用户
+     * 功能描述：系统支持通过用户名、姓名或邮箱关键词快速查找用户
+     * 输入：搜索关键词
+     * 输出：匹配的用户列表（含状态、角色概览）
+     */
+    @GetMapping("/search")
+    @PreAuthorize("@securityService.hasPermission('system:user:api')")
+    public Result<List<SysUser>> searchUsers(@RequestParam String search) {
+        List<SysUser> users = userService.searchUsers(search);
+        return Result.success("搜索用户成功", users);
+    }
+
+    /**
      * 审批用户注册
      */
     @PutMapping("/{id}/approve")
