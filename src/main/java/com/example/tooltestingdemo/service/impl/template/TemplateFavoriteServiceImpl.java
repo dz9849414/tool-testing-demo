@@ -86,21 +86,18 @@ public class TemplateFavoriteServiceImpl extends ServiceImpl<TemplateFavoriteMap
     }
 
     private boolean removeByType(Long userId, Long templateId, int type, String action) {
-        LambdaQueryWrapper<TemplateFavorite> wrapper = new LambdaQueryWrapper<>()
+        boolean result = remove(new LambdaQueryWrapper<TemplateFavorite>()
             .eq(TemplateFavorite::getCreateId, userId)
             .eq(TemplateFavorite::getTemplateId, templateId)
-            .eq(TemplateFavorite::getFavoriteType, type);
-        
-        boolean result = remove(wrapper);
+            .eq(TemplateFavorite::getFavoriteType, type));
         if (result) log.info("{}成功: userId={}, templateId={}", action, userId, templateId);
         return result;
     }
 
     private boolean existsByType(Long userId, Long templateId, int type) {
-        LambdaQueryWrapper<TemplateFavorite> wrapper = new LambdaQueryWrapper<>()
+        return count(new LambdaQueryWrapper<TemplateFavorite>()
             .eq(TemplateFavorite::getCreateId, userId)
             .eq(TemplateFavorite::getTemplateId, templateId)
-            .eq(TemplateFavorite::getFavoriteType, type);
-        return count(wrapper) > 0;
+            .eq(TemplateFavorite::getFavoriteType, type)) > 0;
     }
 }
