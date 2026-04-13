@@ -87,6 +87,11 @@ public class SysRoleController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public Result<Boolean> createRole(@RequestBody SysRole role) {
+        // 确保当scopeId为null或者没传时，将角色的scopeId设为null
+        if (role.getScopeId() != null && role.getScopeId().isEmpty()) {
+            role.setScopeId(null);
+        }
+        
         // 检查名称和作用域的唯一性
         if (roleService.existsByNameAndScope(role.getName(), role.getScopeId(), null)) {
             return Result.error(ErrorStatus.BAD_REQUEST, "角色名称在当前作用域下已存在");
@@ -119,7 +124,7 @@ public class SysRoleController {
         }
         
         role.setId(id);
-        
+
         // 检查名称和作用域的唯一性
         if (roleService.existsByNameAndScope(role.getName(), role.getScopeId(), id)) {
             return Result.error(ErrorStatus.BAD_REQUEST, "角色名称在当前作用域下已存在");

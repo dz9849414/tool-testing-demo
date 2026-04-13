@@ -160,4 +160,23 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             updateById(role);
         }
     }
+    
+    @Override
+    public boolean updateById(SysRole role) {
+        if (role == null) {
+            return false;
+        }
+        
+        // 使用UpdateWrapper构建更新条件，确保即使scopeId为null也能更新
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<SysRole> updateWrapper = new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        updateWrapper.eq("id", role.getId())
+                .set("name", role.getName())
+                .set("description", role.getDescription())
+                .set("type", role.getType())
+                .set("scope_id", role.getScopeId())
+                .set("status", role.getStatus())
+                .set("update_time", java.time.LocalDateTime.now());
+        
+        return baseMapper.update(null, updateWrapper) > 0;
+    }
 }
