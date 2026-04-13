@@ -84,4 +84,14 @@ public interface SysRoleService extends IService<SysRole> {
      * 禁用角色
      */
     void disableRole(String roleId);
+    
+    /**
+     * 更新角色
+     */
+    boolean updateRole(SysRole role);
+    
+    /**
+     * 删除角色
+     */
+    boolean deleteRole(String id);
 }

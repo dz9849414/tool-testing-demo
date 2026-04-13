@@ -148,7 +148,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         SysRole role = getById(roleId);
         if (role != null) {
             role.setStatus(1);
-            updateById(role);
+            super.updateById(role);
         }
     }
     
@@ -157,12 +157,11 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         SysRole role = getById(roleId);
         if (role != null) {
             role.setStatus(0);
-            updateById(role);
+            super.updateById(role);
         }
     }
     
-    @Override
-    public boolean updateById(SysRole role) {
+    public boolean updateRole(SysRole role) {
         if (role == null) {
             return false;
         }
@@ -178,5 +177,17 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
                 .set("update_time", java.time.LocalDateTime.now());
         
         return baseMapper.update(null, updateWrapper) > 0;
+    }
+    
+    @Transactional
+    public boolean deleteRole(String id) {
+        // 先删除角色与用户的关联
+        userRoleMapper.deleteByRoleId(id);
+        
+        // 再删除角色与权限的关联
+        rolePermissionMapper.deleteByRoleId(id);
+        
+        // 最后删除角色本身
+        return baseMapper.deleteById(id) > 0;
     }
 }

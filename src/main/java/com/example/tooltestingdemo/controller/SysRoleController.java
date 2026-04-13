@@ -133,7 +133,7 @@ public class SysRoleController {
             return Result.error(ErrorStatus.BAD_REQUEST, "角色名称在当前作用域下已存在");
         }
         
-        boolean updated = roleService.updateById(role);
+        boolean updated = roleService.updateRole(role);
         if (!updated) {
             return Result.error(ErrorStatus.NOT_FOUND, "角色不存在");
         }
@@ -156,7 +156,7 @@ public class SysRoleController {
             return Result.error(ErrorStatus.NOT_FOUND, "角色不存在");
         }
         
-        boolean deleted = roleService.removeById(id);
+        boolean deleted = roleService.deleteRole(id);
         if (!deleted) {
             return Result.error(ErrorStatus.BAD_REQUEST, "删除角色失败");
         }
