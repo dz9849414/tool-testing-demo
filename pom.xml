@@ -66,12 +66,6 @@
             <artifactId>mysql-connector-j</artifactId>
             <version>8.0.33</version>
         </dependency>
-        <!-- mybatis-plus代码生成器 -->
-        <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-generator</artifactId>
-            <version>3.5.15</version>
-        </dependency>
         <!-- MP 分页插件 -->
         <dependency>
             <groupId>com.baomidou</groupId>
