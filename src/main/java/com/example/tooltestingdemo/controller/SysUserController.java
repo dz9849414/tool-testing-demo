@@ -13,6 +13,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.tooltestingdemo.dto.SysUserUpdateDTO;
+import org.apache.commons.beanutils.BeanUtils;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -94,33 +96,36 @@ public class SysUserController {
     @PutMapping("/{id}")
     @PreAuthorize("@securityService.hasPermission('system:user:api') or @securityService.isCurrentUser(#id)")
     @PermissionCheck(type = "update")
-    public Result<SysUser> updateUser(@PathVariable String id, @RequestBody SysUser user) {
+    public Result<SysUser> updateUser(@PathVariable String id, @RequestBody SysUserUpdateDTO userDTO) {
+        SysUser user = new SysUser();
         user.setId(id);
         
         // 检查是否是admin用户
         if ("admin".equals(id)) {
             // 检查是否尝试修改admin的用户名
-            if (user.getUsername() != null && !"admin".equals(user.getUsername())) {
+            if (userDTO.getUsername() != null && !"admin".equals(userDTO.getUsername())) {
                 return Result.error(400, "不能更改admin用户名");
             }
         } else {
             // 检查是否尝试将用户名改为admin
-            if ("admin".equals(user.getUsername())) {
+            if (userDTO.getUsername() != null && "admin".equals(userDTO.getUsername())) {
                 return Result.error(400, "不能将用户名改为admin");
             }
         }
         
-        // 检查是否尝试修改status字段
-        if (user.getStatus() != null) {
-            return Result.error(400, "不能更改用户状态");
-        }
-        
         // 检查邮箱是否已存在（排除当前用户）
-        if (user.getEmail() != null) {
-            SysUser existingUser = userService.findByEmail(user.getEmail());
+        if (userDTO.getEmail() != null) {
+            SysUser existingUser = userService.findByEmail(userDTO.getEmail());
             if (existingUser != null && !existingUser.getId().equals(id)) {
                 return Result.error(400, "邮箱已存在");
             }
+        }
+        
+        // 设置字段
+        try {
+            BeanUtils.copyProperties(user, userDTO);
+        } catch (Exception e) {
+            return Result.error(400, "参数转换失败");
         }
         
         SysUser updatedUser = userService.update(user);
