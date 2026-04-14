@@ -3,6 +3,7 @@ package com.example.tooltestingdemo.controller.protocol;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.service.protocol.IProtocolTypeService;
+import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -66,6 +67,33 @@ public class ProtocolTypeController {
                 ? String.format("编辑成功，关联影响范围：%d 个项目、%d 个模板。", relatedProjectCount, relatedTemplateCount)
                 : "编辑成功";
         return Result.success(message, vo);
+    }
+
+    /**
+     * 删除协议类型
+     *
+     * 接口地址：DELETE /api/protocol/protocolType/{id}
+     *
+     */
+    @DeleteMapping("/{id}")
+    public Result<Void> deleteProtocolType(@PathVariable Long id) {
+        protocolTypeService.deleteProtocolType(id);
+        return Result.success("删除成功");
+    }
+
+    /**
+     * 批量删除协议类型
+     *
+     * 接口地址：DELETE /api/protocol/protocolType/batch
+     *
+     */
+    @DeleteMapping("/batch")
+    public Result<ProtocolTypeDeleteResultVO> batchDeleteProtocolTypes(@RequestBody Long[] ids) {
+        if (ids == null || ids.length == 0) {
+            return Result.error("协议类型ID列表不能为空");
+        }
+        ProtocolTypeDeleteResultVO result = protocolTypeService.batchDeleteProtocolTypes(ids);
+        return Result.success(result.getSummaryMessage(), result);
     }
 
 }
