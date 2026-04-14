@@ -154,12 +154,15 @@ CREATE TABLE `sys_config` (
     `description` VARCHAR(512) COMMENT '配置描述',
     `type` VARCHAR(32) DEFAULT 'TEXT' COMMENT '配置类型：TEXT-文本，JSON-JSON，BOOLEAN-布尔值',
     `is_encrypted` TINYINT DEFAULT 0 COMMENT '是否加密：0-否，1-是',
+    `is_built_in` TINYINT DEFAULT 0 COMMENT '是否内置：0-否，1-是',
+    `status` TINYINT DEFAULT 1 COMMENT '状态：0-禁用，1-启用',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `update_user` VARCHAR(50) COMMENT '更新人',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_config_key` (`config_key`),
-    KEY `idx_type` (`type`)
+    KEY `idx_type` (`type`),
+    KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统配置表';
 
 -- 字典表
@@ -203,7 +206,7 @@ CREATE TABLE `sys_login_log` (
 
 -- 插入默认管理员用户（密码：admin123，已加密）
 INSERT INTO `sys_user` (`id`, `username`, `password`, `email`, `real_name`, `status`) VALUES 
-('admin', 'admin', '$2a$10$r3xPKMnGkh/4qGZubMuK1u7T/2eSj7V9X3qIo5MT7K4Lr6gCQYfW6', 'admin@example.com', '系统管理员', 1);
+('admin', 'admin', '$2a$10$SOb6oIm5cYI5l.DLRJgWJelN8l.hxk7ZlB21I8PAIw8KwVJG6srZe', 'admin@example.com', '系统管理员', 1);
 
 -- 插入默认角色
 INSERT INTO `sys_role` (`id`, `name`, `description`, `type`, `status`) VALUES 
@@ -240,9 +243,9 @@ INSERT INTO `sys_role_permission` (`id`, `role_id`, `permission_id`) VALUES
 ('rp4', 'admin', 'p4');
 
 -- 插入默认配置
-INSERT INTO `sys_config` (`id`, `config_key`, `config_value`, `config_name`, `description`) VALUES 
-('config1', 'system.name', '工具测试平台', '系统名称', '系统显示名称'),
-('config2', 'system.version', '1.0.0', '系统版本', '系统版本号');
+INSERT INTO `sys_config` (`id`, `config_key`, `config_value`, `config_name`, `description`, `is_built_in`, `status`) VALUES 
+('config1', 'system.name', '工具测试平台', '系统名称', '系统显示名称', 1, 1),
+('config2', 'system.version', '1.0.0', '系统版本', '系统版本号', 1, 1);
 
 -- ===========================================
 -- 添加API类型权限
