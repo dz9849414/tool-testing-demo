@@ -220,7 +220,17 @@ INSERT INTO `sys_permission` (`id`, `name`, `code`, `description`, `module`, `ty
 ('p1', '系统管理', 'system:management', '系统管理模块', 'system', 'MENU', '0', 1, 1),
 ('p2', '用户管理', 'system:user', '用户管理', 'system', 'MENU', 'p1', 2, 1),
 ('p3', '角色管理', 'system:role', '角色管理', 'system', 'MENU', 'p1', 2, 2),
-('p4', '权限管理', 'system:permission', '权限管理', 'system', 'MENU', 'p1', 2, 3);
+('p4', '权限管理', 'system:permission', '权限管理', 'system', 'MENU', 'p1', 2, 3),
+('p5', '用户管理API', 'system:user:api', '用户管理接口权限', 'system', 'API', 'p2', 3, 1),
+('p6', '角色管理API', 'system:role:api', '角色管理接口权限', 'system', 'API', 'p3', 3, 1),
+('p7', '权限管理API', 'system:permission:api', '权限管理接口权限', 'system', 'API', 'p4', 3, 1),
+('p8', '日志管理', 'system:log', '日志管理', 'system', 'MENU', 'p1', 2, 4),
+('p9', '日志管理API', 'system:log:api', '日志管理接口权限', 'system', 'API', 'p8', 3, 1),
+('p10', '数据字典管理', 'system:dictionary', '数据字典管理', 'system', 'MENU', 'p1', 2, 4);
+
+
+
+
 
 -- 插入角色权限关联
 INSERT INTO `sys_role_permission` (`id`, `role_id`, `permission_id`) VALUES 
@@ -242,12 +252,10 @@ INSERT INTO `sys_config` (`id`, `config_key`, `config_value`, `config_name`, `de
 INSERT INTO `sys_permission` (`id`, `name`, `code`, `description`, `module`, `type`, `parent_id`, `level`, `sort`) VALUES
                                                                                                                        ('p5', '用户管理API', 'system:user:api', '用户管理接口权限', 'system', 'API', 'p2', 3, 1),
                                                                                                                        ('p6', '角色管理API', 'system:role:api', '角色管理接口权限', 'system', 'API', 'p3', 3, 1),
-                                                                                                                       ('p7', '权限管理API', 'system:permission:api', '权限管理接口权限', 'system', 'API', 'p4', 3, 1);
+                                                                                                                       ('p7', '权限管理API', 'system:permission:api', '权限管理接口权限', 'system', 'API', 'p4', 3, 1),
+                                                                                                                       ('p11', '数据字典管理API', 'system:dictionary:api', '数据字典管理接口权限', 'system', 'API', 'p10', 3, 1);
 
--- 插入日志管理权限
-INSERT INTO `sys_permission` (`id`, `name`, `code`, `description`, `module`, `type`, `parent_id`, `level`, `sort`) VALUES
-('p8', '日志管理', 'system:log', '日志管理', 'system', 'MENU', 'p1', 2, 4),
-('p9', '日志管理API', 'system:log:api', '日志管理接口权限', 'system', 'API', 'p8', 3, 1);
+
 
 -- 为admin角色分配API权限
 INSERT INTO `sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
