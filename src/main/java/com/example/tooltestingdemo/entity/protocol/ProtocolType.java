@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -54,6 +55,12 @@ public class ProtocolType implements Serializable {
      */
     @TableField("description")
     private String description;
+
+    /**
+     * 分类ID
+     */
+    @TableField("classification_id")
+    private Long classificationId;
 
     /**
      * 状态：0-禁用，1-启用
@@ -109,4 +116,22 @@ public class ProtocolType implements Serializable {
      */
     @TableField("version")
     private Integer version;
+
+    /**
+     * 关联项目数量（仅返回前端使用）
+     */
+    @TableField(exist = false)
+    private Long relatedProjectCount;
+
+    /**
+     * 关联模板数量（仅返回前端使用）
+     */
+    @TableField(exist = false)
+    private Long relatedTemplateCount;
+
+    /**
+     * 关联影响范围提示（仅返回前端使用）
+     */
+    @TableField(exist = false)
+    private String relationImpactScope;
 }
