@@ -41,4 +41,10 @@ public class SysConfig {
     
     @TableField(value = "update_user")
     private String updateUser;
+    
+    @TableField(value = "is_built_in")
+    private Integer isBuiltIn = 0;
+    
+    @TableField(value = "status")
+    private Integer status = 1;
 }
