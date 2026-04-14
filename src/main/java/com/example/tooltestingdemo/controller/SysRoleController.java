@@ -70,8 +70,12 @@ public class SysRoleController {
      */
     @GetMapping("/type/{type}")
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<List<SysRole>> getRolesByType(@PathVariable String type) {
-        List<SysRole> roles = roleService.findByType(type);
+    public Result<Page<SysRole>> getRolesByType(
+            @PathVariable String type,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Page<SysRole> pageParam = new Page<>(page, size);
+        Page<SysRole> roles = roleService.findByType(pageParam, type);
         return Result.success("获取角色列表成功", roles);
     }
     

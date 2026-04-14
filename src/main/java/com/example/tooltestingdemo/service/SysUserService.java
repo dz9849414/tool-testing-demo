@@ -61,9 +61,14 @@ public interface SysUserService {
     boolean existsByEmail(String email);
     
     /**
-     * 根据状态查找用户列表
+     * 根据状态获取用户列表
      */
     List<SysUser> findByStatus(Integer status);
+    
+    /**
+     * 分页根据状态获取用户列表
+     */
+    Page<SysUser> findByStatus(Page<SysUser> page, Integer status);
     
     /**
      * 根据角色ID查找用户列表
@@ -106,7 +111,12 @@ public interface SysUserService {
     java.util.Map<String, java.util.List<String>> getPermissionsByUserIdGrouped(String userId);
     
     /**
-     * 根据关键词搜索用户
+     * 搜索用户
      */
     List<SysUser> searchUsers(String keyword);
+    
+    /**
+     * 分页搜索用户
+     */
+    Page<SysUser> searchUsers(Page<SysUser> page, String keyword);
 }

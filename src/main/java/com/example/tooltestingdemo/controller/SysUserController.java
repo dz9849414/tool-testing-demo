@@ -35,8 +35,11 @@ public class SysUserController {
      */
     @GetMapping
     @PermissionCheck(perm = "system:user:api",type = "view" , or = true)
-    public Result<List<SysUser>> getAllUsers() {
-        List<SysUser> users = userService.findAll();
+    public Result<Page<SysUser>> getAllUsers(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Page<SysUser> pageParam = new Page<>(page, size);
+        Page<SysUser> users = userService.findAll(pageParam);
         return Result.success("获取用户列表成功", users);
     }
     
@@ -157,8 +160,12 @@ public class SysUserController {
      */
     @GetMapping("/status/{status}")
     @PermissionCheck(type = "view", perm = "system:user:api", or = true)
-    public Result<List<SysUser>> getUsersByStatus(@PathVariable Integer status) {
-        List<SysUser> users = userService.findByStatus(status);
+    public Result<Page<SysUser>> getUsersByStatus(
+            @PathVariable Integer status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Page<SysUser> pageParam = new Page<>(page, size);
+        Page<SysUser> users = userService.findByStatus(pageParam, status);
         return Result.success("获取用户列表成功", users);
     }
     
@@ -202,8 +209,12 @@ public class SysUserController {
      */
     @GetMapping("/search")
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
-    public Result<List<SysUser>> searchUsers(@RequestParam String search) {
-        List<SysUser> users = userService.searchUsers(search);
+    public Result<Page<SysUser>> searchUsers(
+            @RequestParam String search,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Page<SysUser> pageParam = new Page<>(page, size);
+        Page<SysUser> users = userService.searchUsers(pageParam, search);
         return Result.success("搜索用户成功", users);
     }
 

@@ -42,10 +42,12 @@ public class SysOperationLogController {
      */
     @GetMapping("/user/{userId}")
     @PreAuthorize("@securityService.hasPermission('system:log:api') or @securityService.isCurrentUser(#userId)")
-    public Result<List<SysOperationLog>> getUserOperationLogs(
+    public Result<Page<SysOperationLog>> getUserOperationLogs(
             @PathVariable String userId,
             @RequestParam(required = false) String startTime,
-            @RequestParam(required = false) String endTime) {
+            @RequestParam(required = false) String endTime,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
 
         LocalDateTime start = null;
         LocalDateTime end = null;
@@ -68,7 +70,8 @@ public class SysOperationLogController {
             }
         }
 
-        List<SysOperationLog> logs = operationLogService.getOperationLogsByUserIdAndTimeRange(userId, start, end);
+        Page<SysOperationLog> pageParam = new Page<>(page, size);
+        Page<SysOperationLog> logs = operationLogService.getOperationLogsByUserIdAndTimeRange(pageParam, userId, start, end);
         return Result.success("获取用户操作日志成功", logs);
     }
 

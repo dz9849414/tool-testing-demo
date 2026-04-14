@@ -1,5 +1,6 @@
 package com.example.tooltestingdemo.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.entity.SysUser;
@@ -249,6 +250,53 @@ public class SysUserServiceImpl implements SysUserService {
     }
     
     @Override
+    public Page<SysUser> findByStatus(Page<SysUser> page, Integer status) {
+        // 获取当前登录用户
+        org.springframework.security.core.Authentication authentication = 
+            org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+        
+        // 获取当前用户信息
+        com.example.tooltestingdemo.entity.SysUser currentUser = userMapper.selectByUsername(currentUsername);
+        if (currentUser == null) {
+            Page<SysUser> emptyPage = new Page<>(page.getCurrent(), page.getSize(), 0);
+            emptyPage.setRecords(new java.util.ArrayList<>());
+            return emptyPage;
+        }
+        
+        // 获取当前用户的角色列表
+        List<String> currentRoles = userMapper.selectRolesByUserId(currentUser.getId());
+        
+        // 执行分页查询
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysUser::getStatus, status);
+        Page<SysUser> userPage = userMapper.selectPage(page, queryWrapper);
+        
+        // 根据角色权限过滤结果
+        List<SysUser> filteredUsers = new java.util.ArrayList<>();
+        for (SysUser user : userPage.getRecords()) {
+            // 总是可以查看自己
+            if (user.getId().equals(currentUser.getId())) {
+                filteredUsers.add(user);
+                continue;
+            }
+            
+            // 获取用户的角色列表
+            List<String> userRoles = userMapper.selectRolesByUserId(user.getId());
+            
+            // 检查当前用户是否有权限查看该用户
+            if (canViewUser(currentRoles, userRoles)) {
+                filteredUsers.add(user);
+            }
+        }
+        
+        // 创建新的分页结果
+        Page<SysUser> filteredPage = new Page<>(page.getCurrent(), page.getSize(), userPage.getTotal());
+        filteredPage.setRecords(filteredUsers);
+        return filteredPage;
+    }
+    
+    @Override
     public List<SysUser> findByRoleId(String roleId) {
         // 获取当前登录用户
         org.springframework.security.core.Authentication authentication = 
@@ -424,6 +472,57 @@ public class SysUserServiceImpl implements SysUserService {
         }
         
         return filteredUsers;
+    }
+    
+    @Override
+    public Page<SysUser> searchUsers(Page<SysUser> page, String keyword) {
+        // 获取当前登录用户
+        org.springframework.security.core.Authentication authentication = 
+            org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+        
+        // 获取当前用户信息
+        com.example.tooltestingdemo.entity.SysUser currentUser = userMapper.selectByUsername(currentUsername);
+        if (currentUser == null) {
+            Page<SysUser> emptyPage = new Page<>(page.getCurrent(), page.getSize(), 0);
+            emptyPage.setRecords(new java.util.ArrayList<>());
+            return emptyPage;
+        }
+        
+        // 获取当前用户的角色列表
+        List<String> currentRoles = userMapper.selectRolesByUserId(currentUser.getId());
+        
+        // 执行分页搜索
+        QueryWrapper<SysUser> queryWrapper = new QueryWrapper<>();
+        if (keyword != null && !keyword.isEmpty()) {
+            queryWrapper.likeRight("username", keyword)
+                    .or().likeRight("real_name", keyword)
+                    .or().likeRight("email", keyword);
+        }
+        Page<SysUser> userPage = userMapper.selectPage(page, queryWrapper);
+        
+        // 根据角色权限过滤搜索结果
+        List<SysUser> filteredUsers = new java.util.ArrayList<>();
+        for (SysUser user : userPage.getRecords()) {
+            // 总是可以查看自己
+            if (user.getId().equals(currentUser.getId())) {
+                filteredUsers.add(user);
+                continue;
+            }
+            
+            // 获取用户的角色列表
+            List<String> userRoles = userMapper.selectRolesByUserId(user.getId());
+            
+            // 检查当前用户是否有权限查看该用户
+            if (canViewUser(currentRoles, userRoles)) {
+                filteredUsers.add(user);
+            }
+        }
+        
+        // 创建新的分页结果
+        Page<SysUser> filteredPage = new Page<>(page.getCurrent(), page.getSize(), userPage.getTotal());
+        filteredPage.setRecords(filteredUsers);
+        return filteredPage;
     }
     
     /**

@@ -1,5 +1,7 @@
 package com.example.tooltestingdemo.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.entity.SysRole;
 import com.example.tooltestingdemo.entity.SysRolePermission;
@@ -37,6 +39,13 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     @Override
     public List<SysRole> findByType(String type) {
         return roleMapper.selectByType(type);
+    }
+    
+    @Override
+    public Page<SysRole> findByType(Page<SysRole> page, String type) {
+        LambdaQueryWrapper<SysRole> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysRole::getType, type);
+        return roleMapper.selectPage(page, queryWrapper);
     }
     
     @Override

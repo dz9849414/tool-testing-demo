@@ -22,9 +22,14 @@ public interface SysOperationLogService {
     List<SysOperationLog> getOperationLogsByUserId(String userId);
 
     /**
-     * 根据用户ID和时间范围查询操作日志
+     * 根据用户ID和时间范围获取操作日志列表
      */
     List<SysOperationLog> getOperationLogsByUserIdAndTimeRange(String userId, LocalDateTime startTime, LocalDateTime endTime);
+    
+    /**
+     * 分页根据用户ID和时间范围获取操作日志列表
+     */
+    Page<SysOperationLog> getOperationLogsByUserIdAndTimeRange(Page<SysOperationLog> page, String userId, LocalDateTime startTime, LocalDateTime endTime);
 
     /**
      * 分页查询操作日志

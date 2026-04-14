@@ -57,7 +57,24 @@ public class SysOperationLogServiceImpl extends ServiceImpl<SysOperationLogMappe
         queryWrapper.orderByDesc(SysOperationLog::getCreateTime);
         return list(queryWrapper);
     }
+    
+    @Override
+    public Page<SysOperationLog> getOperationLogsByUserIdAndTimeRange(Page<SysOperationLog> page, String userId, LocalDateTime startTime, LocalDateTime endTime) {
+        LambdaQueryWrapper<SysOperationLog> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysOperationLog::getUserId, userId);
 
+        if (startTime != null) {
+            queryWrapper.ge(SysOperationLog::getCreateTime, startTime);
+        }
+
+        if (endTime != null) {
+            queryWrapper.le(SysOperationLog::getCreateTime, endTime);
+        }
+
+        queryWrapper.orderByDesc(SysOperationLog::getCreateTime);
+        return page(page, queryWrapper);
+    }
+    
     @Override
     public Page<SysOperationLog> getOperationLogsByPage(Page<SysOperationLog> page, String userId, LocalDateTime startTime, LocalDateTime endTime, String module) {
         LambdaQueryWrapper<SysOperationLog> queryWrapper = new LambdaQueryWrapper<>();

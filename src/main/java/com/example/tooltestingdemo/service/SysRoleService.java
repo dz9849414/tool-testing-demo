@@ -1,5 +1,6 @@
 package com.example.tooltestingdemo.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.entity.SysPermission;
 import com.example.tooltestingdemo.entity.SysRole;
@@ -17,9 +18,14 @@ public interface SysRoleService extends IService<SysRole> {
     SysRole findByName(String name);
     
     /**
-     * 根据角色类型查找角色列表
+     * 根据类型获取角色列表
      */
     List<SysRole> findByType(String type);
+    
+    /**
+     * 分页根据类型获取角色列表
+     */
+    Page<SysRole> findByType(Page<SysRole> page, String type);
     
     /**
      * 根据作用域ID查找角色列表
