@@ -67,7 +67,7 @@ public class ExecutionEngine {
             // 1. 构建执行上下文
             TemplateContext context = buildContext(request);
             
-            // 2. 获取执行器
+            // 2. 获取执行器（根据协议类型获取不同的执行器）
             TemplateExecutor executor = executorFactory.getExecutor(context.getProtocolType());
             
             // 3. 验证模板

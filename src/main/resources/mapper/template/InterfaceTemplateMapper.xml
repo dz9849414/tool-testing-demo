@@ -121,4 +121,14 @@
         LIMIT 1
     </select>
 
+    <!-- 根据名称查找模板（用于导入时检查重复） -->
+    <select id="selectByName" resultMap="BaseResultMap">
+        SELECT
+            <include refid="Base_Column_List"/>
+        FROM interface_template
+        WHERE name = #{name}
+        AND (is_deleted = 0 OR is_deleted IS NULL)
+        LIMIT 1
+    </select>
+
 </mapper>

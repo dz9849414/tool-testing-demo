@@ -31,7 +31,7 @@
     <select id="selectByTemplateId" resultMap="BaseResultMap">
         SELECT * FROM template_parameter 
         WHERE template_id = #{templateId} 
-        AND is_enabled = 1 
+--         AND is_enabled = 1
         ORDER BY sort_order ASC
     </select>
 

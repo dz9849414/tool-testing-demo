@@ -9,6 +9,7 @@ import com.example.tooltestingdemo.enums.TemplateEnums;
 import com.example.tooltestingdemo.mapper.template.*;
 import com.example.tooltestingdemo.service.template.InterfaceTemplateService;
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import com.example.tooltestingdemo.util.TemplateConverter;
 import com.example.tooltestingdemo.util.TemplateValidator;
 import com.example.tooltestingdemo.util.VersionGenerator;
@@ -61,13 +62,19 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     @Transactional(rollbackFor = Exception.class)
     public boolean updateTemplate(Long id, InterfaceTemplateDTO dto) {
         return Optional.ofNullable(getById(id)).map(template -> {
+            InterfaceTemplate oldTemplate = new InterfaceTemplate();
+            BeanUtils.copyProperties(template, oldTemplate);
+            InterfaceTemplateVO oldVO = getTemplateDetail(id);
+            
             BeanUtils.copyProperties(dto, template, "id", "version", "status", "createTime");
             String newVersion = VersionGenerator.incrementMinorVersion(template.getVersion());
             template.setVersion(newVersion);
             updateById(template);
             deleteRelatedData(id);
             saveRelatedData(id, dto);
-            saveHistory(template, "UPDATE", "更新模板，版本号：" + newVersion);
+            
+            InterfaceTemplateVO newVO = getTemplateDetail(id);
+            saveHistory(oldTemplate, oldVO, newVO, "UPDATE", "更新模板，版本号：" + newVersion);
             log.info("更新模板成功: id={}, version={}", id, newVersion);
             return true;
         }).orElse(false);
@@ -111,10 +118,11 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         save(copy);
         
         copyRelatedData(id, copy.getId());
-        saveHistory(copy, "COPY", "复制自模板[ID=" + id + "]");
+        InterfaceTemplateVO newVO = getTemplateDetail(copy.getId());
+        saveHistory(copy, null, newVO, "COPY", "复制自模板[ID=" + id + "]");
         
         log.info("复制模板成功: newId={}, sourceId={}", copy.getId(), id);
-        return getTemplateDetail(copy.getId());
+        return newVO;
     }
 
     // ========== 状态变更 ==========
@@ -183,10 +191,15 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         
         templateValidator.validateRequired(dto, id);
         
+        InterfaceTemplateVO oldVO = getTemplateDetail(id);
+        
         doSaveTemplate(id, dto, TemplateEnums.TemplateStatus.PENDING_REVIEW.getCode(),
             VersionGenerator.incrementMajorVersion(existing.getVersion()), "提交审核");
         
-        return getTemplateDetail(id);
+        InterfaceTemplateVO newVO = getTemplateDetail(id);
+        saveHistory(existing, oldVO, newVO, "PUBLISH", "提交审核，版本号：" + existing.getVersion());
+        
+        return newVO;
     }
 
     @Override
@@ -227,17 +240,28 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
             ? VersionGenerator.incrementMinorVersion(existing.getVersion())
             : VersionGenerator.generateInitialVersion();
         
+        InterfaceTemplateVO oldVO = null;
         if (isUpdate) {
             Optional.ofNullable(TemplateEnums.TemplateStatus.getByCode(existing.getStatus()))
                 .filter(TemplateEnums.TemplateStatus::isEditable)
                 .orElseThrow(() -> new RuntimeException("当前状态不可编辑"));
+            
+            oldVO = getTemplateDetail(id);
             deleteRelatedData(id);
         }
         
         Long templateId = doSaveTemplate(id, dto, TemplateEnums.TemplateStatus.DRAFT.getCode(), newVersion, 
             isUpdate ? "更新草稿" : "创建草稿");
         
-        return getTemplateDetail(templateId);
+        InterfaceTemplateVO newVO = getTemplateDetail(templateId);
+        if (isUpdate) {
+            saveHistory(existing, oldVO, newVO, "UPDATE", "更新草稿，版本号：" + existing.getVersion());
+        } else {
+            InterfaceTemplate newTemplate = getById(templateId);
+            saveHistory(newTemplate, null, newVO, "CREATE", "创建草稿，版本号：" + newVersion);
+        }
+        
+        return newVO;
     }
 
     private Long doSaveTemplate(Long id, InterfaceTemplateDTO dto, Integer status, String version, String desc) {
@@ -258,7 +282,6 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         
         saveOrUpdate(template);
         saveRelatedData(template.getId(), dto);
-        saveHistory(template, id == null ? "CREATE" : "UPDATE", desc + "，版本号：" + version);
         
         log.info("{}成功: id={}, version={}", desc, template.getId(), version);
         return template.getId();
@@ -274,9 +297,11 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
             if (!requiredStatus.equals(t.getStatus())) {
                 throw new RuntimeException(errorMsg);
             }
+            InterfaceTemplateVO oldVO = getTemplateDetail(id);
             t.setStatus(newStatus);
             updateById(t);
-            saveHistory(t, opType, desc);
+            InterfaceTemplateVO newVO = getTemplateDetail(id);
+            saveHistory(t, oldVO, newVO, opType, desc);
             return true;
         }).orElse(false);
     }
@@ -290,9 +315,13 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
 
     private boolean updateTemplate(Long id, Consumer<InterfaceTemplate> updater, String opType, String desc) {
         return Optional.ofNullable(getById(id)).map(t -> {
+            InterfaceTemplateVO oldVO = getTemplateDetail(id);
             updater.accept(t);
             boolean result = updateById(t);
-            if (result) saveHistory(t, opType, desc);
+            if (result) {
+                InterfaceTemplateVO newVO = getTemplateDetail(id);
+                saveHistory(t, oldVO, newVO, opType, desc);
+            }
             return result;
         }).orElse(false);
     }
@@ -411,7 +440,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         fileMapper.deleteByTemplateId(templateId);
     }
 
-    private void saveHistory(InterfaceTemplate template, String opType, String summary) {
+    private void saveHistory(InterfaceTemplate template, InterfaceTemplateVO oldVO, InterfaceTemplateVO newVO, String opType, String summary) {
         TemplateHistory h = new TemplateHistory();
         h.setTemplateId(template.getId());
         h.setVersion(template.getVersion());
@@ -422,12 +451,43 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         h.setCreateId(Optional.ofNullable(template.getCreateId()).orElse(1L));
         h.setCreateName(Optional.ofNullable(template.getCreateName()).orElse("管理员"));
         
-        // 保存完整模板快照
-        InterfaceTemplateVO templateVO = getTemplateDetail(template.getId());
-        if (templateVO != null) {
-            h.setTemplateSnapshot(JSON.toJSONString(templateVO));
+        // 保存变更前快照
+        if (oldVO != null) {
+            h.setTemplateSnapshot(JSON.toJSONString(oldVO));
+            if (newVO != null) {
+                h.setChangeDetails(buildChangeDetails(oldVO, newVO));
+            }
+        } else if (newVO != null) {
+            // 创建/复制操作：保存新数据快照
+            h.setTemplateSnapshot(JSON.toJSONString(newVO));
         }
         
         historyMapper.insert(h);
+    }
+
+    private String buildChangeDetails(InterfaceTemplateVO oldVO, InterfaceTemplateVO newVO) {
+        try {
+            JSONObject oldJson = JSON.parseObject(JSON.toJSONString(oldVO));
+            JSONObject newJson = JSON.parseObject(JSON.toJSONString(newVO));
+            JSONObject before = new JSONObject();
+            JSONObject after = new JSONObject();
+            
+            for (String key : oldJson.keySet()) {
+                Object oldVal = oldJson.get(key);
+                Object newVal = newJson.get(key);
+                if (!Objects.equals(oldVal, newVal)) {
+                    before.put(key, oldVal);
+                    after.put(key, newVal);
+                }
+            }
+            
+            JSONObject diff = new JSONObject();
+            diff.put("before", before);
+            diff.put("after", after);
+            return diff.toJSONString();
+        } catch (Exception e) {
+            log.warn("构建变更详情失败: {}", e.getMessage());
+            return null;
+        }
     }
 }
