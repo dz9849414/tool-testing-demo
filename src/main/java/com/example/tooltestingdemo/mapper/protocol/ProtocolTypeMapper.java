@@ -2,6 +2,8 @@ package com.example.tooltestingdemo.mapper.protocol;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 /**
  * <p>
@@ -12,5 +14,21 @@ import com.example.tooltestingdemo.entity.protocol.ProtocolType;
  * @since 2026-04-11
  */
 public interface ProtocolTypeMapper extends BaseMapper<ProtocolType> {
+
+    @Select("""
+            SELECT COUNT(*)
+            FROM protocol_project_relation
+            WHERE protocol_id = #{protocolId}
+              AND (is_deleted = 0 OR is_deleted IS NULL)
+            """)
+    Long countRelatedProjects(@Param("protocolId") Long protocolId);
+
+    @Select("""
+            SELECT COUNT(*)
+            FROM interface_template
+            WHERE protocol_id = #{protocolId}
+              AND (is_deleted = 0 OR is_deleted IS NULL)
+            """)
+    Long countRelatedTemplates(@Param("protocolId") Long protocolId);
 
 }

@@ -15,7 +15,9 @@ import java.util.List;
  */
 public interface IProtocolTypeService extends IService<ProtocolType> {
 
-    ProtocolType createProtocolTyp(ProtocolType protocolType);
+    ProtocolType createProtocolType(ProtocolType protocolType);
 
     List<ProtocolType> getProtocolTypeList(ProtocolType protocolType);
+
+    ProtocolType modifyProtocolType(ProtocolType protocolType);
 }
