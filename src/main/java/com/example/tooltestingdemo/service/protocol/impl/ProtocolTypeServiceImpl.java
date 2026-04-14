@@ -13,11 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * <p>
@@ -45,16 +41,9 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         // 校验协议标识符（协议编码）唯一性
         LambdaQueryWrapper<ProtocolType> lambdaQuery = new LambdaQueryWrapper<>();
         lambdaQuery.eq(ProtocolType::getProtocolIdentifier, protocolType.getProtocolIdentifier());
-        lambdaQuery.eq(ProtocolType::getIsDeleted, 0);
         if (protocolTypeMapper.selectCount(lambdaQuery) > 0) {
             throw new RuntimeException("协议编码重复，请重新输入！");
         }
-
-        // 分类ID
-        if (protocolType.getClassificationId() == null) {
-            protocolType.setClassificationId(1L);
-        }
-
 
         if (protocolType.getCreateId() == null) {
             protocolType.setCreateId(1L);
@@ -95,7 +84,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         }
 
         ProtocolType existing = protocolTypeMapper.selectById(protocolType.getId());
-        if (existing == null || Integer.valueOf(1).equals(existing.getIsDeleted())) {
+        if (existing == null) {
             throw new RuntimeException("协议类型不存在！");
         }
 
@@ -122,7 +111,6 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         updateEntity.setStatus(existing.getStatus());
         updateEntity.setProtocolName(protocolType.getProtocolName());
         updateEntity.setDescription(protocolType.getDescription());
-        updateEntity.setClassificationId(protocolType.getClassificationId());
         updateEntity.setUpdateId(protocolType.getUpdateId());
 
         if (protocolTypeMapper.updateById(updateEntity) <= 0) {
@@ -173,7 +161,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
 
         for (Long id : uniqueIds) {
             ProtocolType existing = protocolTypeMapper.selectById(id);
-            if (existing == null || Integer.valueOf(1).equals(existing.getIsDeleted())) {
+            if (existing == null) {
                 undeletableItems.add(buildUndeletableItem(id, null, 0L, 0L, "协议类型不存在"));
                 continue;
             }
@@ -234,7 +222,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
 
     private ProtocolType getExistingProtocolType(Long id) {
         ProtocolType existing = protocolTypeMapper.selectById(id);
-        if (existing == null || Integer.valueOf(1).equals(existing.getIsDeleted())) {
+        if (existing == null) {
             throw new RuntimeException("协议类型不存在！");
         }
         return existing;
@@ -252,7 +240,6 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         Long operatorId = getCurrentOperatorId();
         ProtocolType deleteEntity = new ProtocolType();
         deleteEntity.setId(existing.getId());
-        deleteEntity.setIsDeleted(1);
         deleteEntity.setDeletedBy(operatorId);
         deleteEntity.setDeletedTime(LocalDateTime.now());
         deleteEntity.setUpdateId(operatorId);
@@ -260,6 +247,8 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         if (protocolTypeMapper.updateById(deleteEntity) <= 0) {
             throw new RuntimeException("协议类型删除失败！");
         }
+
+        protocolTypeMapper.deleteById(deleteEntity.getId());
 
         log.info("删除协议类型成功: id={}, name={}, operatorId={}", existing.getId(), existing.getProtocolName(), operatorId);
     }
