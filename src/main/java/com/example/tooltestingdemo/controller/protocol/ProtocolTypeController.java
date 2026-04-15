@@ -5,11 +5,13 @@ import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.service.protocol.IProtocolTypeService;
 import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
+import com.example.tooltestingdemo.vo.ProtocolTypeImportResultVO;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 
@@ -52,6 +54,36 @@ public class ProtocolTypeController {
     public Result<IPage<ProtocolType>> getProtocolTypeList(ProtocolType protocolType) {
         IPage<ProtocolType> protocolTypePage = protocolTypeService.getProtocolTypeList(protocolType);
         return Result.success(protocolTypePage);
+    }
+
+    /**
+     * 下载协议类型导入模板
+     */
+    @GetMapping("/import/template")
+    public void downloadImportTemplate(HttpServletResponse response) throws IOException {
+        protocolTypeService.downloadImportTemplate(response);
+    }
+
+    /**
+     * 导入协议类型
+     */
+    @PostMapping("/import")
+    public Result<ProtocolTypeImportResultVO> importProtocolTypes(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "strategy", required = false, defaultValue = "INCREMENTAL") String strategy) throws IOException {
+        if (file == null || file.isEmpty()) {
+            return Result.error("导入文件不能为空");
+        }
+        ProtocolTypeImportResultVO result = protocolTypeService.importProtocolTypes(file, strategy);
+        return Result.success(result.getMessage(), result);
+    }
+
+    /**
+     * 下载导入失败原因文件
+     */
+    @GetMapping("/import/failures/{reportId}")
+    public void downloadImportFailureReport(@PathVariable String reportId, HttpServletResponse response) throws IOException {
+        protocolTypeService.downloadImportFailureReport(reportId, response);
     }
 
     /**
