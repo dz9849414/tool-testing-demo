@@ -252,11 +252,130 @@ INSERT INTO `sys_config` (`id`, `config_key`, `config_value`, `config_name`, `de
 -- ===========================================
 
 -- 插入API类型的权限
-INSERT INTO `sys_permission` (`id`, `name`, `code`, `description`, `module`, `type`, `parent_id`, `level`, `sort`) VALUES
+INSERT IGNORE INTO `sys_permission` (`id`, `name`, `code`, `description`, `module`, `type`, `parent_id`, `level`, `sort`) VALUES
                                                                                                                        ('p5', '用户管理API', 'system:user:api', '用户管理接口权限', 'system', 'API', 'p2', 3, 1),
                                                                                                                        ('p6', '角色管理API', 'system:role:api', '角色管理接口权限', 'system', 'API', 'p3', 3, 1),
                                                                                                                        ('p7', '权限管理API', 'system:permission:api', '权限管理接口权限', 'system', 'API', 'p4', 3, 1),
                                                                                                                        ('p11', '数据字典管理API', 'system:dictionary:api', '数据字典管理接口权限', 'system', 'API', 'p10', 3, 1);
+
+-- ===========================================
+-- 补充协议配置管理和测试模板管理模块的权限记录
+-- ===========================================
+
+-- 插入协议配置管理模块的权限记录（使用INSERT IGNORE避免重复）
+INSERT IGNORE INTO `sys_permission` (`id`, `name`, `code`, `description`, `module`, `type`, `parent_id`, `level`, `sort`) VALUES
+-- ====================== 协议配置管理模块 ======================
+-- 一级菜单权限
+('protocol_m1', '协议配置管理', 'protocol:config', '协议配置管理模块', 'protocol', 'MENU', '0', 1, 10),
+
+-- 二级菜单权限
+('protocol_m2', '协议类型管理', 'protocol:type', '协议类型管理', 'protocol', 'MENU', 'protocol_m1', 2, 10),
+('protocol_m3', '协议参数配置', 'protocol:param', '协议参数配置', 'protocol', 'MENU', 'protocol_m1', 2, 20),
+('protocol_m4', '协议测试', 'protocol:test', '协议测试功能', 'protocol', 'MENU', 'protocol_m1', 2, 30),
+('protocol_m5', '协议搜索与过滤', 'protocol:search', '协议搜索与过滤', 'protocol', 'MENU', 'protocol_m1', 2, 40),
+('protocol_m6', '协议导入导出', 'protocol:importExport', '协议导入导出', 'protocol', 'MENU', 'protocol_m1', 2, 50),
+('protocol_m7', '协议权限设置', 'protocol:permission', '协议权限设置', 'protocol', 'MENU', 'protocol_m1', 2, 60),
+('protocol_m8', '协议状态管理', 'protocol:status', '协议状态管理', 'protocol', 'MENU', 'protocol_m1', 2, 70),
+('protocol_m9', 'CAD软件配置', 'protocol:cad', 'CAD软件配置', 'protocol', 'MENU', 'protocol_m1', 2, 80),
+('protocol_m10', 'ERP软件配置', 'protocol:erp', 'ERP软件配置', 'protocol', 'MENU', 'protocol_m1', 2, 90),
+
+-- 三级功能权限 - 协议类型管理
+('protocol_m11', '新增协议类型', 'protocol:type:add', '新增协议类型功能', 'protocol', 'BUTTON', 'protocol_m2', 3, 1),
+('protocol_m12', '编辑协议类型', 'protocol:type:edit', '编辑协议类型功能', 'protocol', 'BUTTON', 'protocol_m2', 3, 2),
+('protocol_m13', '删除协议类型', 'protocol:type:delete', '删除协议类型功能', 'protocol', 'BUTTON', 'protocol_m2', 3, 3),
+('protocol_m14', '查询协议类型', 'protocol:type:query', '查询协议类型功能', 'protocol', 'BUTTON', 'protocol_m2', 3, 4),
+('protocol_m15', '按类型筛选协议', 'protocol:type:filter', '按类型筛选协议功能', 'protocol', 'BUTTON', 'protocol_m2', 3, 5),
+('protocol_m16', '导出协议类型列表', 'protocol:type:export', '导出协议类型列表功能', 'protocol', 'BUTTON', 'protocol_m2', 3, 6),
+('protocol_m17', '导入协议类型', 'protocol:type:import', '导入协议类型功能', 'protocol', 'BUTTON', 'protocol_m2', 3, 7),
+('protocol_m18', '协议类型状态管理', 'protocol:type:status', '协议类型状态管理功能', 'protocol', 'BUTTON', 'protocol_m2', 3, 8),
+('protocol_m19', '协议类型关联项目', 'protocol:type:relateProject', '协议类型关联项目功能', 'protocol', 'BUTTON', 'protocol_m2', 3, 9),
+
+-- 三级功能权限 - 协议参数配置
+('protocol_m20', '配置协议URL', 'protocol:param:url', '配置协议URL功能', 'protocol', 'BUTTON', 'protocol_m3', 3, 10),
+('protocol_m21', '配置协议端口', 'protocol:param:port', '配置协议端口功能', 'protocol', 'BUTTON', 'protocol_m3', 3, 11),
+('protocol_m22', '配置认证方式', 'protocol:param:auth', '配置认证方式功能', 'protocol', 'BUTTON', 'protocol_m3', 3, 12),
+('protocol_m23', '配置超时时间', 'protocol:param:timeout', '配置超时时间功能', 'protocol', 'BUTTON', 'protocol_m3', 3, 13),
+('protocol_m24', '配置重试机制', 'protocol:param:retry', '配置重试机制功能', 'protocol', 'BUTTON', 'protocol_m3', 3, 14),
+('protocol_m25', '配置数据格式', 'protocol:param:format', '配置数据格式功能', 'protocol', 'BUTTON', 'protocol_m3', 3, 15),
+('protocol_m26', '配置协议参数模板', 'protocol:param:template', '配置协议参数模板功能', 'protocol', 'BUTTON', 'protocol_m3', 3, 16),
+('protocol_m27', '参数配置导入导出', 'protocol:param:importExport', '参数配置导入导出功能', 'protocol', 'BUTTON', 'protocol_m3', 3, 17),
+
+-- 三级功能权限 - 协议测试
+('protocol_m28', '测试连接', 'protocol:test:connect', '测试连接功能', 'protocol', 'BUTTON', 'protocol_m4', 3, 18),
+('protocol_m29', '测试数据传输', 'protocol:test:transfer', '测试数据传输功能', 'protocol', 'BUTTON', 'protocol_m4', 3, 19),
+('protocol_m30', '测试结果导出', 'protocol:test:export', '测试结果导出功能', 'protocol', 'BUTTON', 'protocol_m4', 3, 20),
+('protocol_m31', '测试参数配置', 'protocol:test:param', '测试参数配置功能', 'protocol', 'BUTTON', 'protocol_m4', 3, 21),
+
+-- 三级功能权限 - 协议搜索与过滤
+('protocol_m32', '按名称/类型/状态搜索', 'protocol:search:basic', '按名称/类型/状态搜索功能', 'protocol', 'BUTTON', 'protocol_m5', 3, 22),
+('protocol_m33', '按创建时间/更新时间筛选', 'protocol:search:time', '按创建时间/更新时间筛选功能', 'protocol', 'BUTTON', 'protocol_m5', 3, 23),
+('protocol_m34', '组合条件搜索', 'protocol:search:complex', '组合条件搜索功能', 'protocol', 'BUTTON', 'protocol_m5', 3, 24),
+('protocol_m35', '导出搜索结果', 'protocol:search:export', '导出搜索结果功能', 'protocol', 'BUTTON', 'protocol_m5', 3, 25),
+
+-- 三级功能权限 - 协议导入导出
+('protocol_m36', '导入协议配置', 'protocol:importExport:import', '导入协议配置功能', 'protocol', 'BUTTON', 'protocol_m6', 3, 26),
+('protocol_m37', '导出协议配置', 'protocol:importExport:export', '导出协议配置功能', 'protocol', 'BUTTON', 'protocol_m6', 3, 27),
+('protocol_m38', '导入格式验证', 'protocol:importExport:validate', '导入格式验证功能', 'protocol', 'BUTTON', 'protocol_m6', 3, 28),
+('protocol_m39', '导入错误处理', 'protocol:importExport:error', '导入错误处理功能', 'protocol', 'BUTTON', 'protocol_m6', 3, 29),
+('protocol_m40', '导入参数配置', 'protocol:importExport:paramImport', '导入参数配置功能', 'protocol', 'BUTTON', 'protocol_m6', 3, 30),
+('protocol_m41', '导出参数配置', 'protocol:importExport:paramExport', '导出参数配置功能', 'protocol', 'BUTTON', 'protocol_m6', 3, 31),
+
+-- 三级功能权限 - 协议权限设置
+('protocol_m42', '为角色设置权限', 'protocol:permission:role', '为角色设置权限功能', 'protocol', 'BUTTON', 'protocol_m7', 3, 32),
+('protocol_m43', '为用户设置权限', 'protocol:permission:user', '为用户设置权限功能', 'protocol', 'BUTTON', 'protocol_m7', 3, 33),
+('protocol_m44', '权限分配', 'protocol:permission:assign', '权限分配功能', 'protocol', 'BUTTON', 'protocol_m7', 3, 34),
+('protocol_m45', '权限查看', 'protocol:permission:view', '权限查看功能', 'protocol', 'BUTTON', 'protocol_m7', 3, 35),
+('protocol_m46', '权限修改', 'protocol:permission:edit', '权限修改功能', 'protocol', 'BUTTON', 'protocol_m7', 3, 36),
+('protocol_m47', '权限删除', 'protocol:permission:delete', '权限删除功能', 'protocol', 'BUTTON', 'protocol_m7', 3, 37),
+('protocol_m48', '权限批量设置', 'protocol:permission:batch', '权限批量设置功能', 'protocol', 'BUTTON', 'protocol_m7', 3, 38),
+('protocol_m49', '权限导出', 'protocol:permission:export', '权限导出功能', 'protocol', 'BUTTON', 'protocol_m7', 3, 39),
+('protocol_m50', '权限导入', 'protocol:permission:import', '权限导入功能', 'protocol', 'BUTTON', 'protocol_m7', 3, 40),
+
+-- 三级功能权限 - 协议状态管理
+('protocol_m51', '状态批量操作', 'protocol:status:batch', '状态批量操作功能', 'protocol', 'BUTTON', 'protocol_m8', 3, 41),
+
+-- 三级功能权限 - CAD软件配置
+('protocol_m52', '配置NX软件模拟接口', 'protocol:cad:nx', '配置NX软件模拟接口功能', 'protocol', 'BUTTON', 'protocol_m9', 3, 42),
+('protocol_m53', '配置CATIA软件模拟接口', 'protocol:cad:catia', '配置CATIA软件模拟接口功能', 'protocol', 'BUTTON', 'protocol_m9', 3, 43),
+('protocol_m54', '配置中望CAD软件模拟接口', 'protocol:cad:zwcad', '配置中望CAD软件模拟接口功能', 'protocol', 'BUTTON', 'protocol_m9', 3, 44),
+('protocol_m55', '配置自定义CAD软件模拟接口', 'protocol:cad:custom', '配置自定义CAD软件模拟接口功能', 'protocol', 'BUTTON', 'protocol_m9', 3, 45),
+('protocol_m56', '配置CAD软件STEP数据交换格式', 'protocol:cad:step', '配置CAD软件STEP数据交换格式功能', 'protocol', 'BUTTON', 'protocol_m9', 3, 46),
+('protocol_m57', '配置CAD软件IGES数据交换格式', 'protocol:cad:iges', '配置CAD软件IGES数据交换格式功能', 'protocol', 'BUTTON', 'protocol_m9', 3, 47),
+('protocol_m58', '配置CAD软件自定义数据交换格式', 'protocol:cad:customFormat', '配置CAD软件自定义数据交换格式功能', 'protocol', 'BUTTON', 'protocol_m9', 3, 48),
+('protocol_m59', 'CAD接口连通性测试', 'protocol:cad:test', 'CAD接口连通性测试功能', 'protocol', 'BUTTON', 'protocol_m9', 3, 49),
+('protocol_m60', '配置CAD接口认证方式', 'protocol:cad:auth', '配置CAD接口认证方式功能', 'protocol', 'BUTTON', 'protocol_m9', 3, 50),
+
+-- 三级功能权限 - ERP软件配置
+('protocol_m61', '配置浪潮ERP软件模拟接口', 'protocol:erp:langchao', '配置浪潮ERP软件模拟接口功能', 'protocol', 'BUTTON', 'protocol_m10', 3, 51),
+('protocol_m62', '配置自定义ERP软件模拟接口', 'protocol:erp:custom', '配置自定义ERP软件模拟接口功能', 'protocol', 'BUTTON', 'protocol_m10', 3, 52),
+('protocol_m63', '配置ERP软件通用BOM表数据交换格式', 'protocol:erp:bom', '配置ERP软件通用BOM表数据交换格式功能', 'protocol', 'BUTTON', 'protocol_m10', 3, 53),
+('protocol_m64', '配置ERP软件自定义数据交换格式', 'protocol:erp:customFormat', '配置ERP软件自定义数据交换格式功能', 'protocol', 'BUTTON', 'protocol_m10', 3, 54),
+('protocol_m65', 'ERP接口连通性测试', 'protocol:erp:test', 'ERP接口连通性测试功能', 'protocol', 'BUTTON', 'protocol_m10', 3, 55),
+
+-- ====================== 测试模板管理模块 ======================
+-- 一级菜单权限
+('test_m66', '测试模板管理', 'test:template', '测试模板管理模块', 'test', 'MENU', '0', 1, 20),
+
+-- 二级菜单权限
+('test_m67', 'ERP软件配置（自动化）', 'test:template:erpConfig', 'ERP软件配置（自动化）', 'test', 'MENU', 'test_m66', 2, 1),
+('test_m68', '模板创建', 'test:template:create', '模板创建', 'test', 'MENU', 'test_m66', 2, 20),
+('test_m69', '模板编辑', 'test:template:edit', '模板编辑', 'test', 'MENU', 'test_m66', 2, 30),
+('test_m70', '模板删除', 'test:template:delete', '模板删除', 'test', 'MENU', 'test_m66', 2, 40),
+('test_m71', '模板搜索', 'test:template:search', '模板搜索', 'test', 'MENU', 'test_m66', 2, 50),
+('test_m72', '模板版本管理', 'test:template:version', '模板版本管理', 'test', 'MENU', 'test_m66', 2, 60),
+('test_m73', '模板关联任务', 'test:template:relateTask', '模板关联任务', 'test', 'MENU', 'test_m66', 2, 70),
+('test_m74', '模板参数配置', 'test:template:param', '模板参数配置', 'test', 'MENU', 'test_m66', 2, 80),
+
+-- 三级功能权限 - ERP软件配置（自动化）
+('test_m75', '配置ERP接口认证方式', 'test:template:erp:auth', '配置ERP接口认证方式功能', 'test', 'BUTTON', 'test_m67', 3, 56),
+('test_m76', '并发接口配置', 'test:template:erp:concurrency', '并发接口配置功能', 'test', 'BUTTON', 'test_m67', 3, 57),
+('test_m77', '自动化脚本配置', 'test:template:erp:script', '自动化脚本配置功能', 'test', 'BUTTON', 'test_m67', 3, 58),
+('test_m78', '自动化日志记录配置', 'test:template:erp:log', '自动化日志记录配置功能', 'test', 'BUTTON', 'test_m67', 3, 59),
+('test_m79', '接口传输报告导出', 'test:template:erp:export', '接口传输报告导出功能', 'test', 'BUTTON', 'test_m67', 3, 60),
+
+-- 三级功能权限 - 模板创建
+('test_m80', '新建测试模板', 'test:template:create:add', '新建测试模板功能', 'test', 'BUTTON', 'test_m68', 3, 61),
+('test_m81', '模板基本信息配置', 'test:template:create:info', '模板基本信息配置功能', 'test', 'BUTTON', 'test_m68', 3, 62);
 
 
 
@@ -271,6 +390,35 @@ INSERT INTO `sys_role_permission` (`id`, `role_id`, `permission_id`, `create_tim
 -- 为manager角色分配部分API权限
 INSERT INTO `sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
     ('rp8', 'manager', 'p5', NOW(), 'admin');
+
+-- ===========================================
+-- 为admin角色分配新增的权限
+-- ===========================================
+
+-- 为admin角色分配协议配置管理模块的所有权限（使用INSERT IGNORE避免重复）
+INSERT IGNORE INTO `sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
+-- 协议配置管理模块权限分配
+('rp_protocol_m1', 'admin', 'protocol_m1', NOW(), 'admin'),
+('rp_protocol_m2', 'admin', 'protocol_m2', NOW(), 'admin'),
+('rp_protocol_m3', 'admin', 'protocol_m3', NOW(), 'admin'),
+('rp_protocol_m4', 'admin', 'protocol_m4', NOW(), 'admin'),
+('rp_protocol_m5', 'admin', 'protocol_m5', NOW(), 'admin'),
+('rp_protocol_m6', 'admin', 'protocol_m6', NOW(), 'admin'),
+('rp_protocol_m7', 'admin', 'protocol_m7', NOW(), 'admin'),
+('rp_protocol_m8', 'admin', 'protocol_m8', NOW(), 'admin'),
+('rp_protocol_m9', 'admin', 'protocol_m9', NOW(), 'admin'),
+('rp_protocol_m10', 'admin', 'protocol_m10', NOW(), 'admin'),
+
+-- 为admin角色分配测试模板管理模块的所有权限
+('rp_test_m66', 'admin', 'test_m66', NOW(), 'admin'),
+('rp_test_m67', 'admin', 'test_m67', NOW(), 'admin'),
+('rp_test_m68', 'admin', 'test_m68', NOW(), 'admin'),
+('rp_test_m69', 'admin', 'test_m69', NOW(), 'admin'),
+('rp_test_m70', 'admin', 'test_m70', NOW(), 'admin'),
+('rp_test_m71', 'admin', 'test_m71', NOW(), 'admin'),
+('rp_test_m72', 'admin', 'test_m72', NOW(), 'admin'),
+('rp_test_m73', 'admin', 'test_m73', NOW(), 'admin'),
+('rp_test_m74', 'admin', 'test_m74', NOW(), 'admin');
 
 CREATE TABLE sys_menu (
                           id VARCHAR(50) NOT NULL COMMENT '菜单ID',

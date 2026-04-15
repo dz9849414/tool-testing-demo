@@ -1,5 +1,6 @@
 package com.example.tooltestingdemo.exception;
 
+import com.example.tooltestingdemo.common.ErrorStatus;
 import com.example.tooltestingdemo.common.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -38,14 +39,9 @@ public class GlobalExceptionHandler {
      * 处理权限不足异常
      */
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Map<String, String>> handleAccessDeniedException(AccessDeniedException e) {
+    public Result<Object> handleAccessDeniedException(AccessDeniedException e) {
         log.warn("权限不足: {}", e.getMessage());
-
-        Map<String, String> response = new HashMap<>();
-        response.put("error", "权限不足");
-        response.put("message", "您没有权限执行此操作");
-
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+        return Result.error(ErrorStatus.FORBIDDEN.getCode(), "您没有权限执行此操作");
     }
 
     /**
