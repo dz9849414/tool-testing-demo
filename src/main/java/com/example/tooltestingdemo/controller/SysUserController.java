@@ -352,6 +352,12 @@ public class SysUserController {
             return Result.error(400, "审批人不存在");
         }
         
+        // 检查用户是否存在
+        SysUser user = userService.findById(id);
+        if (user == null) {
+            return Result.error(ErrorStatus.NOT_FOUND, "用户不存在");
+        }
+        
         // 更新用户状态并记录审批人信息
         userService.updateUserStatusWithApproval(id, status, approver.getId());
         

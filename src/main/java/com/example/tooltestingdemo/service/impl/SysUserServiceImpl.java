@@ -351,12 +351,11 @@ public class SysUserServiceImpl implements SysUserService {
     @Transactional
     public void updateUserStatusWithApproval(String userId, Integer status, String approverId) {
         SysUser user = userMapper.selectById(userId);
-        if (user != null) {
-            user.setStatus(status);
-            user.setApproverId(approverId);
-            user.setApproveTime(LocalDateTime.now());
-            userMapper.updateById(user);
-        }
+        
+        user.setStatus(status);
+        user.setApproverId(approverId);
+        user.setApproveTime(LocalDateTime.now());
+        userMapper.updateById(user);
     }
 
     @Override
