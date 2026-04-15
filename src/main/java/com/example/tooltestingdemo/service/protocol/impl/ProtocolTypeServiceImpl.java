@@ -1,19 +1,33 @@
 package com.example.tooltestingdemo.service.protocol.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
+import com.example.tooltestingdemo.mapper.SysUserMapper;
 import com.example.tooltestingdemo.mapper.protocol.ProtocolTypeMapper;
 import com.example.tooltestingdemo.service.SecurityService;
 import com.example.tooltestingdemo.service.protocol.IProtocolTypeService;
 import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
+import com.example.tooltestingdemo.vo.ProtocolTypeExportVO;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
+import org.apache.poi.xssf.usermodel.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URLEncoder;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * <p>
@@ -27,11 +41,18 @@ import java.util.*;
 @Service
 public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, ProtocolType> implements IProtocolTypeService {
 
+    private static final DateTimeFormatter EXPORT_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final String EXPORT_FILE_NAME = "协议类型导出";
+
     private final ProtocolTypeMapper protocolTypeMapper;
+    private final SysUserMapper sysUserMapper;
     private final SecurityService securityService;
 
-    public ProtocolTypeServiceImpl(ProtocolTypeMapper protocolTypeMapper, SecurityService securityService) {
+    public ProtocolTypeServiceImpl(ProtocolTypeMapper protocolTypeMapper,
+                                   SysUserMapper sysUserMapper,
+                                   SecurityService securityService) {
         this.protocolTypeMapper = protocolTypeMapper;
+        this.sysUserMapper = sysUserMapper;
         this.securityService = securityService;
     }
 
@@ -45,9 +66,8 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
             throw new RuntimeException("协议编码重复，请重新输入！");
         }
 
-        if (protocolType.getCreateId() == null) {
-            protocolType.setCreateId(1L);
-        }
+        protocolType.setCreateId(getCurrentOperatorId());
+
 
         save(protocolType);
         log.info("新增协议类型成功: id={}, name={}", protocolType.getId(), protocolType.getProtocolName());
@@ -55,25 +75,40 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     }
 
     @Override
-    public List<ProtocolType> getProtocolTypeList(ProtocolType protocolType) {
-        LambdaQueryWrapper<ProtocolType> lambdaQuery = new LambdaQueryWrapper<>();
+    public IPage<ProtocolType> getProtocolTypeList(ProtocolType protocolType) {
+        ProtocolType query = protocolType == null ? new ProtocolType() : protocolType;
+        return protocolTypeMapper.selectPage(query.toPage(), buildQueryWrapper(query));
+    }
 
-        // 协议名称模糊查询（非空时）
-        if (StringUtils.isNotBlank(protocolType.getProtocolName())) {
-            lambdaQuery.like(ProtocolType::getProtocolName, protocolType.getProtocolName());
+    @Override
+    public void exportProtocolTypes(ProtocolType protocolType, HttpServletResponse response) throws IOException {
+        List<ProtocolType> protocolTypes = listProtocolTypes(protocolType);
+        List<ProtocolTypeExportVO> exportRows = buildExportRows(protocolTypes);
+
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setCharacterEncoding("UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename="
+                + URLEncoder.encode(EXPORT_FILE_NAME + ".xlsx", "UTF-8").replace("+", "%20"));
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); OutputStream outputStream = response.getOutputStream()) {
+            XSSFSheet sheet = workbook.createSheet("协议类型");
+            XSSFCellStyle headerStyle = createHeaderStyle(workbook);
+            XSSFCellStyle dataStyle = createDataStyle(workbook);
+
+            String[] headers = {"类型编码", "名称", "分类", "状态", "创建人", "创建时间", "描述"};
+            int[] columnWidths = {20, 24, 18, 12, 18, 24, 40};
+            writeHeaderRow(sheet, headerStyle, headers, columnWidths);
+            writeDataRows(sheet, dataStyle, exportRows);
+
+            workbook.write(outputStream);
+            outputStream.flush();
         }
 
-        // 适用系统精确查询（非空时）
-        if (protocolType.getApplicableSystem() != null) {
-            lambdaQuery.eq(ProtocolType::getApplicableSystem, protocolType.getApplicableSystem());
-        }
-
-        // 状态精确查询（非空时）
-        if (protocolType.getStatus() != null) {
-            lambdaQuery.eq(ProtocolType::getStatus, protocolType.getStatus());
-        }
-
-        return protocolTypeMapper.selectList(lambdaQuery);
+        log.info("导出协议类型成功: total={}, filterName={}, filterSystem={}, filterStatus={}",
+                exportRows.size(),
+                protocolType != null ? protocolType.getProtocolName() : null,
+                protocolType != null ? protocolType.getApplicableSystem() : null,
+                protocolType != null ? protocolType.getStatus() : null);
     }
 
     @Override
@@ -200,6 +235,141 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     private long getRelatedProjectCount(Long protocolId) {
         Long count = protocolTypeMapper.countRelatedProjects(protocolId);
         return count == null ? 0L : count;
+    }
+
+    private List<ProtocolType> listProtocolTypes(ProtocolType protocolType) {
+        return protocolTypeMapper.selectList(buildQueryWrapper(protocolType));
+    }
+
+    private LambdaQueryWrapper<ProtocolType> buildQueryWrapper(ProtocolType protocolType) {
+        LambdaQueryWrapper<ProtocolType> lambdaQuery = new LambdaQueryWrapper<>();
+        if (protocolType != null) {
+            if (StringUtils.isNotBlank(protocolType.getProtocolName())) {
+                lambdaQuery.like(ProtocolType::getProtocolName, protocolType.getProtocolName());
+            }
+
+            if (StringUtils.isNotBlank(protocolType.getApplicableSystem())) {
+                lambdaQuery.eq(ProtocolType::getApplicableSystem, protocolType.getApplicableSystem());
+            }
+
+            if (protocolType.getStatus() != null) {
+                lambdaQuery.eq(ProtocolType::getStatus, protocolType.getStatus());
+            }
+        }
+
+        lambdaQuery.orderByDesc(ProtocolType::getCreateTime).orderByDesc(ProtocolType::getId);
+        return lambdaQuery;
+    }
+
+    private List<ProtocolTypeExportVO> buildExportRows(List<ProtocolType> protocolTypes) {
+        if (protocolTypes == null || protocolTypes.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return protocolTypes.stream()
+                .map(this::buildExportRow)
+                .collect(Collectors.toList());
+    }
+
+    private ProtocolTypeExportVO buildExportRow(ProtocolType protocolType) {
+        ProtocolTypeExportVO exportVO = new ProtocolTypeExportVO();
+        exportVO.setProtocolIdentifier(protocolType.getProtocolIdentifier());
+        exportVO.setProtocolName(protocolType.getProtocolName());
+        exportVO.setClassification(defaultString(protocolType.getApplicableSystem()));
+        exportVO.setStatus(getStatusText(protocolType.getStatus()));
+        exportVO.setCreateUserName(resolveCreateUserName(protocolType.getCreateId()));
+        exportVO.setCreateTime(formatDateTime(protocolType.getCreateTime()));
+        exportVO.setDescription(defaultString(protocolType.getDescription()));
+        return exportVO;
+    }
+
+    private String resolveCreateUserName(Long createId) {
+        if (createId == null) {
+            return "";
+        }
+
+        SysUser sysUser = sysUserMapper.selectById(String.valueOf(createId));
+        if (sysUser == null) {
+            return String.valueOf(createId);
+        }
+        if (StringUtils.isNotBlank(sysUser.getRealName())) {
+            return sysUser.getRealName();
+        }
+        if (StringUtils.isNotBlank(sysUser.getUsername())) {
+            return sysUser.getUsername();
+        }
+        return String.valueOf(createId);
+    }
+
+    private String getStatusText(Integer status) {
+        if (status == null) {
+            return "";
+        }
+        return Integer.valueOf(1).equals(status) ? "启用" : "禁用";
+    }
+
+    private String formatDateTime(LocalDateTime dateTime) {
+        return dateTime == null ? "" : EXPORT_TIME_FORMATTER.format(dateTime);
+    }
+
+    private String defaultString(String value) {
+        return value == null ? "" : value;
+    }
+
+    private void writeHeaderRow(XSSFSheet sheet, XSSFCellStyle headerStyle, String[] headers, int[] columnWidths) {
+        XSSFRow headerRow = sheet.createRow(0);
+        for (int i = 0; i < headers.length; i++) {
+            XSSFCell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerStyle);
+            sheet.setColumnWidth(i, columnWidths[i] * 256);
+        }
+    }
+
+    private void writeDataRows(XSSFSheet sheet, XSSFCellStyle dataStyle, List<ProtocolTypeExportVO> exportRows) {
+        int rowIndex = 1;
+        for (ProtocolTypeExportVO exportRow : exportRows) {
+            XSSFRow row = sheet.createRow(rowIndex++);
+            setCellValue(row, 0, exportRow.getProtocolIdentifier(), dataStyle);
+            setCellValue(row, 1, exportRow.getProtocolName(), dataStyle);
+            setCellValue(row, 2, exportRow.getClassification(), dataStyle);
+            setCellValue(row, 3, exportRow.getStatus(), dataStyle);
+            setCellValue(row, 4, exportRow.getCreateUserName(), dataStyle);
+            setCellValue(row, 5, exportRow.getCreateTime(), dataStyle);
+            setCellValue(row, 6, exportRow.getDescription(), dataStyle);
+        }
+    }
+
+    private XSSFCellStyle createHeaderStyle(XSSFWorkbook workbook) {
+        XSSFCellStyle headerStyle = workbook.createCellStyle();
+        headerStyle.setBorderTop(BorderStyle.THIN);
+        headerStyle.setBorderBottom(BorderStyle.THIN);
+        headerStyle.setBorderLeft(BorderStyle.THIN);
+        headerStyle.setBorderRight(BorderStyle.THIN);
+        headerStyle.setAlignment(HorizontalAlignment.CENTER);
+        headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+
+        XSSFFont headerFont = workbook.createFont();
+        headerFont.setBold(true);
+        headerStyle.setFont(headerFont);
+        return headerStyle;
+    }
+
+    private XSSFCellStyle createDataStyle(XSSFWorkbook workbook) {
+        XSSFCellStyle dataStyle = workbook.createCellStyle();
+        dataStyle.setBorderTop(BorderStyle.THIN);
+        dataStyle.setBorderBottom(BorderStyle.THIN);
+        dataStyle.setBorderLeft(BorderStyle.THIN);
+        dataStyle.setBorderRight(BorderStyle.THIN);
+        dataStyle.setAlignment(HorizontalAlignment.LEFT);
+        dataStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        return dataStyle;
+    }
+
+    private void setCellValue(XSSFRow row, int columnIndex, String value, XSSFCellStyle style) {
+        XSSFCell cell = row.createCell(columnIndex);
+        cell.setCellValue(defaultString(value));
+        cell.setCellStyle(style);
     }
 
     private long getRelatedTemplateCount(Long protocolId) {

@@ -1,9 +1,9 @@
 package com.example.tooltestingdemo.entity.protocol;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.example.tooltestingdemo.common.PageQuery;
 import lombok.Data;
 
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
@@ -16,10 +16,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @TableName("protocol_type")
-public class ProtocolType implements Serializable {
-
-    private static final long serialVersionUID = 1L;
-
+public class ProtocolType extends PageQuery {
     /**
      * 协议类型ID
      */

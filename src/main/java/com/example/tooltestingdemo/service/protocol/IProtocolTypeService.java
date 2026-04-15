@@ -1,10 +1,12 @@
 package com.example.tooltestingdemo.service.protocol;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
+import jakarta.servlet.http.HttpServletResponse;
 
-import java.util.List;
+import java.io.IOException;
 
 /**
  * <p>
@@ -18,9 +20,11 @@ public interface IProtocolTypeService extends IService<ProtocolType> {
 
     ProtocolType createProtocolType(ProtocolType protocolType);
 
-    List<ProtocolType> getProtocolTypeList(ProtocolType protocolType);
+    IPage<ProtocolType> getProtocolTypeList(ProtocolType protocolType);
 
     ProtocolType modifyProtocolType(ProtocolType protocolType);
+
+    void exportProtocolTypes(ProtocolType protocolType, HttpServletResponse response) throws IOException;
 
     void deleteProtocolType(Long id);
 
