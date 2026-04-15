@@ -119,4 +119,6 @@ public interface SysUserService {
      * 分页搜索用户
      */
     Page<SysUser> searchUsers(Page<SysUser> page, String keyword);
+
+    public List<String> getPermissionsByUsername(String username);
 }
