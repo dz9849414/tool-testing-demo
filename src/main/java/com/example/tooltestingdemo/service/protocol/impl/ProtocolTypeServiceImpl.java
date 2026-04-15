@@ -3,27 +3,38 @@ package com.example.tooltestingdemo.service.protocol.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.tooltestingdemo.entity.SysDictionary;
 import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
+import com.example.tooltestingdemo.enums.ProtocolTypeImportStrategy;
+import com.example.tooltestingdemo.enums.TemplateEnums;
 import com.example.tooltestingdemo.mapper.SysUserMapper;
 import com.example.tooltestingdemo.mapper.protocol.ProtocolTypeMapper;
 import com.example.tooltestingdemo.service.SecurityService;
+import com.example.tooltestingdemo.service.SysDictionaryService;
 import com.example.tooltestingdemo.service.protocol.IProtocolTypeService;
+import com.example.tooltestingdemo.service.protocol.support.ProtocolTypeImportFailureReportStore;
 import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
 import com.example.tooltestingdemo.vo.ProtocolTypeExportVO;
+import com.example.tooltestingdemo.vo.ProtocolTypeImportResultVO;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.poi.ss.usermodel.BorderStyle;
-import org.apache.poi.ss.usermodel.HorizontalAlignment;
-import org.apache.poi.ss.usermodel.VerticalAlignment;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.*;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.FileCopyUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -42,17 +53,33 @@ import java.util.stream.Collectors;
 public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, ProtocolType> implements IProtocolTypeService {
 
     private static final DateTimeFormatter EXPORT_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter FILE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final String EXPORT_FILE_NAME = "协议类型导出";
+    private static final String IMPORT_TEMPLATE_FILE_NAME = "协议类型导入模板.xlsx";
+    private static final String IMPORT_TEMPLATE_PATH = "templates/协议类型导入模板.xlsx";
+    private static final String FAILURE_REPORT_FILE_PREFIX = "协议类型导入失败原因_";
+    private static final List<String> SYSTEM_DICT_TYPES = List.of(
+            "pdm_system_type",
+            "applicable_system",
+            "protocol_applicable_system",
+            "protocol_type_classification"
+    );
 
     private final ProtocolTypeMapper protocolTypeMapper;
     private final SysUserMapper sysUserMapper;
+    private final SysDictionaryService sysDictionaryService;
+    private final ProtocolTypeImportFailureReportStore failureReportStore;
     private final SecurityService securityService;
 
     public ProtocolTypeServiceImpl(ProtocolTypeMapper protocolTypeMapper,
                                    SysUserMapper sysUserMapper,
+                                   SysDictionaryService sysDictionaryService,
+                                   ProtocolTypeImportFailureReportStore failureReportStore,
                                    SecurityService securityService) {
         this.protocolTypeMapper = protocolTypeMapper;
         this.sysUserMapper = sysUserMapper;
+        this.sysDictionaryService = sysDictionaryService;
+        this.failureReportStore = failureReportStore;
         this.securityService = securityService;
     }
 
@@ -81,16 +108,103 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     }
 
     @Override
+    public ProtocolTypeImportResultVO importProtocolTypes(MultipartFile file, String strategy) throws IOException {
+        validateImportFile(file);
+
+        ProtocolTypeImportStrategy importStrategy = ProtocolTypeImportStrategy.fromCode(strategy);
+        List<RowImportData> importRows = parseImportRows(file);
+        if (importRows.isEmpty()) {
+            throw new RuntimeException("导入文件中没有可处理的数据");
+        }
+
+        Map<String, String> legalSystemMap = buildLegalSystemMap();
+        Map<String, Integer> rowNumberByIdentifier = new HashMap<>();
+        List<RowImportData> readyRows = new ArrayList<>();
+        List<RowFailure> failures = new ArrayList<>();
+
+        for (RowImportData row : importRows) {
+            List<String> rowErrors = validateImportRow(row, legalSystemMap, rowNumberByIdentifier);
+            if (!rowErrors.isEmpty()) {
+                failures.add(new RowFailure(row, String.join("；", rowErrors)));
+                continue;
+            }
+            row.setApplicableSystem(legalSystemMap.get(normalizeKey(row.getApplicableSystem())));
+            rowNumberByIdentifier.put(normalizeKey(row.getProtocolIdentifier()), row.getRowNumber());
+            readyRows.add(row);
+        }
+
+        Map<String, ProtocolType> existingProtocolMap = loadExistingProtocolMap(readyRows);
+        int successCount = 0;
+        int skipCount = 0;
+        Long operatorId = getCurrentOperatorId();
+
+        for (RowImportData row : readyRows) {
+            ProtocolType existing = existingProtocolMap.get(normalizeKey(row.getProtocolIdentifier()));
+            try {
+                if (existing == null) {
+                    insertProtocolType(row, operatorId);
+                    successCount++;
+                    continue;
+                }
+
+                if (ProtocolTypeImportStrategy.INCREMENTAL == importStrategy) {
+                    skipCount++;
+                    continue;
+                }
+
+                overwriteProtocolType(existing, row, operatorId);
+                successCount++;
+            } catch (Exception ex) {
+                log.warn("导入协议类型失败: row={}, identifier={}, reason={}", row.getRowNumber(), row.getProtocolIdentifier(), ex.getMessage());
+                failures.add(new RowFailure(row, defaultString(ex.getMessage())));
+            }
+        }
+
+        String failureReportId = null;
+        if (!failures.isEmpty()) {
+            failureReportId = failureReportStore.save(buildFailureReportFileName(), buildFailureReportContent(failures));
+        }
+
+        String message = String.format("导入完成：成功 %d 条，失败 %d 条，跳过 %d 条", successCount, failures.size(), skipCount);
+        return ProtocolTypeImportResultVO.builder()
+                .success(failures.isEmpty())
+                .message(message)
+                .totalCount(importRows.size())
+                .successCount(successCount)
+                .failCount(failures.size())
+                .skipCount(skipCount)
+                .strategy(importStrategy.getCode())
+                .failureReportId(failureReportId)
+                .failureReportDownloadUrl(failureReportId == null ? null : "/api/protocol/protocolType/import/failures/" + failureReportId)
+                .importTime(LocalDateTime.now())
+                .build();
+    }
+
+    @Override
+    public void downloadImportTemplate(HttpServletResponse response) throws IOException {
+        ClassPathResource resource = new ClassPathResource(IMPORT_TEMPLATE_PATH);
+        if (!resource.exists()) {
+            throw new RuntimeException("协议类型导入模板不存在");
+        }
+        byte[] fileBytes = FileCopyUtils.copyToByteArray(resource.getInputStream());
+        writeExcelResponse(response, IMPORT_TEMPLATE_FILE_NAME, fileBytes);
+    }
+
+    @Override
+    public void downloadImportFailureReport(String reportId, HttpServletResponse response) throws IOException {
+        ProtocolTypeImportFailureReportStore.FailureReportResource reportResource = failureReportStore.get(reportId);
+        if (reportResource == null) {
+            throw new RuntimeException("失败原因文件不存在或已过期");
+        }
+        writeExcelResponse(response, reportResource.getFileName(), reportResource.getContent());
+    }
+
+    @Override
     public void exportProtocolTypes(ProtocolType protocolType, HttpServletResponse response) throws IOException {
         List<ProtocolType> protocolTypes = listProtocolTypes(protocolType);
         List<ProtocolTypeExportVO> exportRows = buildExportRows(protocolTypes);
 
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setCharacterEncoding("UTF-8");
-        response.setHeader("Content-Disposition", "attachment; filename="
-                + URLEncoder.encode(EXPORT_FILE_NAME + ".xlsx", "UTF-8").replace("+", "%20"));
-
-        try (XSSFWorkbook workbook = new XSSFWorkbook(); OutputStream outputStream = response.getOutputStream()) {
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             XSSFSheet sheet = workbook.createSheet("协议类型");
             XSSFCellStyle headerStyle = createHeaderStyle(workbook);
             XSSFCellStyle dataStyle = createDataStyle(workbook);
@@ -101,7 +215,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
             writeDataRows(sheet, dataStyle, exportRows);
 
             workbook.write(outputStream);
-            outputStream.flush();
+            writeExcelResponse(response, EXPORT_FILE_NAME + ".xlsx", outputStream.toByteArray());
         }
 
         log.info("导出协议类型成功: total={}, filterName={}, filterSystem={}, filterStatus={}",
@@ -237,8 +351,284 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         return count == null ? 0L : count;
     }
 
+    private void validateImportFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new RuntimeException("导入文件不能为空");
+        }
+        String fileName = file.getOriginalFilename();
+        if (StringUtils.isBlank(fileName) ||
+                !(StringUtils.endsWithIgnoreCase(fileName, ".xlsx") || StringUtils.endsWithIgnoreCase(fileName, ".xls"))) {
+            throw new RuntimeException("仅支持导入 xls 或 xlsx 文件");
+        }
+    }
+
+    private List<RowImportData> parseImportRows(MultipartFile file) throws IOException {
+        try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            if (sheet == null) {
+                return Collections.emptyList();
+            }
+
+            DataFormatter formatter = new DataFormatter();
+            Row headerRow = sheet.getRow(sheet.getFirstRowNum());
+            Map<String, Integer> headerIndexMap = buildHeaderIndexMap(headerRow, formatter);
+            List<RowImportData> rows = new ArrayList<>();
+
+            for (int rowIndex = sheet.getFirstRowNum() + 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+                Row row = sheet.getRow(rowIndex);
+                if (isEmptyRow(row, headerIndexMap, formatter)) {
+                    continue;
+                }
+
+                RowImportData rowData = new RowImportData();
+                rowData.setRowNumber(rowIndex + 1);
+                rowData.setProtocolIdentifier(readCellValue(row, headerIndexMap, formatter, 0,
+                        "类型编码", "协议编码", "编码", "protocolIdentifier"));
+                rowData.setProtocolName(readCellValue(row, headerIndexMap, formatter, 1,
+                        "名称", "协议名称", "协议类型名称", "protocolName"));
+                rowData.setApplicableSystem(readCellValue(row, headerIndexMap, formatter, 2,
+                        "分类", "适用系统", "applicableSystem"));
+                rowData.setStatusText(readCellValue(row, headerIndexMap, formatter, 3,
+                        "状态", "status"));
+                rowData.setDescription(readCellValue(row, headerIndexMap, formatter, 4,
+                        "描述", "备注", "description"));
+                rows.add(rowData);
+            }
+            return rows;
+        } catch (Exception e) {
+            throw new RuntimeException("解析导入文件失败: " + e.getMessage(), e);
+        }
+    }
+
+    private Map<String, Integer> buildHeaderIndexMap(Row headerRow, DataFormatter formatter) {
+        Map<String, Integer> headerIndexMap = new HashMap<>();
+        if (headerRow == null) {
+            return headerIndexMap;
+        }
+        for (int cellIndex = 0; cellIndex < headerRow.getLastCellNum(); cellIndex++) {
+            Cell cell = headerRow.getCell(cellIndex);
+            String headerText = normalizeKey(formatter.formatCellValue(cell));
+            if (StringUtils.isNotBlank(headerText)) {
+                headerIndexMap.put(headerText, cellIndex);
+            }
+        }
+        return headerIndexMap;
+    }
+
+    private boolean isEmptyRow(Row row, Map<String, Integer> headerIndexMap, DataFormatter formatter) {
+        if (row == null) {
+            return true;
+        }
+        for (int cellIndex = 0; cellIndex <= 4; cellIndex++) {
+            String value = formatter.formatCellValue(row.getCell(cellIndex));
+            if (StringUtils.isNotBlank(value)) {
+                return false;
+            }
+        }
+        for (Integer cellIndex : headerIndexMap.values()) {
+            if (StringUtils.isNotBlank(formatter.formatCellValue(row.getCell(cellIndex)))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String readCellValue(Row row,
+                                 Map<String, Integer> headerIndexMap,
+                                 DataFormatter formatter,
+                                 int fallbackIndex,
+                                 String... aliases) {
+        Integer cellIndex = findHeaderIndex(headerIndexMap, aliases);
+        Cell cell = row.getCell(cellIndex == null ? fallbackIndex : cellIndex);
+        return StringUtils.trimToEmpty(formatter.formatCellValue(cell));
+    }
+
+    private Integer findHeaderIndex(Map<String, Integer> headerIndexMap, String... aliases) {
+        for (String alias : aliases) {
+            Integer index = headerIndexMap.get(normalizeKey(alias));
+            if (index != null) {
+                return index;
+            }
+        }
+        return null;
+    }
+
+    private List<String> validateImportRow(RowImportData row,
+                                           Map<String, String> legalSystemMap,
+                                           Map<String, Integer> rowNumberByIdentifier) {
+        List<String> errors = new ArrayList<>();
+
+        if (StringUtils.isBlank(row.getProtocolIdentifier())) {
+            errors.add("类型编码不能为空");
+        } else if (row.getProtocolIdentifier().length() > 50) {
+            errors.add("类型编码长度不能超过50");
+        }
+
+        if (StringUtils.isBlank(row.getProtocolName())) {
+            errors.add("名称不能为空");
+        } else if (row.getProtocolName().length() > 100) {
+            errors.add("名称长度不能超过100");
+        }
+
+        if (StringUtils.isBlank(row.getApplicableSystem())) {
+            errors.add("分类不能为空");
+        } else if (!legalSystemMap.containsKey(normalizeKey(row.getApplicableSystem()))) {
+            errors.add("分类不合法，可选值：" + String.join("/", listAllowedSystemCodes(legalSystemMap)));
+        }
+
+        if (StringUtils.isNotBlank(row.getDescription()) && row.getDescription().length() > 500) {
+            errors.add("描述长度不能超过500");
+        }
+
+        if (StringUtils.isNotBlank(row.getProtocolIdentifier())) {
+            String normalizedIdentifier = normalizeKey(row.getProtocolIdentifier());
+            Integer previousRowNumber = rowNumberByIdentifier.get(normalizedIdentifier);
+            if (previousRowNumber != null) {
+                errors.add("类型编码与第 " + previousRowNumber + " 行重复");
+            }
+        }
+
+        try {
+            row.setStatus(parseStatus(row.getStatusText()));
+        } catch (RuntimeException ex) {
+            errors.add(ex.getMessage());
+        }
+
+        return errors;
+    }
+
+    private Map<String, String> buildLegalSystemMap() {
+        Map<String, String> legalSystemMap = new LinkedHashMap<>();
+        for (TemplateEnums.PdmSystemType systemType : TemplateEnums.PdmSystemType.values()) {
+            legalSystemMap.put(normalizeKey(systemType.getCode()), systemType.getCode());
+            legalSystemMap.put(normalizeKey(systemType.getDesc()), systemType.getCode());
+        }
+
+        for (String dictType : SYSTEM_DICT_TYPES) {
+            List<SysDictionary> dictionaries = sysDictionaryService.getDictionariesByType(dictType);
+            for (SysDictionary dictionary : dictionaries) {
+                if (StringUtils.isNotBlank(dictionary.getCode())) {
+                    legalSystemMap.put(normalizeKey(dictionary.getCode()), dictionary.getCode());
+                }
+                if (StringUtils.isNotBlank(dictionary.getValue())) {
+                    legalSystemMap.put(normalizeKey(dictionary.getValue()),
+                            StringUtils.defaultIfBlank(dictionary.getCode(), dictionary.getValue()));
+                }
+            }
+        }
+        return legalSystemMap;
+    }
+
+    private List<String> listAllowedSystemCodes(Map<String, String> legalSystemMap) {
+        return legalSystemMap.values().stream().distinct().toList();
+    }
+
+    private Map<String, ProtocolType> loadExistingProtocolMap(List<RowImportData> readyRows) {
+        if (readyRows.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<String> identifiers = readyRows.stream()
+                .map(RowImportData::getProtocolIdentifier)
+                .filter(StringUtils::isNotBlank)
+                .distinct()
+                .toList();
+        if (identifiers.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        LambdaQueryWrapper<ProtocolType> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.in(ProtocolType::getProtocolIdentifier, identifiers);
+        return protocolTypeMapper.selectList(queryWrapper).stream()
+                .collect(Collectors.toMap(item -> normalizeKey(item.getProtocolIdentifier()), item -> item, (left, right) -> left));
+    }
+
+    private void insertProtocolType(RowImportData row, Long operatorId) {
+        ProtocolType entity = new ProtocolType();
+        entity.setProtocolIdentifier(row.getProtocolIdentifier());
+        entity.setProtocolName(row.getProtocolName());
+        entity.setApplicableSystem(row.getApplicableSystem());
+        entity.setStatus(row.getStatus());
+        entity.setDescription(row.getDescription());
+        entity.setCreateId(operatorId);
+        entity.setUpdateId(operatorId);
+        entity.setCreateTime(LocalDateTime.now());
+        entity.setUpdateTime(LocalDateTime.now());
+        protocolTypeMapper.insert(entity);
+    }
+
+    private void overwriteProtocolType(ProtocolType existing, RowImportData row, Long operatorId) {
+        ProtocolType updateEntity = new ProtocolType();
+        updateEntity.setId(existing.getId());
+        updateEntity.setProtocolIdentifier(existing.getProtocolIdentifier());
+        updateEntity.setProtocolName(row.getProtocolName());
+        updateEntity.setApplicableSystem(row.getApplicableSystem());
+        updateEntity.setStatus(row.getStatus());
+        updateEntity.setDescription(row.getDescription());
+        updateEntity.setUpdateId(operatorId);
+        updateEntity.setUpdateTime(LocalDateTime.now());
+        protocolTypeMapper.updateById(updateEntity);
+    }
+
+    private byte[] buildFailureReportContent(List<RowFailure> failures) throws IOException {
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            XSSFSheet sheet = workbook.createSheet("导入失败原因");
+            XSSFCellStyle headerStyle = createHeaderStyle(workbook);
+            XSSFCellStyle dataStyle = createDataStyle(workbook);
+
+            String[] headers = {"行号", "类型编码", "名称", "分类", "状态", "描述", "失败原因"};
+            int[] widths = {10, 20, 24, 18, 12, 36, 48};
+            writeHeaderRow(sheet, headerStyle, headers, widths);
+
+            int rowIndex = 1;
+            for (RowFailure failure : failures) {
+                XSSFRow row = sheet.createRow(rowIndex++);
+                setCellValue(row, 0, String.valueOf(failure.row.getRowNumber()), dataStyle);
+                setCellValue(row, 1, failure.row.getProtocolIdentifier(), dataStyle);
+                setCellValue(row, 2, failure.row.getProtocolName(), dataStyle);
+                setCellValue(row, 3, failure.row.getApplicableSystem(), dataStyle);
+                setCellValue(row, 4, defaultString(failure.row.getStatusText()), dataStyle);
+                setCellValue(row, 5, failure.row.getDescription(), dataStyle);
+                setCellValue(row, 6, failure.reason, dataStyle);
+            }
+
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        }
+    }
+
+    private String buildFailureReportFileName() {
+        return FAILURE_REPORT_FILE_PREFIX + FILE_TIME_FORMATTER.format(LocalDateTime.now()) + ".xlsx";
+    }
+
+    private void writeExcelResponse(HttpServletResponse response, String fileName, byte[] content) throws IOException {
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setHeader("Content-Disposition", "attachment; filename="
+                + URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20"));
+        try (OutputStream outputStream = response.getOutputStream()) {
+            outputStream.write(content);
+            outputStream.flush();
+        }
+    }
+
     private List<ProtocolType> listProtocolTypes(ProtocolType protocolType) {
         return protocolTypeMapper.selectList(buildQueryWrapper(protocolType));
+    }
+
+    private Integer parseStatus(String statusText) {
+        if (StringUtils.isBlank(statusText)) {
+            return 1;
+        }
+
+        String normalizedStatus = normalizeKey(statusText);
+        if (Arrays.asList("1", "启用", "enabled", "true").contains(normalizedStatus)) {
+            return 1;
+        }
+        if (Arrays.asList("0", "禁用", "disabled", "false").contains(normalizedStatus)) {
+            return 0;
+        }
+        throw new RuntimeException("状态不合法，仅支持 启用/禁用 或 enabled/disabled 或 true/false 或 1/0");
     }
 
     private LambdaQueryWrapper<ProtocolType> buildQueryWrapper(ProtocolType protocolType) {
@@ -314,6 +704,10 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
 
     private String defaultString(String value) {
         return value == null ? "" : value;
+    }
+
+    private String normalizeKey(String value) {
+        return StringUtils.deleteWhitespace(StringUtils.trimToEmpty(value)).toUpperCase(Locale.ROOT);
     }
 
     private void writeHeaderRow(XSSFSheet sheet, XSSFCellStyle headerStyle, String[] headers, int[] columnWidths) {
@@ -457,17 +851,25 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         return String.format("可删除 %d 个，不可删除 %d 个（原因：已关联数据或数据不存在）", deletedCount, undeletableItems.size());
     }
 
-    private static class RelationStats {
-        private final long relatedProjectCount;
-        private final long relatedTemplateCount;
-
-        private RelationStats(long relatedProjectCount, long relatedTemplateCount) {
-            this.relatedProjectCount = relatedProjectCount;
-            this.relatedTemplateCount = relatedTemplateCount;
-        }
-
+    private record RelationStats(long relatedProjectCount, long relatedTemplateCount) {
         private boolean hasRelatedData() {
             return relatedProjectCount > 0 || relatedTemplateCount > 0;
         }
+    }
+
+    @Setter
+    @Getter
+    private static class RowImportData {
+        private Integer rowNumber;
+        private String protocolIdentifier;
+        private String protocolName;
+        private String applicableSystem;
+        private String statusText;
+        private Integer status;
+        private String description;
+
+    }
+
+    private record RowFailure(RowImportData row, String reason) {
     }
 }

@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
+import com.example.tooltestingdemo.vo.ProtocolTypeImportResultVO;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 
@@ -22,7 +24,13 @@ public interface IProtocolTypeService extends IService<ProtocolType> {
 
     IPage<ProtocolType> getProtocolTypeList(ProtocolType protocolType);
 
+    ProtocolTypeImportResultVO importProtocolTypes(MultipartFile file, String strategy) throws IOException;
+
     ProtocolType modifyProtocolType(ProtocolType protocolType);
+
+    void downloadImportTemplate(HttpServletResponse response) throws IOException;
+
+    void downloadImportFailureReport(String reportId, HttpServletResponse response) throws IOException;
 
     void exportProtocolTypes(ProtocolType protocolType, HttpServletResponse response) throws IOException;
 
