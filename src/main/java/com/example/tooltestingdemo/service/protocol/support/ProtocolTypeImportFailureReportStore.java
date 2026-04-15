@@ -1,5 +1,6 @@
 package com.example.tooltestingdemo.service.protocol.support;
 
+import lombok.Getter;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -36,7 +37,9 @@ public class ProtocolTypeImportFailureReportStore {
     }
 
     public static class FailureReportResource {
+        @Getter
         private final String fileName;
+        @Getter
         private final byte[] content;
         private final LocalDateTime createdAt;
 
@@ -46,12 +49,5 @@ public class ProtocolTypeImportFailureReportStore {
             this.createdAt = createdAt;
         }
 
-        public String getFileName() {
-            return fileName;
-        }
-
-        public byte[] getContent() {
-            return content;
-        }
     }
 }
