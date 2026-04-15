@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.InterfaceTemplateDTO;
 import com.example.tooltestingdemo.entity.template.*;
 import com.example.tooltestingdemo.enums.TemplateEnums;
+import com.example.tooltestingdemo.exception.TemplateValidationException;
 import com.example.tooltestingdemo.mapper.template.*;
 import com.example.tooltestingdemo.service.template.InterfaceTemplateService;
 import com.alibaba.fastjson2.JSON;
@@ -107,7 +108,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     @Transactional(rollbackFor = Exception.class)
     public InterfaceTemplateVO copyTemplate(Long id, String newName) {
         InterfaceTemplate source = Optional.ofNullable(getById(id))
-            .orElseThrow(() -> new RuntimeException("模板不存在"));
+            .orElseThrow(() -> new TemplateValidationException(TemplateValidationException.ErrorType.NOT_FOUND, "模板不存在"));
         
         InterfaceTemplate copy = new InterfaceTemplate();
         BeanUtils.copyProperties(source, copy, "id", "version", "status", "createTime", "updateTime", "useCount");
@@ -183,11 +184,11 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     @Transactional(rollbackFor = Exception.class)
     public InterfaceTemplateVO submitForReview(Long id, InterfaceTemplateDTO dto) {
         InterfaceTemplate existing = Optional.ofNullable(getById(id))
-            .orElseThrow(() -> new RuntimeException("模板不存在"));
+            .orElseThrow(() -> new TemplateValidationException(TemplateValidationException.ErrorType.NOT_FOUND, "模板不存在"));
         
         Optional.ofNullable(TemplateEnums.TemplateStatus.getByCode(existing.getStatus()))
             .filter(TemplateEnums.TemplateStatus::isSubmittable)
-            .orElseThrow(() -> new RuntimeException("当前状态不可提交审核"));
+            .orElseThrow(() -> new TemplateValidationException(TemplateValidationException.ErrorType.OPERATION_NOT_ALLOWED, "当前状态不可提交审核"));
         
         templateValidator.validateRequired(dto, id);
         
@@ -231,7 +232,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
 
         InterfaceTemplate existing = isUpdate ? getById(id) : null;
         if (isUpdate && existing == null) {
-            throw new RuntimeException("模板不存在");
+            throw new TemplateValidationException(TemplateValidationException.ErrorType.NOT_FOUND, "模板不存在");
         }
         
         templateValidator.validateDraft(dto, id);
@@ -244,7 +245,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         if (isUpdate) {
             Optional.ofNullable(TemplateEnums.TemplateStatus.getByCode(existing.getStatus()))
                 .filter(TemplateEnums.TemplateStatus::isEditable)
-                .orElseThrow(() -> new RuntimeException("当前状态不可编辑"));
+                .orElseThrow(() -> new TemplateValidationException(TemplateValidationException.ErrorType.OPERATION_NOT_ALLOWED, "当前状态不可编辑"));
             
             oldVO = getTemplateDetail(id);
             deleteRelatedData(id);
@@ -295,7 +296,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
                                           String errorMsg, String opType, String desc) {
         return Optional.ofNullable(getById(id)).map(t -> {
             if (!requiredStatus.equals(t.getStatus())) {
-                throw new RuntimeException(errorMsg);
+                throw new TemplateValidationException(TemplateValidationException.ErrorType.OPERATION_NOT_ALLOWED, errorMsg);
             }
             InterfaceTemplateVO oldVO = getTemplateDetail(id);
             t.setStatus(newStatus);

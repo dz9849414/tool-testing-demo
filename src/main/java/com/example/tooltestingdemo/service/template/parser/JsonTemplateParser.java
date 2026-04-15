@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.example.tooltestingdemo.dto.*;
 import com.example.tooltestingdemo.enums.TemplateEnums;
+import com.example.tooltestingdemo.exception.TemplateValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -87,7 +88,7 @@ public class JsonTemplateParser implements TemplateParser {
                 }
             } catch (Exception ex) {
                 log.error("解析JSON失败", ex);
-                throw new RuntimeException("JSON格式不正确: " + ex.getMessage());
+                throw new TemplateValidationException(TemplateValidationException.ErrorType.INVALID_FORMAT, "JSON格式不正确: " + ex.getMessage(), ex);
             }
         }
         

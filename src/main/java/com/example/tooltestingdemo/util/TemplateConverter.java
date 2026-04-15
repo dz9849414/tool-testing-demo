@@ -2,6 +2,7 @@ package com.example.tooltestingdemo.util;
 
 import com.example.tooltestingdemo.dto.*;
 import com.example.tooltestingdemo.entity.template.*;
+import com.example.tooltestingdemo.exception.TemplateValidationException;
 import com.example.tooltestingdemo.vo.*;
 import org.springframework.beans.BeanUtils;
 import org.springframework.util.CollectionUtils;
@@ -25,7 +26,7 @@ public class TemplateConverter {
             BeanUtils.copyProperties(source, target);
             return target;
         } catch (Exception e) {
-            throw new RuntimeException("对象转换失败", e);
+            throw new TemplateValidationException(TemplateValidationException.ErrorType.CONVERT_ERROR, "对象转换失败", e);
         }
     }
 
