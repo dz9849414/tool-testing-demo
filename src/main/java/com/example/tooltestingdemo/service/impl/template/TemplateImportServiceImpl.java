@@ -271,8 +271,8 @@ public class TemplateImportServiceImpl implements TemplateImportService {
     }
 
     private InterfaceTemplate findExistingTemplate(InterfaceTemplateDTO dto) {
-        return StringUtils.hasText(dto.getName()) 
-            ? templateMapper.selectByNameAndMethod(dto.getName(), dto.getMethod()) 
+        return StringUtils.hasText(dto.getName())
+            ? templateMapper.selectByName(dto.getName())
             : null;
     }
 

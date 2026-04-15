@@ -1,15 +1,9 @@
 package com.example.tooltestingdemo.entity.protocol;
 
-import com.baomidou.mybatisplus.annotation.FieldFill;
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
-import com.baomidou.mybatisplus.annotation.TableName;
-import jakarta.validation.constraints.NotNull;
+import com.baomidou.mybatisplus.annotation.*;
+import com.example.tooltestingdemo.common.PageQuery;
 import lombok.Data;
 
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
@@ -22,10 +16,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @TableName("protocol_type")
-public class ProtocolType implements Serializable {
-
-    private static final long serialVersionUID = 1L;
-
+public class ProtocolType extends PageQuery {
     /**
      * 协议类型ID
      */
@@ -55,12 +46,6 @@ public class ProtocolType implements Serializable {
      */
     @TableField("description")
     private String description;
-
-    /**
-     * 分类ID
-     */
-    @TableField("classification_id")
-    private Long classificationId;
 
     /**
      * 状态：0-禁用，1-启用

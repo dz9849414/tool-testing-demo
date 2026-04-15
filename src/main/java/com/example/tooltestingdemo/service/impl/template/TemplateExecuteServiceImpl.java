@@ -23,7 +23,7 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
 
     @Override
     public Map<String, Object> executeTemplate(Long templateId, Long environmentId, Map<String, Object> variables) {
-        log.info("执行模板请求: templateId={}, environmentId={}", templateId, environmentId);
+        log.info("执行模板请求: 模板id={}, 环境标识={}", templateId, environmentId);
         
         ExecutionRequest request = ExecutionRequest.builder()
             .templateId(templateId)

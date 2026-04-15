@@ -56,4 +56,11 @@ public interface InterfaceTemplateMapper extends BaseMapper<InterfaceTemplate> {
      * 对应XML: InterfaceTemplateMapper.xml
      */
     InterfaceTemplate selectByNameAndMethod(@Param("name") String name, @Param("method") String method);
+
+    /**
+     * 根据名称查找模板（用于导入时检查重复）
+     *
+     * 对应XML: InterfaceTemplateMapper.xml
+     */
+    InterfaceTemplate selectByName(@Param("name") String name);
 }

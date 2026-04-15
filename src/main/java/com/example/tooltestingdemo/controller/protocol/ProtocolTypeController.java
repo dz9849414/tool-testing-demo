@@ -1,15 +1,17 @@
 package com.example.tooltestingdemo.controller.protocol;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.service.protocol.IProtocolTypeService;
 import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.io.IOException;
 
 /**
  * <p>
@@ -30,7 +32,7 @@ public class ProtocolTypeController {
 
     /**
      * 新增协议类型
-     *
+     * <p>
      * 接口地址：POST /api/protocol/protocolType
      *
      */
@@ -42,19 +44,30 @@ public class ProtocolTypeController {
 
     /**
      * 获取协议类型列表
-     *
+     * <p>
      * 接口地址：get /api/protocol/protocolType/list
      *
      */
     @GetMapping("/list")
-    public Result<List<ProtocolType>> getProtocolTypeList(ProtocolType protocolType) {
-        List<ProtocolType> protocolTypeList = protocolTypeService.getProtocolTypeList(protocolType);
-        return Result.success(protocolTypeList);
+    public Result<IPage<ProtocolType>> getProtocolTypeList(ProtocolType protocolType) {
+        IPage<ProtocolType> protocolTypePage = protocolTypeService.getProtocolTypeList(protocolType);
+        return Result.success(protocolTypePage);
+    }
+
+    /**
+     * 导出协议类型
+     * <p>
+     * 接口地址：GET /api/protocol/protocolType/export
+     *
+     */
+    @GetMapping("/export")
+    public void exportProtocolTypes(ProtocolType protocolType, HttpServletResponse response) throws IOException {
+        protocolTypeService.exportProtocolTypes(protocolType, response);
     }
 
     /**
      * 编辑协议类型
-     *
+     * <p>
      * 接口地址：POST /api/protocol/protocolType/modify
      *
      */
@@ -71,7 +84,7 @@ public class ProtocolTypeController {
 
     /**
      * 删除协议类型
-     *
+     * <p>
      * 接口地址：DELETE /api/protocol/protocolType/{id}
      *
      */
@@ -83,7 +96,7 @@ public class ProtocolTypeController {
 
     /**
      * 批量删除协议类型
-     *
+     * <p>
      * 接口地址：DELETE /api/protocol/protocolType/batch
      *
      */

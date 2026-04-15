@@ -108,7 +108,7 @@ public class TemplateImportController {
         response.setContentType("application/json;charset=UTF-8");
         response.setHeader("Content-Disposition", "attachment; filename=templates_" + 
                 System.currentTimeMillis() + ".json");
-        
+
         response.getWriter().write(content);
         response.getWriter().flush();
     }
