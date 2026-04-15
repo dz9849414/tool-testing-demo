@@ -44,21 +44,25 @@ public class TemplateValidationException extends RuntimeException {
      * 错误类型枚举
      */
     public enum ErrorType {
-        NAME_DUPLICATE("NAME_DUPLICATE", "名称重复"),
-        REQUIRED_FIELD_EMPTY("REQUIRED_FIELD_EMPTY", "必填项为空"),
-        INVALID_FORMAT("INVALID_FORMAT", "格式无效"),
-        VALIDATION_FAILED("VALIDATION_FAILED", "校验失败"),
-        BUSINESS_RULE_VIOLATION("BUSINESS_RULE_VIOLATION", "业务规则校验失败");
+        NAME_DUPLICATE(1001, "名称重复"),
+        REQUIRED_FIELD_EMPTY(1002, "必填项为空"),
+        INVALID_FORMAT(1003, "格式无效"),
+        VALIDATION_FAILED(1004, "校验失败"),
+        BUSINESS_RULE_VIOLATION(1005, "业务规则校验失败"),
+        NOT_FOUND(1006, "数据不存在"),
+        OPERATION_NOT_ALLOWED(1007, "操作不允许"),
+        ALREADY_EXISTS(1008, "数据已存在"),
+        CONVERT_ERROR(1009, "对象转换失败");
 
-        private final String code;
+        private final Integer code;
         private final String desc;
 
-        ErrorType(String code, String desc) {
+        ErrorType(Integer code, String desc) {
             this.code = code;
             this.desc = desc;
         }
 
-        public String getCode() {
+        public Integer getCode() {
             return code;
         }
 

@@ -1,6 +1,7 @@
 package com.example.tooltestingdemo.service.impl.template;
 
 import com.example.tooltestingdemo.entity.template.TemplateFile;
+import com.example.tooltestingdemo.exception.TemplateValidationException;
 import com.example.tooltestingdemo.mapper.template.TemplateFileMapper;
 import com.example.tooltestingdemo.service.template.TemplateFileService;
 import lombok.RequiredArgsConstructor;
@@ -47,7 +48,7 @@ public class TemplateFileServiceImpl implements TemplateFileService {
     @Override
     public TemplateFile uploadFile(Long templateId, MultipartFile file, String fileCategory, String description) {
         if (file == null || file.isEmpty()) {
-            throw new RuntimeException("文件不能为空");
+            throw new TemplateValidationException(TemplateValidationException.ErrorType.REQUIRED_FIELD_EMPTY, "文件不能为空");
         }
 
         try {
@@ -71,7 +72,7 @@ public class TemplateFileServiceImpl implements TemplateFileService {
 
         } catch (IOException e) {
             log.error("文件上传失败", e);
-            throw new RuntimeException("文件上传失败: " + e.getMessage());
+            throw new TemplateValidationException(TemplateValidationException.ErrorType.OPERATION_NOT_ALLOWED, "文件上传失败: " + e.getMessage(), e);
         }
     }
 
@@ -116,12 +117,12 @@ public class TemplateFileServiceImpl implements TemplateFileService {
     @Override
     public byte[] downloadFile(Long fileId) {
         TemplateFile file = Optional.ofNullable(fileMapper.selectById(fileId))
-            .orElseThrow(() -> new RuntimeException("文件不存在"));
+            .orElseThrow(() -> new TemplateValidationException(TemplateValidationException.ErrorType.NOT_FOUND, "文件不存在"));
         try {
             return Files.readAllBytes(Paths.get(file.getFilePath()));
         } catch (IOException e) {
             log.error("读取文件失败: {}", file.getFilePath(), e);
-            throw new RuntimeException("读取文件失败: " + e.getMessage());
+            throw new TemplateValidationException(TemplateValidationException.ErrorType.OPERATION_NOT_ALLOWED, "读取文件失败: " + e.getMessage(), e);
         }
     }
 

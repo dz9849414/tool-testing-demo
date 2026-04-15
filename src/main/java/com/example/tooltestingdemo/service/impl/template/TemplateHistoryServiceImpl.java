@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.entity.template.TemplateHistory;
+import com.example.tooltestingdemo.exception.TemplateValidationException;
 import com.example.tooltestingdemo.mapper.template.TemplateHistoryMapper;
 import com.example.tooltestingdemo.service.template.TemplateHistoryService;
 import com.example.tooltestingdemo.util.TemplateConverter;
@@ -60,7 +61,7 @@ public class TemplateHistoryServiceImpl extends ServiceImpl<TemplateHistoryMappe
             .orElseThrow(() -> new RuntimeException("历史版本不存在"));
         
         if (Integer.valueOf(0).equals(history.getCanRollback())) {
-            throw new RuntimeException("该版本不允许回滚");
+            throw new TemplateValidationException(TemplateValidationException.ErrorType.OPERATION_NOT_ALLOWED, "该版本不允许回滚");
         }
         
         // TODO: 实现回滚逻辑，从历史快照恢复模板数据

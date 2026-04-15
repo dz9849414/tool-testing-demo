@@ -7,6 +7,7 @@ import com.example.tooltestingdemo.service.template.TemplateEnvironmentService;
 import com.example.tooltestingdemo.service.template.engine.executor.ExecutorFactory;
 import com.example.tooltestingdemo.service.template.engine.executor.TemplateExecutor;
 import com.example.tooltestingdemo.service.template.engine.interceptor.ExecutionInterceptor;
+import com.example.tooltestingdemo.exception.TemplateValidationException;
 import com.example.tooltestingdemo.vo.InterfaceTemplateVO;
 import com.example.tooltestingdemo.vo.TemplateEnvironmentVO;
 import lombok.RequiredArgsConstructor;
@@ -163,7 +164,7 @@ public class ExecutionEngine {
         // 1. 加载模板
         InterfaceTemplateVO templateVO = templateService.getTemplateDetail(request.getTemplateId());
         if (templateVO == null) {
-            throw new RuntimeException("模板不存在: " + request.getTemplateId());
+            throw new TemplateValidationException(TemplateValidationException.ErrorType.NOT_FOUND, "模板不存在: " + request.getTemplateId());
         }
         
         // 2. 设置模板信息

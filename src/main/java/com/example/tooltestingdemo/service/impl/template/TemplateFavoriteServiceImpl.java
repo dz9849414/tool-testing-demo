@@ -3,6 +3,7 @@ package com.example.tooltestingdemo.service.impl.template;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.entity.template.TemplateFavorite;
+import com.example.tooltestingdemo.exception.TemplateValidationException;
 import com.example.tooltestingdemo.mapper.template.TemplateFavoriteMapper;
 import com.example.tooltestingdemo.service.template.TemplateFavoriteService;
 import com.example.tooltestingdemo.util.TemplateConverter;
@@ -32,7 +33,7 @@ public class TemplateFavoriteServiceImpl extends ServiceImpl<TemplateFavoriteMap
     @Transactional(rollbackFor = Exception.class)
     public TemplateFavoriteVO favoriteTemplate(Long userId, Long templateId, String remark) {
         if (isFavorited(userId, templateId)) {
-            throw new RuntimeException("已收藏该模板");
+            throw new TemplateValidationException(TemplateValidationException.ErrorType.ALREADY_EXISTS, "已收藏该模板");
         }
         return saveFavorite(userId, templateId, TYPE_FAVORITE, remark, "收藏");
     }
@@ -47,7 +48,7 @@ public class TemplateFavoriteServiceImpl extends ServiceImpl<TemplateFavoriteMap
     @Transactional(rollbackFor = Exception.class)
     public TemplateFavoriteVO followTemplate(Long userId, Long templateId) {
         if (existsByType(userId, templateId, TYPE_FOLLOW)) {
-            throw new RuntimeException("已关注该模板");
+            throw new TemplateValidationException(TemplateValidationException.ErrorType.ALREADY_EXISTS, "已关注该模板");
         }
         return saveFavorite(userId, templateId, TYPE_FOLLOW, null, "关注");
     }
