@@ -10,6 +10,8 @@ import com.example.tooltestingdemo.service.SysUserService;
 import lombok.RequiredArgsConstructor;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.common.ErrorStatus;
+import com.example.tooltestingdemo.dto.SysRoleDTO;
+import org.apache.commons.beanutils.BeanUtils;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -94,7 +96,14 @@ public class SysRoleController {
      */
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<Boolean> createRole(@RequestBody SysRole role) {
+    public Result<Boolean> createRole(@RequestBody SysRoleDTO roleDTO) {
+        SysRole role = new SysRole();
+        try {
+            BeanUtils.copyProperties(role, roleDTO);
+        } catch (Exception e) {
+            return Result.error(ErrorStatus.BAD_REQUEST, "参数转换失败");
+        }
+        
         // 确保当scopeId为null或者没传时，将角色的scopeId设为null
         if (role.getScopeId() != null && role.getScopeId().isEmpty()) {
             role.setScopeId(null);
@@ -125,24 +134,44 @@ public class SysRoleController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @PermissionCheck(type = "update")
-    public Result<SysRole> updateRole(@PathVariable String id, @RequestBody SysRole role) {
+    public Result<SysRole> updateRole(@PathVariable String id, @RequestBody SysRoleDTO roleDTO) {
         // 检查是否是admin角色
         if ("admin".equals(id)) {
             return Result.error(ErrorStatus.BAD_REQUEST, "不能修改admin角色");
         }
         
+        // 检查角色是否存在
+        SysRole existingRole = roleService.getById(id);
+        if (existingRole == null) {
+            return Result.error(ErrorStatus.NOT_FOUND, "角色不存在");
+        }
+        
+        SysRole role = new SysRole();
         role.setId(id);
-
-        // 检查名称和作用域的唯一性
-        if (roleService.existsByNameAndScope(role.getName(), role.getScopeId(), id)) {
+        
+        try {
+            BeanUtils.copyProperties(role, roleDTO);
+        } catch (Exception e) {
+            return Result.error(ErrorStatus.BAD_REQUEST, "参数转换失败");
+        }
+        
+        // 确保当scopeId为null或者没传时，将角色的scopeId设为null
+        if (role.getScopeId() != null && role.getScopeId().isEmpty()) {
+            role.setScopeId(null);
+        }
+        
+        // 检查角色名称是否在当前作用域下已存在（排除当前角色）
+        boolean exists = roleService.existsByNameAndScope(role.getName(), role.getScopeId(), id);
+        if (exists) {
             return Result.error(ErrorStatus.BAD_REQUEST, "角色名称在当前作用域下已存在");
         }
         
-        boolean updated = roleService.updateRole(role);
-        if (!updated) {
-            return Result.error(ErrorStatus.NOT_FOUND, "角色不存在");
+        boolean updatedRole = roleService.updateRole(role);
+        if (updatedRole) {
+            return Result.success("更新角色信息成功");
+        } else {
+            return Result.error(ErrorStatus.BAD_REQUEST, "更新角色信息失败");
         }
-        return Result.success("更新角色信息成功", roleService.getById(id));
     }
     
     /**

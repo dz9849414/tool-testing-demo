@@ -5,9 +5,13 @@ import com.example.tooltestingdemo.common.ErrorStatus;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.entity.SysOperationLog;
 import com.example.tooltestingdemo.service.SysOperationLogService;
+import com.example.tooltestingdemo.vo.SysOperationLogVO;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.beanutils.BeanUtils;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.stream.Collectors;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -42,7 +46,7 @@ public class SysOperationLogController {
      */
     @GetMapping("/user/{userId}")
     @PreAuthorize("@securityService.hasPermission('system:log:api') or @securityService.isCurrentUser(#userId)")
-    public Result<Page<SysOperationLog>> getUserOperationLogs(
+    public Result<Page<SysOperationLogVO>> getUserOperationLogs(
             @PathVariable String userId,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime,
@@ -72,7 +76,20 @@ public class SysOperationLogController {
 
         Page<SysOperationLog> pageParam = new Page<>(page, size);
         Page<SysOperationLog> logs = operationLogService.getOperationLogsByUserIdAndTimeRange(pageParam, userId, start, end);
-        return Result.success("获取用户操作日志成功", logs);
+        
+        // 转换为VO
+        Page<SysOperationLogVO> voPage = new Page<>(logs.getCurrent(), logs.getSize(), logs.getTotal());
+        voPage.setRecords(logs.getRecords().stream().map(log -> {
+            SysOperationLogVO logVO = new SysOperationLogVO();
+            try {
+                BeanUtils.copyProperties(logVO, log);
+            } catch (Exception e) {
+                throw new RuntimeException("操作日志数据转换失败");
+            }
+            return logVO;
+        }).collect(Collectors.toList()));
+        
+        return Result.success("获取用户操作日志成功", voPage);
     }
 
     /**
@@ -80,7 +97,7 @@ public class SysOperationLogController {
      */
     @GetMapping("/page")
     @PreAuthorize("@securityService.hasPermission('system:log:api')")
-    public Result<Page<SysOperationLog>> getOperationLogsByPage(
+    public Result<Page<SysOperationLogVO>> getOperationLogsByPage(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String userId,
@@ -111,7 +128,20 @@ public class SysOperationLogController {
 
         Page<SysOperationLog> pageParam = new Page<>(page, size);
         Page<SysOperationLog> logs = operationLogService.getOperationLogsByPage(pageParam, userId, start, end, module);
-        return Result.success("获取操作日志列表成功", logs);
+        
+        // 转换为VO
+        Page<SysOperationLogVO> voPage = new Page<>(logs.getCurrent(), logs.getSize(), logs.getTotal());
+        voPage.setRecords(logs.getRecords().stream().map(log -> {
+            SysOperationLogVO logVO = new SysOperationLogVO();
+            try {
+                BeanUtils.copyProperties(logVO, log);
+            } catch (Exception e) {
+                throw new RuntimeException("操作日志数据转换失败");
+            }
+            return logVO;
+        }).collect(Collectors.toList()));
+        
+        return Result.success("获取操作日志列表成功", voPage);
     }
 
     /**
@@ -119,11 +149,22 @@ public class SysOperationLogController {
      */
     @GetMapping("/recent")
     @PreAuthorize("@securityService.hasPermission('system:log:api')")
-    public Result<List<SysOperationLog>> getRecentOperationLogs(
+    public Result<List<SysOperationLogVO>> getRecentOperationLogs(
             @RequestParam(defaultValue = "10") int limit) {
-
         List<SysOperationLog> logs = operationLogService.getRecentOperationLogs(limit);
-        return Result.success("获取最近操作日志成功", logs);
+        
+        // 转换为VO
+        List<SysOperationLogVO> logVOs = logs.stream().map(log -> {
+            SysOperationLogVO logVO = new SysOperationLogVO();
+            try {
+                BeanUtils.copyProperties(logVO, log);
+            } catch (Exception e) {
+                throw new RuntimeException("操作日志数据转换失败");
+            }
+            return logVO;
+        }).collect(Collectors.toList());
+        
+        return Result.success("获取最近操作日志成功", logVOs);
     }
 
     /**
@@ -131,10 +172,22 @@ public class SysOperationLogController {
      */
     @GetMapping("/module")
     @PreAuthorize("@securityService.hasPermission('system:log:api')")
-    public Result<List<SysOperationLog>> getOperationLogsByModule(
+    public Result<List<SysOperationLogVO>> getOperationLogsByModule(
             @RequestParam String module) {
         List<SysOperationLog> logs = operationLogService.getOperationLogsByModule(module);
-        return Result.success("获取模块操作日志成功", logs);
+        
+        // 转换为VO
+        List<SysOperationLogVO> logVOs = logs.stream().map(log -> {
+            SysOperationLogVO logVO = new SysOperationLogVO();
+            try {
+                BeanUtils.copyProperties(logVO, log);
+            } catch (Exception e) {
+                throw new RuntimeException("操作日志数据转换失败");
+            }
+            return logVO;
+        }).collect(Collectors.toList());
+        
+        return Result.success("获取模块操作日志成功", logVOs);
     }
     
     /**
@@ -145,7 +198,7 @@ public class SysOperationLogController {
      */
     @GetMapping("/role/{roleId}")
     @PreAuthorize("@securityService.hasPermission('system:log:api')")
-    public Result<Page<SysOperationLog>> getRoleOperationLogs(
+    public Result<Page<SysOperationLogVO>> getRoleOperationLogs(
             @PathVariable String roleId,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime,
@@ -175,7 +228,20 @@ public class SysOperationLogController {
         
         Page<SysOperationLog> pageParam = new Page<>(page, size);
         Page<SysOperationLog> logs = operationLogService.getOperationLogsByRoleIdAndPage(pageParam, roleId, start, end, module);
-        return Result.success("获取角色操作日志成功", logs);
+        
+        // 转换为VO
+        Page<SysOperationLogVO> voPage = new Page<>(logs.getCurrent(), logs.getSize(), logs.getTotal());
+        voPage.setRecords(logs.getRecords().stream().map(log -> {
+            SysOperationLogVO logVO = new SysOperationLogVO();
+            try {
+                BeanUtils.copyProperties(logVO, log);
+            } catch (Exception e) {
+                throw new RuntimeException("操作日志数据转换失败");
+            }
+            return logVO;
+        }).collect(Collectors.toList()));
+        
+        return Result.success("获取角色操作日志成功", voPage);
     }
     
     /**

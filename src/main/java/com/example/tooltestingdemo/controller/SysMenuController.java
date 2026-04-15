@@ -5,7 +5,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.entity.SysMenu;
 import com.example.tooltestingdemo.service.SysMenuService;
 import com.example.tooltestingdemo.common.Result;
+import com.example.tooltestingdemo.dto.SysMenuDTO;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.beanutils.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -108,23 +110,30 @@ public class SysMenuController {
      */
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<String> createMenu(@RequestBody SysMenu menu) {
+    public Result<String> createMenu(@RequestBody SysMenuDTO menuDTO) {
         try {
             // 检查权限编码是否重复
-            boolean exists = menuService.checkCodeUnique(menu.getCode(), null);
+            boolean exists = menuService.checkCodeUnique(menuDTO.getCode(), null);
             if (exists) {
-                return Result.error("权限编码已存在");
+                return Result.error("权限编码已存在，请勿重复添加");
+            }
+            
+            SysMenu menu = new SysMenu();
+            try {
+                BeanUtils.copyProperties(menu, menuDTO);
+            } catch (Exception e) {
+                return Result.error("参数转换失败");
             }
             
             boolean saved = menuService.save(menu);
             if (saved) {
-                return Result.success("新增菜单成功");
+                return Result.success("创建菜单成功");
             } else {
-                return Result.error("新增菜单失败");
+                return Result.error("创建菜单失败");
             }
         } catch (Exception e) {
-            log.error("新增菜单失败", e);
-            return Result.error("新增菜单失败");
+            log.error("创建菜单失败", e);
+            return Result.error("创建菜单失败");
         }
     }
 
@@ -133,7 +142,7 @@ public class SysMenuController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<String> updateMenu(@PathVariable String id, @RequestBody SysMenu menu) {
+    public Result<String> updateMenu(@PathVariable String id, @RequestBody SysMenuDTO menuDTO) {
         try {
             SysMenu existingMenu = menuService.getById(id);
             if (existingMenu == null) {
@@ -141,12 +150,19 @@ public class SysMenuController {
             }
             
             // 检查权限编码是否重复（排除当前菜单）
-            boolean exists = menuService.checkCodeUnique(menu.getCode(), id);
+            boolean exists = menuService.checkCodeUnique(menuDTO.getCode(), id);
             if (exists) {
-                return Result.error("权限编码已存在");
+                return Result.error("权限编码已存在，请勿重复添加");
             }
             
+            SysMenu menu = new SysMenu();
             menu.setId(id);
+            try {
+                BeanUtils.copyProperties(menu, menuDTO);
+            } catch (Exception e) {
+                return Result.error("参数转换失败");
+            }
+            
             boolean updated = menuService.updateById(menu);
             if (updated) {
                 return Result.success("更新菜单成功");

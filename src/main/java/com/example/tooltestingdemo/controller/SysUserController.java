@@ -1,5 +1,6 @@
 package com.example.tooltestingdemo.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.annotation.PermissionCheck;
 import com.example.tooltestingdemo.entity.SysUser;
@@ -8,16 +9,22 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.common.ErrorStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.tooltestingdemo.dto.SysUserCreateDTO;
 import com.example.tooltestingdemo.dto.SysUserUpdateDTO;
+import com.example.tooltestingdemo.vo.SysUserVO;
 import org.apache.commons.beanutils.BeanUtils;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 用户管理控制器
@@ -29,18 +36,60 @@ public class SysUserController {
     
     private final SysUserService userService;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-    
+
+    /**
+     * 获取当前用户信息
+     */
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        SysUser user = userService.findByUsername(username);
+
+        if (user == null) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 404);
+            response.put("message", "用户不存在");
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        // 隐藏密码信息
+        user.setPassword(null);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "获取成功");
+        response.put("data", user);
+
+        return ResponseEntity.ok(response);
+    }
+
     /**
      * 获取所有用户列表
      */
     @GetMapping
     @PermissionCheck(perm = "system:user:api",type = "view" , or = true)
-    public Result<Page<SysUser>> getAllUsers(
+    public Result<Page<SysUserVO>> getAllUsers(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
         Page<SysUser> pageParam = new Page<>(page, size);
         Page<SysUser> users = userService.findAll(pageParam);
-        return Result.success("获取用户列表成功", users);
+        
+        // 转换为VO
+        Page<SysUserVO> voPage = new Page<>(users.getCurrent(), users.getSize(), users.getTotal());
+        voPage.setRecords(users.getRecords().stream().map(user -> {
+            SysUserVO userVO = new SysUserVO();
+            try {
+                BeanUtils.copyProperties(userVO, user);
+            } catch (Exception e) {
+                throw new RuntimeException("用户数据转换失败");
+            }
+            return userVO;
+        }).collect(Collectors.toList()));
+        
+        return Result.success("获取用户列表成功", voPage);
     }
     
     /**
@@ -48,12 +97,25 @@ public class SysUserController {
      */
     @GetMapping("/page")
     @PermissionCheck(type = "view", perm = "system:user:api", or = true)
-    public Result<Page<SysUser>> getUsersByPage(
+    public Result<Page<SysUserVO>> getUsersByPage(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
         Page<SysUser> pageParam = new Page<>(page, size);
         Page<SysUser> users = userService.findAll(pageParam);
-        return Result.success("获取用户列表成功", users);
+        
+        // 转换为VO
+        Page<SysUserVO> voPage = new Page<>(users.getCurrent(), users.getSize(), users.getTotal());
+        voPage.setRecords(users.getRecords().stream().map(user -> {
+            SysUserVO userVO = new SysUserVO();
+            try {
+                BeanUtils.copyProperties(userVO, user);
+            } catch (Exception e) {
+                throw new RuntimeException("用户数据转换失败");
+            }
+            return userVO;
+        }).collect(Collectors.toList()));
+        
+        return Result.success("获取用户列表成功", voPage);
     }
     
     /**
@@ -61,12 +123,21 @@ public class SysUserController {
      */
     @GetMapping("/{id}")
     @PermissionCheck(type = "view", perm = "system:user:api", or = true, allowCurrentUser = true)
-    public Result<SysUser> getUserById(@PathVariable String id) {
+    public Result<SysUserVO> getUserById(@PathVariable String id) {
         SysUser user = userService.findById(id);
         if (user == null) {
             return Result.error(ErrorStatus.NOT_FOUND, "用户不存在");
         }
-        return Result.success("获取用户信息成功", user);
+        
+        // 转换为VO
+        SysUserVO userVO = new SysUserVO();
+        try {
+            BeanUtils.copyProperties(userVO, user);
+        } catch (Exception e) {
+            return Result.error(400, "用户数据转换失败");
+        }
+        
+        return Result.success("获取用户信息成功", userVO);
     }
     
     /**
@@ -74,20 +145,27 @@ public class SysUserController {
      */
     @PostMapping
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
-    public Result<SysUser> createUser(@RequestBody SysUser user) {
+    public Result<SysUser> createUser(@RequestBody SysUserCreateDTO userDTO) {
         // 检查是否尝试创建用户名为admin的用户
-        if ("admin".equals(user.getUsername())) {
+        if ("admin".equals(userDTO.getUsername())) {
             return Result.error(400, "不能创建用户名为admin的用户");
         }
         
-        if (userService.existsByUsername(user.getUsername())) {
+        if (userService.existsByUsername(userDTO.getUsername())) {
             return Result.error(400, "用户名已存在");
         }
         
-        if (user.getEmail() != null && userService.existsByEmail(user.getEmail())) {
+        if (userDTO.getEmail() != null && userService.existsByEmail(userDTO.getEmail())) {
             return Result.error(400, "邮箱已存在");
         }
 
+        SysUser user = new SysUser();
+        try {
+            BeanUtils.copyProperties(user, userDTO);
+        } catch (Exception e) {
+            return Result.error(400, "参数转换失败");
+        }
+        
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         SysUser savedUser = userService.save(user);
         return Result.success("创建用户成功", savedUser);
@@ -160,24 +238,49 @@ public class SysUserController {
      */
     @GetMapping("/status/{status}")
     @PermissionCheck(type = "view", perm = "system:user:api", or = true)
-    public Result<Page<SysUser>> getUsersByStatus(
+    public Result<Page<SysUserVO>> getUsersByStatus(
             @PathVariable Integer status,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
         Page<SysUser> pageParam = new Page<>(page, size);
         Page<SysUser> users = userService.findByStatus(pageParam, status);
-        return Result.success("获取用户列表成功", users);
+        
+        // 转换为VO
+        Page<SysUserVO> voPage = new Page<>(users.getCurrent(), users.getSize(), users.getTotal());
+        voPage.setRecords(users.getRecords().stream().map(user -> {
+            SysUserVO userVO = new SysUserVO();
+            try {
+                BeanUtils.copyProperties(userVO, user);
+            } catch (Exception e) {
+                throw new RuntimeException("用户数据转换失败");
+            }
+            return userVO;
+        }).collect(Collectors.toList()));
+        
+        return Result.success("获取用户列表成功", voPage);
     }
     
-    /** 
-      * 根据角色ID获取用户列表 
-      */ 
-     @GetMapping("/role/{roleId}") 
-     @PreAuthorize("hasRole('ADMIN') or @permissionCheckAspect.checkPermission('system:user:api')") 
-     public Result<List<SysUser>> getUsersByRoleId(@PathVariable String roleId) { 
-         List<SysUser> users = userService.findByRoleId(roleId); 
-         return Result.success("获取用户列表成功", users); 
-     }
+    /**
+     * 根据角色ID获取用户列表
+     */
+    @GetMapping("/role/{roleId}")
+    @PreAuthorize("hasRole('ADMIN') or @permissionCheckAspect.checkPermission('system:user:api')")
+    public Result<List<SysUserVO>> getUsersByRoleId(@PathVariable String roleId) {
+        List<SysUser> users = userService.findByRoleId(roleId);
+        
+        // 转换为VO
+        List<SysUserVO> userVOs = users.stream().map(user -> {
+            SysUserVO userVO = new SysUserVO();
+            try {
+                BeanUtils.copyProperties(userVO, user);
+            } catch (Exception e) {
+                throw new RuntimeException("用户数据转换失败");
+            }
+            return userVO;
+        }).collect(Collectors.toList());
+        
+        return Result.success("获取用户列表成功", userVOs);
+    }
     
     /**
      * 检查用户名是否存在
@@ -209,13 +312,26 @@ public class SysUserController {
      */
     @GetMapping("/search")
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
-    public Result<Page<SysUser>> searchUsers(
+    public Result<Page<SysUserVO>> searchUsers(
             @RequestParam String search,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
         Page<SysUser> pageParam = new Page<>(page, size);
         Page<SysUser> users = userService.searchUsers(pageParam, search);
-        return Result.success("搜索用户成功", users);
+        
+        // 转换为VO
+        Page<SysUserVO> voPage = new Page<>(users.getCurrent(), users.getSize(), users.getTotal());
+        voPage.setRecords(users.getRecords().stream().map(user -> {
+            SysUserVO userVO = new SysUserVO();
+            try {
+                BeanUtils.copyProperties(userVO, user);
+            } catch (Exception e) {
+                throw new RuntimeException("用户数据转换失败");
+            }
+            return userVO;
+        }).collect(Collectors.toList()));
+        
+        return Result.success("搜索用户成功", voPage);
     }
 
     /**

@@ -4,7 +4,10 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.entity.SysConfig;
 import com.example.tooltestingdemo.service.SysConfigService;
+import com.example.tooltestingdemo.dto.SysConfigDTO;
+import com.example.tooltestingdemo.vo.SysConfigVO;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.beanutils.BeanUtils;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,12 +29,20 @@ public class SysConfigController {
      */
     @PostMapping
     @PreAuthorize("@securityService.hasPermission('system:config:api')")
-    public Result<?> createConfig(@RequestBody SysConfig config) {
+    public Result<?> createConfig(@RequestBody SysConfigDTO configDTO) {
         // 检查配置键是否已存在
-        boolean exists = configService.existsByConfigKey(config.getConfigKey(), null);
+        boolean exists = configService.existsByConfigKey(configDTO.getConfigKey(), null);
         if (exists) {
             return Result.error("配置键已存在，请勿重复添加");
         }
+        
+        SysConfig config = new SysConfig();
+        try {
+            BeanUtils.copyProperties(config, configDTO);
+        } catch (Exception e) {
+            return Result.error("参数转换失败");
+        }
+        
         boolean saved = configService.saveConfig(config);
         if (saved) {
             return Result.success("新增配置成功");
@@ -45,8 +56,16 @@ public class SysConfigController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("@securityService.hasPermission('system:config:api')")
-    public Result<?> updateConfig(@PathVariable String id, @RequestBody SysConfig config) {
+    public Result<?> updateConfig(@PathVariable String id, @RequestBody SysConfigDTO configDTO) {
+        SysConfig config = new SysConfig();
         config.setId(id);
+        
+        try {
+            BeanUtils.copyProperties(config, configDTO);
+        } catch (Exception e) {
+            return Result.error("参数转换失败");
+        }
+        
         // 检查是否为内置配置
         if (configService.isBuiltInConfigById(id)) {
             // 内置配置只允许编辑值和描述，不允许修改配置键
@@ -106,12 +125,17 @@ public class SysConfigController {
         if (config == null) {
             return Result.error("配置不存在");
         }
-        // 添加是否内置的标识
-        Map<String, Object> data = Map.of(
-                "config", config,
-                "isBuiltIn", configService.isBuiltInConfigById(id)
-        );
-        return Result.success("获取配置成功", data);
+        
+        // 转换为VO
+        SysConfigVO configVO = new SysConfigVO();
+        try {
+            BeanUtils.copyProperties(configVO, config);
+        } catch (Exception e) {
+            return Result.error("数据转换失败");
+        }
+        configVO.setIsBuiltIn(configService.isBuiltInConfigById(id));
+        
+        return Result.success("获取配置成功", configVO);
     }
 
     /**

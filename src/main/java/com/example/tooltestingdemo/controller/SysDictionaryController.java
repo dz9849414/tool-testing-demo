@@ -4,10 +4,12 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.entity.SysDictionary;
 import com.example.tooltestingdemo.service.SysDictionaryService;
+import com.example.tooltestingdemo.dto.SysDictionaryDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.beanutils.BeanUtils;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,12 +32,20 @@ public class SysDictionaryController {
     @PostMapping
     @Operation(summary = "新增数据字典", description = "支持字典类型、字典键、字典值、排序号、状态的新增")
     @PreAuthorize("@securityService.hasPermission('system:dictionary:api')")
-    public Result<?> createDictionary(@RequestBody SysDictionary dictionary) {
+    public Result<?> createDictionary(@RequestBody SysDictionaryDTO dictionaryDTO) {
         // 检查字典是否已存在
-        boolean exists = !dictionaryService.checkCodeUnique(dictionary.getCode(), dictionary.getType(), null);
+        boolean exists = !dictionaryService.checkCodeUnique(dictionaryDTO.getCode(), dictionaryDTO.getType(), null);
         if (exists) {
             return Result.error("字典已存在，请勿重复添加");
         }
+        
+        SysDictionary dictionary = new SysDictionary();
+        try {
+            BeanUtils.copyProperties(dictionary, dictionaryDTO);
+        } catch (Exception e) {
+            return Result.error("参数转换失败");
+        }
+        
         boolean saved = dictionaryService.saveDictionary(dictionary);
         if (saved) {
             return Result.success("新增数据字典成功");
@@ -49,11 +59,19 @@ public class SysDictionaryController {
      */
     @PutMapping("/{id}")
     @Operation(summary = "编辑数据字典", description = "支持字典类型、字典键、字典值、排序号、状态的编辑")
-    @PreAuthorize("hasRole('ADMIN') or @permissionCheckAspect.checkPermission('system:dictionary:api')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:dictionary:api')")
     public Result<?> updateDictionary(
             @Parameter(description = "字典ID") @PathVariable String id,
-            @RequestBody SysDictionary dictionary) {
+            @RequestBody SysDictionaryDTO dictionaryDTO) {
+        SysDictionary dictionary = new SysDictionary();
         dictionary.setId(id);
+        
+        try {
+            BeanUtils.copyProperties(dictionary, dictionaryDTO);
+        } catch (Exception e) {
+            return Result.error("参数转换失败");
+        }
+        
         boolean updated = dictionaryService.updateDictionary(dictionary);
         if (updated) {
             return Result.success("编辑数据字典成功");
