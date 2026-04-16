@@ -109,4 +109,20 @@ public class SysConfigServiceImpl extends ServiceImpl<SysConfigMapper, SysConfig
         SysConfig config = getById(id);
         return config != null && config.getIsBuiltIn() != null && config.getIsBuiltIn() == 1;
     }
+    
+    @Override
+    public boolean updateBuiltInStatus(String id, boolean isBuiltIn) {
+        SysConfig config = getById(id);
+        if (config == null) {
+            return false;
+        }
+        
+        // 创建更新对象
+        SysConfig updateConfig = new SysConfig();
+        updateConfig.setId(id);
+        updateConfig.setIsBuiltIn(isBuiltIn ? 1 : 0);
+        updateConfig.setUpdateTime(LocalDateTime.now());
+        
+        return updateById(updateConfig);
+    }
 }

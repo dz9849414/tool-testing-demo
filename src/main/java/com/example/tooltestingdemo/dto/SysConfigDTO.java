@@ -15,4 +15,5 @@ public class SysConfigDTO {
     private Integer isEncrypted;
     private Integer status;
     private String updateUser;
+    private Boolean isBuiltIn;
 }

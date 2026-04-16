@@ -190,6 +190,32 @@ public class SysConfigController {
     }
     
     /**
+     * 修改配置是否内置状态
+     */
+    @PutMapping("/{id}/built-in")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:config:api')")
+    public Result<?> updateBuiltInStatus(@PathVariable String id, @RequestBody Map<String, Boolean> request) {
+        Boolean isBuiltIn = request.get("isBuiltIn");
+        if (isBuiltIn == null) {
+            return Result.error("参数isBuiltIn不能为空");
+        }
+        
+        // 检查配置是否存在
+        SysConfig config = configService.getById(id);
+        if (config == null) {
+            return Result.error("配置不存在");
+        }
+        
+        // 更新是否内置状态
+        boolean updated = configService.updateBuiltInStatus(id, isBuiltIn);
+        if (updated) {
+            return Result.success(isBuiltIn ? "配置已设置为内置" : "配置已设置为非内置");
+        } else {
+            return Result.error("更新内置状态失败");
+        }
+    }
+    
+    /**
      * 如果值不为null，则添加到Map中
      */
     private void addIfNotNull(Map<String, Object> map, String key, Object value) {

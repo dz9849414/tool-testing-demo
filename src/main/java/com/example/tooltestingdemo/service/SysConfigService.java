@@ -55,4 +55,9 @@ public interface SysConfigService extends IService<SysConfig> {
      * 检查是否为内置配置（通过ID）
      */
     boolean isBuiltInConfigById(String id);
+    
+    /**
+     * 更新配置是否内置状态
+     */
+    boolean updateBuiltInStatus(String id, boolean isBuiltIn);
 }
