@@ -17,6 +17,7 @@ import com.example.tooltestingdemo.service.protocol.support.ProtocolTypeImportFa
 import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
 import com.example.tooltestingdemo.vo.ProtocolTypeExportVO;
 import com.example.tooltestingdemo.vo.ProtocolTypeImportResultVO;
+import com.example.tooltestingdemo.vo.ProtocolTypeStatusChangeVO;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.Getter;
 import lombok.Setter;
@@ -108,6 +109,65 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     public IPage<ProtocolType> getProtocolTypeList(ProtocolType protocolType) {
         ProtocolType query = protocolType == null ? new ProtocolType() : protocolType;
         return protocolTypeMapper.selectPage(query.toPage(), buildQueryWrapper(query));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ProtocolTypeStatusChangeVO updateProtocolTypeStatus(Long id, Integer status, Boolean confirm) {
+        if (id == null) {
+            throw new RuntimeException("协议类型ID不能为空！");
+        }
+        validateStatusValue(status);
+
+        ProtocolType existing = getExistingProtocolType(id);
+        RelationStats relationStats = getRelationStats(id);
+        fillRelationImpactFields(existing, relationStats.relatedProjectCount(), relationStats.relatedTemplateCount());
+
+        if (Objects.equals(existing.getStatus(), status)) {
+            return buildStatusChangeVO(
+                    existing,
+                    existing.getStatus(),
+                    status,
+                    false,
+                    false,
+                    Integer.valueOf(1).equals(status) ? "协议类型已启用，无需重复操作" : "协议类型已禁用，无需重复操作"
+            );
+        }
+
+        if (requiresDisableConfirm(existing.getStatus(), status, confirm)) {
+            return buildStatusChangeVO(
+                    existing,
+                    existing.getStatus(),
+                    status,
+                    false,
+                    true,
+                    buildDisableConfirmMessage(existing.getRelationImpactScope())
+            );
+        }
+
+        ProtocolType updateEntity = new ProtocolType();
+        updateEntity.setId(existing.getId());
+        updateEntity.setStatus(status);
+        updateEntity.setUpdateId(getCurrentOperatorId());
+        updateEntity.setUpdateTime(LocalDateTime.now());
+
+        if (protocolTypeMapper.updateById(updateEntity) <= 0) {
+            throw new RuntimeException("协议类型状态更新失败！");
+        }
+
+        ProtocolType updated = getExistingProtocolType(id);
+        fillRelationImpactFields(updated, relationStats.relatedProjectCount(), relationStats.relatedTemplateCount());
+        log.info("协议类型状态更新成功: id={}, name={}, fromStatus={}, toStatus={}, operatorId={}",
+                updated.getId(), updated.getProtocolName(), existing.getStatus(), status, getCurrentOperatorId());
+
+        return buildStatusChangeVO(
+                updated,
+                existing.getStatus(),
+                status,
+                true,
+                false,
+                buildStatusChangeSuccessMessage(status, updated.getRelationImpactScope())
+        );
     }
 
     @Override
@@ -632,6 +692,55 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
             return 0;
         }
         throw new RuntimeException("状态不合法，仅支持 启用/禁用 或 enabled/disabled 或 true/false 或 1/0");
+    }
+
+    private void validateStatusValue(Integer status) {
+        if (!Integer.valueOf(0).equals(status) && !Integer.valueOf(1).equals(status)) {
+            throw new RuntimeException("状态值必须是0（禁用）或1（启用）");
+        }
+    }
+
+    private boolean requiresDisableConfirm(Integer currentStatus, Integer targetStatus, Boolean confirm) {
+        return Integer.valueOf(0).equals(targetStatus)
+                && !Integer.valueOf(0).equals(currentStatus)
+                && !Boolean.TRUE.equals(confirm);
+    }
+
+    private String buildDisableConfirmMessage(String relationImpactScope) {
+        if (StringUtils.isNotBlank(relationImpactScope)) {
+            return String.format("禁用后关联协议不可使用。%s。确认禁用？", relationImpactScope);
+        }
+        return "禁用后关联协议不可使用，确认禁用？";
+    }
+
+    private String buildStatusChangeSuccessMessage(Integer status, String relationImpactScope) {
+        if (Integer.valueOf(1).equals(status)) {
+            return "启用成功";
+        }
+        if (StringUtils.isNotBlank(relationImpactScope)) {
+            return String.format("禁用成功。禁用后关联协议不可使用。%s。", relationImpactScope);
+        }
+        return "禁用成功。禁用后关联协议不可使用。";
+    }
+
+    private ProtocolTypeStatusChangeVO buildStatusChangeVO(ProtocolType protocolType,
+                                                           Integer currentStatus,
+                                                           Integer targetStatus,
+                                                           boolean statusChanged,
+                                                           boolean requiresConfirm,
+                                                           String message) {
+        ProtocolTypeStatusChangeVO result = new ProtocolTypeStatusChangeVO();
+        result.setId(protocolType.getId());
+        result.setProtocolName(protocolType.getProtocolName());
+        result.setCurrentStatus(currentStatus);
+        result.setTargetStatus(targetStatus);
+        result.setStatusChanged(statusChanged);
+        result.setRequiresConfirm(requiresConfirm);
+        result.setMessage(message);
+        result.setRelatedProjectCount(protocolType.getRelatedProjectCount());
+        result.setRelatedTemplateCount(protocolType.getRelatedTemplateCount());
+        result.setRelationImpactScope(protocolType.getRelationImpactScope());
+        return result;
     }
 
     private LambdaQueryWrapper<ProtocolType> buildQueryWrapper(ProtocolType protocolType) {

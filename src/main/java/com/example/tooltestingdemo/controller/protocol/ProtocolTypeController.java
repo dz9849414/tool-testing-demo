@@ -4,9 +4,9 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.service.protocol.IProtocolTypeService;
-import com.example.tooltestingdemo.service.protocol.impl.ProtocolTypeServiceImpl;
 import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
 import com.example.tooltestingdemo.vo.ProtocolTypeImportResultVO;
+import com.example.tooltestingdemo.vo.ProtocolTypeStatusChangeVO;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,9 +15,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 /**
  * <p>
@@ -99,6 +96,17 @@ public class ProtocolTypeController {
     @GetMapping("/export")
     public void exportProtocolTypes(ProtocolType protocolType, HttpServletResponse response) throws IOException {
         protocolTypeService.exportProtocolTypes(protocolType, response);
+    }
+
+    /**
+     * 启用/禁用协议类型
+     */
+    @PutMapping("/{id}/status")
+    public Result<ProtocolTypeStatusChangeVO> updateProtocolTypeStatus(@PathVariable Long id,
+                                                                       @RequestParam Integer status,
+                                                                       @RequestParam(value = "confirm", required = false, defaultValue = "false") Boolean confirm) {
+        ProtocolTypeStatusChangeVO result = protocolTypeService.updateProtocolTypeStatus(id, status, confirm);
+        return Result.success(result.getMessage(), result);
     }
 
     /**

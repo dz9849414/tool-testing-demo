@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
 import com.example.tooltestingdemo.vo.ProtocolTypeImportResultVO;
+import com.example.tooltestingdemo.vo.ProtocolTypeStatusChangeVO;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,6 +26,8 @@ public interface IProtocolTypeService extends IService<ProtocolType> {
     IPage<ProtocolType> getProtocolTypeList(ProtocolType protocolType);
 
     ProtocolTypeImportResultVO importProtocolTypes(MultipartFile file, String strategy) throws IOException;
+
+    ProtocolTypeStatusChangeVO updateProtocolTypeStatus(Long id, Integer status, Boolean confirm);
 
     ProtocolType modifyProtocolType(ProtocolType protocolType);
 
