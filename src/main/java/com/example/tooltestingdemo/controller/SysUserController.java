@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.example.tooltestingdemo.dto.SysUserCreateDTO;
 import com.example.tooltestingdemo.dto.SysUserUpdateDTO;
+import com.example.tooltestingdemo.enums.RoleEnum;
 import com.example.tooltestingdemo.vo.SysUserVO;
 import org.apache.commons.beanutils.BeanUtils;
 import java.util.HashMap;
@@ -147,7 +148,7 @@ public class SysUserController {
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
     public Result<SysUser> createUser(@RequestBody SysUserCreateDTO userDTO) {
         // 检查是否尝试创建用户名为admin的用户
-        if ("admin".equals(userDTO.getUsername())) {
+        if (RoleEnum.ADMIN.getCode().equals(userDTO.getUsername())) {
             return Result.error(400, "不能创建用户名为admin的用户");
         }
         
@@ -182,14 +183,14 @@ public class SysUserController {
         user.setId(id);
         
         // 检查是否是admin用户
-        if ("admin".equals(id)) {
+        if (RoleEnum.ADMIN.getCode().equals(id)) {
             // 检查是否尝试修改admin的用户名
-            if (userDTO.getUsername() != null && !"admin".equals(userDTO.getUsername())) {
+            if (userDTO.getUsername() != null && !RoleEnum.ADMIN.getCode().equals(userDTO.getUsername())) {
                 return Result.error(400, "不能更改admin用户名");
             }
         } else {
             // 检查是否尝试将用户名改为admin
-            if (userDTO.getUsername() != null && "admin".equals(userDTO.getUsername())) {
+            if (userDTO.getUsername() != null && RoleEnum.ADMIN.getCode().equals(userDTO.getUsername())) {
                 return Result.error(400, "不能将用户名改为admin");
             }
         }

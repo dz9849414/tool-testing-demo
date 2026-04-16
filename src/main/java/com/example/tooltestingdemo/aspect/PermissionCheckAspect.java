@@ -3,6 +3,7 @@ package com.example.tooltestingdemo.aspect;
 import com.example.tooltestingdemo.annotation.PermissionCheck;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.common.ErrorStatus;
+import com.example.tooltestingdemo.enums.RoleEnum;
 import com.example.tooltestingdemo.service.SecurityService;
 import com.example.tooltestingdemo.service.SysUserService;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -210,8 +211,8 @@ public class PermissionCheckAspect {
         }
 
         // 检查当前用户是否有管理员或经理角色
-        boolean isAdmin = currentRoles.contains("admin");
-        boolean isManager = currentRoles.contains("manager");
+        boolean isAdmin = currentRoles.contains(RoleEnum.ADMIN.getCode());
+        boolean isManager = currentRoles.contains(RoleEnum.MANAGER.getCode());
         if (isAdmin || isManager) {
             // 管理员和经理可以查看用户列表
             return null;
@@ -242,7 +243,7 @@ public class PermissionCheckAspect {
         }
 
         // 检查当前用户是否有管理员角色
-        boolean isAdmin = currentRoles.contains("admin");
+        boolean isAdmin = currentRoles.contains(RoleEnum.ADMIN.getCode());
         if (isAdmin) {
             // 管理员可以管理所有权限
             return null;
@@ -273,8 +274,8 @@ public class PermissionCheckAspect {
         }
 
         // 检查当前用户是否有管理员或经理角色
-        boolean isAdmin = currentRoles.contains("admin");
-        boolean isManager = currentRoles.contains("manager");
+        boolean isAdmin = currentRoles.contains(RoleEnum.ADMIN.getCode());
+        boolean isManager = currentRoles.contains(RoleEnum.MANAGER.getCode());
         if (isAdmin || isManager) {
             // 管理员和经理可以管理角色
             return null;
@@ -315,19 +316,19 @@ public class PermissionCheckAspect {
         List<String> targetRoles = userService.getRolesByUserId(targetUser.getId());
 
         // 检查当前用户是否有管理员角色
-        boolean isAdmin = currentRoles != null && currentRoles.contains("admin");
+        boolean isAdmin = currentRoles != null && currentRoles.contains(RoleEnum.ADMIN.getCode());
         if (isAdmin) {
             // 管理员可以操作所有用户
             return null;
         }
 
         // 检查当前用户是否有经理角色
-        boolean isManager = currentRoles != null && currentRoles.contains("manager");
+        boolean isManager = currentRoles != null && currentRoles.contains(RoleEnum.MANAGER.getCode());
         if (isManager) {
             // 经理可以操作普通用户，但不能操作管理员或其他经理
             if (targetRoles != null) {
                 for (String role : targetRoles) {
-                    if ("admin".equals(role) || "manager".equals(role)) {
+                    if (RoleEnum.ADMIN.getCode().equals(role) || RoleEnum.MANAGER.getCode().equals(role)) {
                         return createErrorResponse("无权限操作该用户");
                     }
                 }
@@ -360,18 +361,18 @@ public class PermissionCheckAspect {
         }
 
         // 检查当前用户是否有管理员角色
-        boolean isAdmin = currentRoles.contains("admin");
+        boolean isAdmin = currentRoles.contains(RoleEnum.ADMIN.getCode());
         if (isAdmin) {
             // 管理员可以分配所有角色
             return null;
         }
 
         // 检查当前用户是否有经理角色
-        boolean isManager = currentRoles.contains("manager");
+        boolean isManager = currentRoles.contains(RoleEnum.MANAGER.getCode());
         if (isManager) {
             // 经理只能分配普通用户角色
             for (String roleId : roleIds) {
-                if ("admin".equals(roleId) || "manager".equals(roleId)) {
+                if (RoleEnum.ADMIN.getCode().equals(roleId) || RoleEnum.MANAGER.getCode().equals(roleId)) {
                     return createErrorResponse("不能分配高于自己权限的角色");
                 }
             }

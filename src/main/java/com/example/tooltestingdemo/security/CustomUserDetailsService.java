@@ -49,10 +49,10 @@ public class CustomUserDetailsService implements UserDetailsService {
             }
         } else {
             // 默认角色
-            authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + RoleEnum.USER.getCode().toUpperCase()));
             // 如果没有角色，添加默认角色到角色列表
             roles = new ArrayList<>();
-            roles.add("user");
+            roles.add(RoleEnum.USER.getCode());
         }
         
         // 获取用户的权限列表

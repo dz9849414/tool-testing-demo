@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.common.ErrorStatus;
 import com.example.tooltestingdemo.dto.SysRoleDTO;
+import com.example.tooltestingdemo.enums.RoleEnum;
 import org.apache.commons.beanutils.BeanUtils;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -136,7 +137,7 @@ public class SysRoleController {
     @PermissionCheck(type = "update")
     public Result<SysRole> updateRole(@PathVariable String id, @RequestBody SysRoleDTO roleDTO) {
         // 检查是否是admin角色
-        if ("admin".equals(id)) {
+        if (RoleEnum.ADMIN.getCode().equals(id)) {
             return Result.error(ErrorStatus.BAD_REQUEST, "不能修改admin角色");
         }
         
