@@ -12,6 +12,7 @@ import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.common.ErrorStatus;
 import com.example.tooltestingdemo.dto.SysRoleDTO;
 import com.example.tooltestingdemo.enums.RoleEnum;
+import com.example.tooltestingdemo.util.IdGenerator;
 import org.apache.commons.beanutils.BeanUtils;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -122,7 +123,7 @@ public class SysRoleController {
             }
         } else {
             // 如果id没传入，系统自动生成
-            role.setId("role_" + System.currentTimeMillis());
+            role.setId("role_" + IdGenerator.generateSnowflakeId());
         }
         
         Boolean savedRole = roleService.save(role);

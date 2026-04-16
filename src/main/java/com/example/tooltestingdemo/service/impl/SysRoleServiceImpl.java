@@ -12,6 +12,7 @@ import com.example.tooltestingdemo.mapper.SysRolePermissionMapper;
 import com.example.tooltestingdemo.mapper.SysUserRoleMapper;
 import com.example.tooltestingdemo.mapper.SysPermissionMapper;
 import com.example.tooltestingdemo.service.SysRoleService;
+import com.example.tooltestingdemo.util.IdGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -101,7 +102,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         // 创建新的权限关联
         for (String permissionId : permissionIds) {
             SysRolePermission rolePermission = new SysRolePermission();
-            rolePermission.setId("rp_" + System.currentTimeMillis());
+            rolePermission.setId("rp_" + IdGenerator.generateSnowflakeId());
             rolePermission.setRoleId(roleId);
             rolePermission.setPermissionId(permissionId);
             rolePermission.setCreateTime(LocalDateTime.now());
@@ -119,7 +120,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         // 创建新的用户关联
         for (String userId : userIds) {
             SysUserRole userRole = new SysUserRole();
-            userRole.setId("ur_" + System.currentTimeMillis());
+            userRole.setId("ur_" + IdGenerator.generateSnowflakeId());
             userRole.setUserId(userId);
             userRole.setRoleId(roleId);
             userRole.setCreateTime(LocalDateTime.now());
