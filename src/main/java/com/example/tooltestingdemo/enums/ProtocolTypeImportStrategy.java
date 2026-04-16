@@ -1,10 +1,12 @@
 package com.example.tooltestingdemo.enums;
 
+import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
 
 /**
  * 协议类型导入策略
  */
+@Getter
 public enum ProtocolTypeImportStrategy {
 
     OVERWRITE("OVERWRITE"),
@@ -14,10 +16,6 @@ public enum ProtocolTypeImportStrategy {
 
     ProtocolTypeImportStrategy(String code) {
         this.code = code;
-    }
-
-    public String getCode() {
-        return code;
     }
 
     public static ProtocolTypeImportStrategy fromCode(String code) {
