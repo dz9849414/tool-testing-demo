@@ -46,7 +46,7 @@ public class SysMenuController {
      * 获取所有菜单树（管理员使用）
      */
     @GetMapping("/tree")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:permission:api')")
     public Result<List<Map<String, Object>>> getAllMenuTree() {
         try {
             List<Map<String, Object>> menuTree = menuService.getAllMenuTree();
@@ -61,7 +61,7 @@ public class SysMenuController {
      * 分页获取菜单列表
      */
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:permission:api')")
     public Result<Page<SysMenu>> getMenusByPage(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -96,7 +96,7 @@ public class SysMenuController {
      * 根据ID获取菜单详情
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:permission:api')")
     public Result<SysMenu> getMenuById(@PathVariable String id) {
         SysMenu menu = menuService.getById(id);
         if (menu == null) {
@@ -109,7 +109,7 @@ public class SysMenuController {
      * 新增菜单
      */
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:permission:api')")
     public Result<String> createMenu(@RequestBody SysMenuDTO menuDTO) {
         try {
             // 检查权限编码是否重复
@@ -141,7 +141,7 @@ public class SysMenuController {
      * 更新菜单
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:permission:api')")
     public Result<String> updateMenu(@PathVariable String id, @RequestBody SysMenuDTO menuDTO) {
         try {
             SysMenu existingMenu = menuService.getById(id);
@@ -179,7 +179,7 @@ public class SysMenuController {
      * 删除菜单
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:permission:api')")
     public Result<String> deleteMenu(@PathVariable String id) {
         try {
             // 检查是否有子菜单

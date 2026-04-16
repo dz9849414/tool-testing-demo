@@ -35,7 +35,7 @@ public class SysRoleController {
      * 获取所有角色列表
      */
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:api')")
     public Result<List<SysRole>> getAllRoles() {
         List<SysRole> roles = roleService.list();
         return Result.success("获取角色列表成功", roles);
@@ -45,7 +45,7 @@ public class SysRoleController {
      * 分页获取角色列表
      */
     @GetMapping("/page")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:api')")
     public Result<Page<SysRole>> getRolesByPage(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -58,7 +58,7 @@ public class SysRoleController {
      * 根据ID获取角色信息
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:api')")
     public Result<SysRole> getRoleById(@PathVariable String id) {
         SysRole role = roleService.getById(id);
         if (role == null) {
@@ -71,7 +71,7 @@ public class SysRoleController {
      * 根据类型获取角色列表
      */
     @GetMapping("/type/{type}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:api')")
     public Result<Page<SysRole>> getRolesByType(
             @PathVariable String type,
             @RequestParam(defaultValue = "1") int page,
@@ -85,7 +85,7 @@ public class SysRoleController {
      * 根据用户ID获取角色列表
      */
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasRole('ADMIN') or @securityService.isCurrentUser(#userId)")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:api') or @securityService.isCurrentUser(#userId)")
     public Result<List<SysRole>> getRolesByUserId(@PathVariable String userId) {
         List<SysRole> roles = roleService.findByUserId(userId);
         return Result.success("获取角色列表成功", roles);
@@ -95,7 +95,7 @@ public class SysRoleController {
      * 创建新角色
      */
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:api')")
     public Result<Boolean> createRole(@RequestBody SysRoleDTO roleDTO) {
         SysRole role = new SysRole();
         try {
@@ -132,7 +132,7 @@ public class SysRoleController {
      * 更新角色信息
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:api')")
     @PermissionCheck(type = "update")
     public Result<SysRole> updateRole(@PathVariable String id, @RequestBody SysRoleDTO roleDTO) {
         // 检查是否是admin角色
@@ -178,7 +178,7 @@ public class SysRoleController {
      * 删除角色
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:api')")
     public Result<String> deleteRole(@PathVariable String id) {
         // 检查是否是admin角色
         if ("admin".equals(id)) {
@@ -201,7 +201,7 @@ public class SysRoleController {
      * 为角色分配权限
      */
     @PostMapping("/{roleId}/permissions")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:api')")
     @PermissionCheck(type = "assignPermissions")
     public Result<String> assignPermissions(@PathVariable String roleId, @RequestBody List<String> permissionIds) {
         // 检查是否是admin角色
@@ -230,7 +230,7 @@ public class SysRoleController {
      * 为角色分配用户
      */
     @PostMapping("/{roleId}/users")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:api')")
     @PermissionCheck(type = "assignUsersToRole")
     public Result<String> assignUsers(@PathVariable String roleId, @RequestBody List<String> userIds) {
         // 检查是否是admin角色
@@ -246,7 +246,7 @@ public class SysRoleController {
      * 从角色中移除权限
      */
     @DeleteMapping("/{roleId}/permissions")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:api')")
     @PermissionCheck(type = "removePermissions")
     public Result<String> removePermissions(@PathVariable String roleId, @RequestBody List<String> permissionIds) {
         // 检查是否是admin角色
@@ -275,7 +275,7 @@ public class SysRoleController {
      * 从角色中移除用户
      */
     @DeleteMapping("/{roleId}/users")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:api')")
     @PermissionCheck(type = "removeUsersFromRole")
     public Result<String> removeUsers(@PathVariable String roleId, @RequestBody List<String> userIds) {
         // 检查是否是admin角色
@@ -291,7 +291,7 @@ public class SysRoleController {
      * 根据状态获取角色列表
      */
     @GetMapping("/status/{status}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:api')")
     public Result<List<SysRole>> getRolesByStatus(@PathVariable Integer status) {
         List<SysRole> roles = roleService.findByStatus(status);
         return Result.success("获取角色列表成功", roles);

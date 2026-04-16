@@ -70,7 +70,7 @@ public class SysUserController {
      * 获取所有用户列表
      */
     @GetMapping
-    @PermissionCheck(perm = "system:user:api",type = "view" , or = true)
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:user:api')")
     public Result<Page<SysUserVO>> getAllUsers(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -96,7 +96,7 @@ public class SysUserController {
      * 分页获取用户列表
      */
     @GetMapping("/page")
-    @PermissionCheck(type = "view", perm = "system:user:api", or = true)
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:user:api')")
     public Result<Page<SysUserVO>> getUsersByPage(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -122,7 +122,7 @@ public class SysUserController {
      * 根据ID获取用户信息
      */
     @GetMapping("/{id}")
-    @PermissionCheck(type = "view", perm = "system:user:api", or = true, allowCurrentUser = true)
+    @PreAuthorize("@securityService.hasPermission('system:user:api') or @securityService.isCurrentUser(#id)")
     public Result<SysUserVO> getUserById(@PathVariable String id) {
         SysUser user = userService.findById(id);
         if (user == null) {
@@ -237,7 +237,7 @@ public class SysUserController {
      * 根据状态获取用户列表
      */
     @GetMapping("/status/{status}")
-    @PermissionCheck(type = "view", perm = "system:user:api", or = true)
+    @PreAuthorize("@securityService.hasPermission('system:user:api')")
     public Result<Page<SysUserVO>> getUsersByStatus(
             @PathVariable Integer status,
             @RequestParam(defaultValue = "1") int page,
@@ -264,7 +264,7 @@ public class SysUserController {
      * 根据角色ID获取用户列表
      */
     @GetMapping("/role/{roleId}")
-    @PreAuthorize("hasRole('ADMIN') or @permissionCheckAspect.checkPermission('system:user:api')")
+    @PreAuthorize("@securityService.hasPermission('system:user:api')")
     public Result<List<SysUserVO>> getUsersByRoleId(@PathVariable String roleId) {
         List<SysUser> users = userService.findByRoleId(roleId);
         
@@ -428,7 +428,7 @@ public class SysUserController {
      * 更新用户状态（启用/禁用/锁定）
      */
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    @PreAuthorize("@securityService.hasPermission('system:user:api')")
     @PermissionCheck(type = "update")
     public Result<String> updateUserStatus(@PathVariable String id, @RequestParam Integer status) {
         // 检查是否是admin用户

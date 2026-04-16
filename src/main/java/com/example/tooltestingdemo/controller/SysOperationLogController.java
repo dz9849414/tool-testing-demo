@@ -45,7 +45,7 @@ public class SysOperationLogController {
      * 输出：结构化操作日志列表（含时间、操作类型、详情）
      */
     @GetMapping("/user/{userId}")
-    @PreAuthorize("@securityService.hasPermission('system:log:api') or @securityService.isCurrentUser(#userId)")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:log:api') or @securityService.isCurrentUser(#userId)")
     public Result<Page<SysOperationLogVO>> getUserOperationLogs(
             @PathVariable String userId,
             @RequestParam(required = false) String startTime,
@@ -96,7 +96,7 @@ public class SysOperationLogController {
      * 分页获取操作日志列表
      */
     @GetMapping("/page")
-    @PreAuthorize("@securityService.hasPermission('system:log:api')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:log:api')")
     public Result<Page<SysOperationLogVO>> getOperationLogsByPage(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -148,7 +148,7 @@ public class SysOperationLogController {
      * 获取最近的操作日志
      */
     @GetMapping("/recent")
-    @PreAuthorize("@securityService.hasPermission('system:log:api')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:log:api')")
     public Result<List<SysOperationLogVO>> getRecentOperationLogs(
             @RequestParam(defaultValue = "10") int limit) {
         List<SysOperationLog> logs = operationLogService.getRecentOperationLogs(limit);
@@ -171,7 +171,7 @@ public class SysOperationLogController {
      * 根据模块获取操作日志
      */
     @GetMapping("/module")
-    @PreAuthorize("@securityService.hasPermission('system:log:api')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:log:api')")
     public Result<List<SysOperationLogVO>> getOperationLogsByModule(
             @RequestParam String module) {
         List<SysOperationLog> logs = operationLogService.getOperationLogsByModule(module);

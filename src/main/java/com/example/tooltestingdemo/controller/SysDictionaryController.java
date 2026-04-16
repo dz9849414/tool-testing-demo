@@ -31,7 +31,7 @@ public class SysDictionaryController {
      */
     @PostMapping
     @Operation(summary = "新增数据字典", description = "支持字典类型、字典键、字典值、排序号、状态的新增")
-    @PreAuthorize("@securityService.hasPermission('system:dictionary:api')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:dictionary:api')")
     public Result<?> createDictionary(@RequestBody SysDictionaryDTO dictionaryDTO) {
         // 检查字典是否已存在
         boolean exists = !dictionaryService.checkCodeUnique(dictionaryDTO.getCode(), dictionaryDTO.getType(), null);
@@ -85,7 +85,7 @@ public class SysDictionaryController {
      */
     @DeleteMapping("/{id}")
     @Operation(summary = "删除数据字典", description = "根据ID删除数据字典")
-    @PreAuthorize("@securityService.hasPermission('system:dictionary:api')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:dictionary:api')")
     public Result<?> deleteDictionary(@Parameter(description = "字典ID") @PathVariable String id) {
         boolean deleted = dictionaryService.deleteDictionary(id);
         if (deleted) {
@@ -161,9 +161,23 @@ public class SysDictionaryController {
      */
     @GetMapping("/type/{type}")
     @Operation(summary = "根据类型查询数据字典", description = "根据类型查询启用状态的数据字典")
-    @PreAuthorize("@securityService.hasPermission('system:dictionary:api')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:dictionary:api')")
     public Result<?> getDictionariesByType(@Parameter(description = "字典类型") @PathVariable String type) {
         List<SysDictionary> dictionaries = dictionaryService.getDictionariesByType(type);
         return Result.success("根据类型查询数据字典成功", dictionaries);
+    }
+
+    /**
+     * 根据ID查询数据字典详情
+     */
+    @GetMapping("/{id}")
+    @Operation(summary = "根据ID查询数据字典详情", description = "根据字典ID查询数据字典的详细信息")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:dictionary:api')")
+    public Result<?> getDictionaryById(@Parameter(description = "字典ID") @PathVariable String id) {
+        SysDictionary dictionary = dictionaryService.getById(id);
+        if (dictionary == null) {
+            return Result.error("数据字典不存在");
+        }
+        return Result.success("获取数据字典详情成功", dictionary);
     }
 }

@@ -28,7 +28,7 @@ public class SysConfigController {
      * 新增系统配置
      */
     @PostMapping
-    @PreAuthorize("@securityService.hasPermission('system:config:api')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:config:api')")
     public Result<?> createConfig(@RequestBody SysConfigDTO configDTO) {
         // 检查配置键是否已存在
         boolean exists = configService.existsByConfigKey(configDTO.getConfigKey(), null);
@@ -55,7 +55,7 @@ public class SysConfigController {
      * 编辑系统配置
      */
     @PutMapping("/{id}")
-    @PreAuthorize("@securityService.hasPermission('system:config:api')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:config:api')")
     public Result<?> updateConfig(@PathVariable String id, @RequestBody SysConfigDTO configDTO) {
         SysConfig config = new SysConfig();
         config.setId(id);
@@ -86,7 +86,7 @@ public class SysConfigController {
      * 删除系统配置
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("@securityService.hasPermission('system:config:api')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:config:api')")
     public Result<?> deleteConfig(@PathVariable String id) {
         // 检查是否为内置配置
         if (configService.isBuiltInConfigById(id)) {
@@ -104,7 +104,7 @@ public class SysConfigController {
      * 分页查询系统配置
      */
     @GetMapping
-    @PreAuthorize("@securityService.hasPermission('system:config:api')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:config:api')")
     public Result<?> getConfigs(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
@@ -119,7 +119,7 @@ public class SysConfigController {
      * 根据ID获取系统配置
      */
     @GetMapping("/{id}")
-    @PreAuthorize("@securityService.hasPermission('system:config:api')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:config:api')")
     public Result<?> getConfigById(@PathVariable String id) {
         SysConfig config = configService.getById(id);
         if (config == null) {
@@ -142,7 +142,7 @@ public class SysConfigController {
      * 获取所有系统配置
      */
     @GetMapping("/all")
-    @PreAuthorize("@securityService.hasPermission('system:config:api')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:config:api')")
     public Result<?> getAllConfigs() {
         List<SysConfig> configs = configService.getAllConfigs();
         return Result.success("获取所有配置成功", configs);
@@ -152,7 +152,7 @@ public class SysConfigController {
      * 检查配置键是否存在
      */
     @GetMapping("/check-key")
-    @PreAuthorize("@securityService.hasPermission('system:config:api')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:config:api')")
     public Result<?> checkKeyUnique(
             @RequestParam String configKey,
             @RequestParam(required = false) String id) {
@@ -164,7 +164,7 @@ public class SysConfigController {
      * 获取配置详情（包含是否内置信息）
      */
     @GetMapping("/detail/{id}")
-    @PreAuthorize("@securityService.hasPermission('system:config:api')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:config:api')")
     public Result<?> getConfigDetail(@PathVariable String id) {
         SysConfig config = configService.getById(id);
         if (config == null) {
