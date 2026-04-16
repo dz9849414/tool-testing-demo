@@ -665,6 +665,55 @@ CREATE TABLE IF NOT EXISTS `template_file` (
     INDEX `idx_is_deleted` (`is_deleted`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板文件附件表';
 
+
+
+
+-- 模板定时任务配置表
+CREATE TABLE IF NOT EXISTS template_job (
+                                            id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+                                            job_name VARCHAR(100) NOT NULL COMMENT '任务名称',
+    cron_expression VARCHAR(50) COMMENT 'Cron表达式',
+    status TINYINT DEFAULT 1 COMMENT '状态：0-停用 1-启用',
+    description VARCHAR(500) COMMENT '任务描述',
+    xxl_job_id INT COMMENT 'XXL-JOB任务ID',
+    last_execute_time DATETIME COMMENT '上次执行时间',
+    create_id BIGINT COMMENT '创建人ID',
+    create_name VARCHAR(50) COMMENT '创建人姓名',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    is_deleted TINYINT DEFAULT 0 COMMENT '是否删除：0-否 1-是',
+    INDEX idx_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板定时任务配置表';
+
+-- 模板定时任务子项表（一个任务关联多个模板）
+CREATE TABLE IF NOT EXISTS template_job_item (
+                                                 id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+                                                 job_id BIGINT NOT NULL COMMENT '任务ID',
+                                                 template_id BIGINT NOT NULL COMMENT '关联模板ID',
+                                                 environment_id BIGINT COMMENT '关联环境ID',
+                                                 variables TEXT COMMENT '执行变量JSON',
+                                                 sort_order INT DEFAULT 0 COMMENT '执行顺序',
+                                                 status TINYINT DEFAULT 1 COMMENT '状态：0-停用 1-启用',
+                                                 INDEX idx_job_id (job_id),
+    INDEX idx_template_id (template_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板定时任务子项表';
+
+-- 模板定时任务执行日志表
+CREATE TABLE IF NOT EXISTS template_job_log (
+                                                id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+                                                job_id BIGINT NOT NULL COMMENT '任务ID',
+                                                template_id BIGINT COMMENT '首个模板ID',
+                                                xxl_job_log_id BIGINT COMMENT 'XXL-JOB日志ID',
+                                                execute_result TEXT COMMENT '执行结果JSON',
+                                                success TINYINT DEFAULT 0 COMMENT '是否成功：0-否 1-是',
+                                                duration_ms BIGINT COMMENT '执行耗时ms',
+                                                error_msg TEXT COMMENT '错误信息',
+                                                create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '执行时间',
+                                                INDEX idx_job_id (job_id),
+    INDEX idx_template_id (template_id),
+    INDEX idx_create_time (create_time)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板定时任务执行日志表';
+
 -- ============================================
 -- 模板主表添加文件相关字段
 -- ============================================

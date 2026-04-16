@@ -22,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.BeanUtils;
 
 /**
  * 接口模板 Controller
@@ -268,6 +269,25 @@ public class InterfaceTemplateController {
      */
     @PostMapping("/{id}/submit")
     public Result<InterfaceTemplateVO> submitForReview(@PathVariable Long id, @RequestBody InterfaceTemplateDTO dto) {
+        InterfaceTemplateVO vo = templateService.submitForReview(id, dto);
+        return Result.success("提交审核成功", vo);
+    }
+
+    /**
+     * 提交审核（仅传 id，使用当前模板数据提交）
+     * 接口地址：POST /api/template/{id}/submit/simple
+     */
+    @PostMapping("/submit/simple/{id}")
+    public Result<InterfaceTemplateVO> submitForReviewById(@PathVariable Long id) {
+        InterfaceTemplateVO current = templateService.getTemplateDetail(id);
+        if (current == null) {
+            return Result.error("模板不存在");
+        }
+
+        InterfaceTemplateDTO dto = new InterfaceTemplateDTO();
+        // 复制基本字段（VO -> DTO），列表类可能需要单独转换，但校验通常依赖基础字段
+        BeanUtils.copyProperties(current, dto);
+
         InterfaceTemplateVO vo = templateService.submitForReview(id, dto);
         return Result.success("提交审核成功", vo);
     }

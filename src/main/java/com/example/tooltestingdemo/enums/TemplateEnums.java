@@ -5,7 +5,7 @@ import lombok.Getter;
 
 /**
  * 模板模块枚举常量
- * 
+ *
  * <p>集中管理模板相关的所有类型枚举</p>
  */
 public class TemplateEnums {
@@ -347,19 +347,65 @@ public class TemplateEnums {
             }
             return null;
         }
-        
+
         /**
          * 是否可编辑的状态
          */
         public boolean isEditable() {
             return this == DRAFT || this == REJECTED;
         }
-        
+
         /**
          * 是否可提交审核的状态
          */
         public boolean isSubmittable() {
             return this == DRAFT || this == REJECTED;
+        }
+    }
+
+    /**
+     * 定时任务（Job）状态
+     */
+    @Getter
+    @AllArgsConstructor
+    public enum JobStatus {
+        DISABLED(0, "停用"),
+        ENABLED(1, "启用");
+
+        private final int code;
+        private final String desc;
+
+        public static JobStatus getByCode(int code) {
+            for (JobStatus s : values()) {
+                if (s.code == code) return s;
+            }
+            return null;
+        }
+
+        public boolean isEnabled() {
+            return this == ENABLED;
+        }
+    }
+
+    /**
+     * 批量触发记录状态（persisted in template_job_batch.status）
+     */
+    @Getter
+    @AllArgsConstructor
+    public enum JobBatchStatus {
+        PENDING("PENDING", "待处理"),
+        RUNNING("RUNNING", "运行中"),
+        DONE("DONE", "已完成"),
+        FAILED("FAILED", "失败");
+
+        private final String code;
+        private final String desc;
+
+        public static JobBatchStatus getByCode(String code) {
+            for (JobBatchStatus s : values()) {
+                if (s.code.equalsIgnoreCase(code)) return s;
+            }
+            return null;
         }
     }
 
@@ -423,7 +469,9 @@ public class TemplateEnums {
         private final String code;
         private final String desc;
 
-        /** 用于注解默认值的常量 */
+        /**
+         * 用于注解默认值的常量
+         */
         public static final String SKIP_CODE = "SKIP";
 
         public static ImportStrategy getByCode(String code) {
@@ -493,5 +541,18 @@ public class TemplateEnums {
             }
             return null;
         }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum ApiResultKeys {
+        SUCCESS("success"),
+        MESSAGE("message"),
+        RESULTS("results"),
+        DETAILS("details"),
+        STATUS("status"),
+        TEMPLATE_ID("templateId");
+
+        private final String key;
     }
 }

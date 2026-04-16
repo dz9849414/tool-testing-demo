@@ -31,6 +31,18 @@ public interface TemplateExecuteService {
     Map<String, Object> executeTemplate(Long templateId, Map<String, Object> variables);
 
     /**
+     * 执行模板（供定时任务调用，包含 job 上下文信息）
+     *
+     * @param jobId 任务ID
+     * @param jobName 任务名称
+     * @param templateId 模板ID
+     * @param environmentId 环境ID（可选）
+     * @param variables 执行变量
+     * @return 执行结果
+     */
+    Map<String, Object> executeTemplateForJob(Long jobId, String jobName, Long templateId, Long environmentId, Map<String, Object> variables);
+
+    /**
      * 验证模板（检查配置是否正确）
      * 
      * @param templateId 模板ID

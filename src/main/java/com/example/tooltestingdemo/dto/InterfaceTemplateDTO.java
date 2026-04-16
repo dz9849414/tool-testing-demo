@@ -224,6 +224,8 @@ public class InterfaceTemplateDTO {
      */
     private List<TemplateVariableDTO> variables;
 
+
+
     // ==================== 文件附件 ====================
 
     /**
