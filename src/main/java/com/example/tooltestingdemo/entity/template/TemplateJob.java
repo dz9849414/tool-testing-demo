@@ -1,0 +1,75 @@
+package com.example.tooltestingdemo.entity.template;
+
+import com.baomidou.mybatisplus.annotation.*;
+import lombok.Data;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * 模板定时任务配置
+ */
+@Data
+@TableName("template_job")
+public class TemplateJob {
+
+    @TableId(value = "id", type = IdType.AUTO)
+    private Long id;
+
+    /**
+     * 任务名称
+     */
+    @TableField(value = "job_name")
+    private String jobName;
+
+    /**
+     * Cron表达式
+     */
+    @TableField(value = "cron_expression")
+    private String cronExpression;
+
+    /**
+     * 状态：0-停用 1-启用
+     */
+    @TableField(value = "status")
+    private Integer status;
+
+    /**
+     * 任务描述
+     */
+    @TableField(value = "description")
+    private String description;
+
+    /**
+     * XXL-JOB任务ID
+     */
+    @TableField(value = "xxl_job_id")
+    private Integer xxlJobId;
+
+    /**
+     * 上次执行时间
+     */
+    @TableField(value = "last_execute_time")
+    private LocalDateTime lastExecuteTime;
+
+    @TableField(value = "create_id", fill = FieldFill.INSERT)
+    private Long createId;
+
+    @TableField(value = "create_name", fill = FieldFill.INSERT)
+    private String createName;
+
+    @TableField(value = "create_time", fill = FieldFill.INSERT)
+    private LocalDateTime createTime;
+
+    @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updateTime;
+
+    @TableField(value = "is_deleted")
+    private Integer isDeleted;
+
+    /**
+     * 任务子项列表（非数据库字段）
+     */
+    @TableField(exist = false)
+    private List<TemplateJobItem> items;
+}

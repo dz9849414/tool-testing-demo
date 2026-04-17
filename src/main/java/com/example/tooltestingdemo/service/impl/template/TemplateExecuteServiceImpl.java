@@ -3,6 +3,7 @@ package com.example.tooltestingdemo.service.impl.template;
 import com.alibaba.fastjson2.JSON;
 import com.example.tooltestingdemo.entity.template.TemplateExecuteLog;
 import com.example.tooltestingdemo.mapper.template.TemplateExecuteLogMapper;
+import com.example.tooltestingdemo.service.SecurityService;
 import com.example.tooltestingdemo.service.template.TemplateExecuteService;
 import com.example.tooltestingdemo.service.template.engine.core.ExecutionEngine;
 import com.example.tooltestingdemo.service.template.engine.core.ExecutionRequest;
@@ -24,7 +25,7 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
 
     private final ExecutionEngine executionEngine;
     private final TemplateExecuteLogMapper executeLogMapper;
-    private final com.example.tooltestingdemo.service.SecurityService securityService;
+    private final SecurityService securityService;
 
     @Override
     public Map<String, Object> executeTemplate(Long templateId, Long environmentId, Map<String, Object> variables) {
