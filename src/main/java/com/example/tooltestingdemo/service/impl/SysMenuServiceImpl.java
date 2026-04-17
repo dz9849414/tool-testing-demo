@@ -43,9 +43,9 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         // 过滤用户有权限的菜单
         List<SysMenu> userMenus = allMenus.stream()
                 .filter(menu -> {
-                    // 一级菜单不需要权限检查
+                    // 一级菜单也需要权限检查
                     if ("0".equals(menu.getParentId())) {
-                        return true;
+                        return menu.getCode() == null || permissions.contains(menu.getCode());
                     }
                     // 检查用户是否有该菜单的权限
                     return menu.getCode() == null || permissions.contains(menu.getCode());
