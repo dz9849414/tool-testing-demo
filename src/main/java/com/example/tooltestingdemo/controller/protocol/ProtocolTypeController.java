@@ -2,6 +2,7 @@ package com.example.tooltestingdemo.controller.protocol;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.example.tooltestingdemo.common.Result;
+import com.example.tooltestingdemo.dto.ProtocolTypeModifyDTO;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.service.protocol.IProtocolTypeService;
 import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
@@ -116,8 +117,8 @@ public class ProtocolTypeController {
      *
      */
     @PostMapping("/modify")
-    public Result<ProtocolType> modifyProtocolType(@RequestBody ProtocolType protocolType) {
-        ProtocolType vo = protocolTypeService.modifyProtocolType(protocolType);
+    public Result<ProtocolType> modifyProtocolType(@RequestBody @Valid ProtocolTypeModifyDTO dto) {
+        ProtocolType vo = protocolTypeService.modifyProtocolType(dto);
         long relatedProjectCount = vo.getRelatedProjectCount() == null ? 0L : vo.getRelatedProjectCount();
         long relatedTemplateCount = vo.getRelatedTemplateCount() == null ? 0L : vo.getRelatedTemplateCount();
         String message = relatedProjectCount > 0 || relatedTemplateCount > 0

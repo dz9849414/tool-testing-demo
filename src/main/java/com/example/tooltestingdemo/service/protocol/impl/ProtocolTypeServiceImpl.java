@@ -3,6 +3,7 @@ package com.example.tooltestingdemo.service.protocol.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.tooltestingdemo.dto.ProtocolTypeModifyDTO;
 import com.example.tooltestingdemo.entity.SysDictionary;
 import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
@@ -39,9 +40,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -290,46 +288,38 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public ProtocolType modifyProtocolType(ProtocolType protocolType) {
-        if (protocolType.getId() == null) {
+    public ProtocolType modifyProtocolType(ProtocolTypeModifyDTO dto) {
+        if (dto == null || dto.getId() == null) {
             throw new RuntimeException("协议类型ID不能为空！");
         }
 
-        ProtocolType existing = protocolTypeMapper.selectById(protocolType.getId());
+        ProtocolType existing = protocolTypeMapper.selectById(dto.getId());
         if (existing == null) {
             throw new RuntimeException("协议类型不存在！");
         }
 
-        if (StringUtils.isBlank(protocolType.getProtocolName())) {
+        if (StringUtils.isBlank(dto.getProtocolName())) {
             throw new RuntimeException("协议类型名称不能为空！");
         }
 
-        long relatedProjectCount = getRelatedProjectCount(protocolType.getId());
-        long relatedTemplateCount = getRelatedTemplateCount(protocolType.getId());
-        String relationImpactScope = buildRelationImpactScope(relatedProjectCount, relatedTemplateCount);
-
-        if (StringUtils.isNotBlank(protocolType.getProtocolIdentifier())
-                && !StringUtils.equals(existing.getProtocolIdentifier(), protocolType.getProtocolIdentifier())) {
-            String message = StringUtils.isNotBlank(relationImpactScope)
-                    ? String.format("协议编码不可修改，避免关联数据混乱。%s。", relationImpactScope)
-                    : "协议编码不可修改，避免关联数据混乱。";
-            throw new RuntimeException(message);
-        }
+        long relatedProjectCount = getRelatedProjectCount(dto.getId());
+        long relatedTemplateCount = getRelatedTemplateCount(dto.getId());
 
         ProtocolType updateEntity = new ProtocolType();
         updateEntity.setId(existing.getId());
         updateEntity.setProtocolIdentifier(existing.getProtocolIdentifier());
         updateEntity.setApplicableSystem(existing.getApplicableSystem());
         updateEntity.setStatus(existing.getStatus());
-        updateEntity.setProtocolName(protocolType.getProtocolName());
-        updateEntity.setDescription(protocolType.getDescription());
-        updateEntity.setUpdateId(protocolType.getUpdateId());
+        updateEntity.setProtocolName(dto.getProtocolName());
+        updateEntity.setDescription(dto.getDescription());
+        updateEntity.setUpdateId(getCurrentOperatorId());
+        updateEntity.setUpdateTime(LocalDateTime.now());
 
         if (protocolTypeMapper.updateById(updateEntity) <= 0) {
             throw new RuntimeException("协议类型修改失败！");
         }
 
-        ProtocolType updated = protocolTypeMapper.selectById(protocolType.getId());
+        ProtocolType updated = protocolTypeMapper.selectById(dto.getId());
         fillRelationImpactFields(updated, relatedProjectCount, relatedTemplateCount);
         log.info("编辑协议类型成功: id={}, name={}", updated.getId(), updated.getProtocolName());
         return updated;
