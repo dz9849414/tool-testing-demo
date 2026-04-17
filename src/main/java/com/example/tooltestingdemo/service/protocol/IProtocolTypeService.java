@@ -2,6 +2,7 @@ package com.example.tooltestingdemo.service.protocol;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.example.tooltestingdemo.dto.ProtocolTypeModifyDTO;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
 import com.example.tooltestingdemo.vo.ProtocolTypeImportResultVO;
@@ -29,7 +30,7 @@ public interface IProtocolTypeService extends IService<ProtocolType> {
 
     ProtocolTypeStatusChangeVO updateProtocolTypeStatus(Long id, Integer status, Boolean confirm);
 
-    ProtocolType modifyProtocolType(ProtocolType protocolType);
+    ProtocolType modifyProtocolType(ProtocolTypeModifyDTO dto);
 
     void downloadImportTemplate(HttpServletResponse response) throws IOException;
 

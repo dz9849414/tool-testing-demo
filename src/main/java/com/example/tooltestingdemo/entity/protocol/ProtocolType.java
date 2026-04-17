@@ -3,6 +3,7 @@ package com.example.tooltestingdemo.entity.protocol;
 import com.baomidou.mybatisplus.annotation.*;
 import com.example.tooltestingdemo.common.PageQuery;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.time.LocalDateTime;
 
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
  * @author wanggang
  * @since 2026-04-11
  */
+@EqualsAndHashCode(callSuper = true)
 @Data
 @TableName("protocol_type")
 public class ProtocolType extends PageQuery {
