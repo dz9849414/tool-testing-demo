@@ -1,6 +1,7 @@
 package com.example.tooltestingdemo.service.protocol;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.example.tooltestingdemo.dto.ProtocolParameterConfigCreateDTO;
 import com.example.tooltestingdemo.entity.protocol.ProtocolParameterConfig;
 
 /**
@@ -12,5 +13,7 @@ import com.example.tooltestingdemo.entity.protocol.ProtocolParameterConfig;
  * @since 2026-04-13
  */
 public interface IProtocolParameterConfigService extends IService<ProtocolParameterConfig> {
+
+    ProtocolParameterConfig createProtocolParameterConfig(ProtocolParameterConfigCreateDTO dto);
 
 }

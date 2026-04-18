@@ -111,7 +111,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public ProtocolTypeStatusChangeVO updateProtocolTypeStatus(Long id, Integer status, Boolean confirm) {
+    public ProtocolTypeStatusChangeVO updateProtocolTypeStatus(Long id, Integer status) {
         if (id == null) {
             throw new RuntimeException("协议类型ID不能为空！");
         }
@@ -129,17 +129,6 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
                     false,
                     false,
                     Integer.valueOf(1).equals(status) ? "协议类型已启用，无需重复操作" : "协议类型已禁用，无需重复操作"
-            );
-        }
-
-        if (requiresDisableConfirm(existing.getStatus(), status, confirm)) {
-            return buildStatusChangeVO(
-                    existing,
-                    existing.getStatus(),
-                    status,
-                    false,
-                    true,
-                    buildDisableConfirmMessage(existing.getRelationImpactScope())
             );
         }
 
@@ -688,12 +677,6 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         if (!Integer.valueOf(0).equals(status) && !Integer.valueOf(1).equals(status)) {
             throw new RuntimeException("状态值必须是0（禁用）或1（启用）");
         }
-    }
-
-    private boolean requiresDisableConfirm(Integer currentStatus, Integer targetStatus, Boolean confirm) {
-        return Integer.valueOf(0).equals(targetStatus)
-                && !Integer.valueOf(0).equals(currentStatus)
-                && !Boolean.TRUE.equals(confirm);
     }
 
     private String buildDisableConfirmMessage(String relationImpactScope) {

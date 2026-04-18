@@ -28,7 +28,7 @@ public interface IProtocolTypeService extends IService<ProtocolType> {
 
     ProtocolTypeImportResultVO importProtocolTypes(MultipartFile file, String strategy) throws IOException;
 
-    ProtocolTypeStatusChangeVO updateProtocolTypeStatus(Long id, Integer status, Boolean confirm);
+    ProtocolTypeStatusChangeVO updateProtocolTypeStatus(Long id, Integer status);
 
     ProtocolType modifyProtocolType(ProtocolTypeModifyDTO dto);
 

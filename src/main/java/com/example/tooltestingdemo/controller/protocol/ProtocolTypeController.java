@@ -104,9 +104,8 @@ public class ProtocolTypeController {
      */
     @PutMapping("/{id}/status")
     public Result<ProtocolTypeStatusChangeVO> updateProtocolTypeStatus(@PathVariable Long id,
-                                                                       @RequestParam Integer status,
-                                                                       @RequestParam(value = "confirm", required = false, defaultValue = "false") Boolean confirm) {
-        ProtocolTypeStatusChangeVO result = protocolTypeService.updateProtocolTypeStatus(id, status, confirm);
+                                                                       @RequestParam Integer status) {
+        ProtocolTypeStatusChangeVO result = protocolTypeService.updateProtocolTypeStatus(id, status);
         return Result.success(result.getMessage(), result);
     }
 
