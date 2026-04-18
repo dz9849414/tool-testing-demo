@@ -72,4 +72,10 @@ public class TemplateJob {
      */
     @TableField(exist = false)
     private List<TemplateJobItem> items;
+
+    /**
+     * 是否是状态修改
+     */
+    @TableField(exist = false)
+    private boolean updateStatus;
 }

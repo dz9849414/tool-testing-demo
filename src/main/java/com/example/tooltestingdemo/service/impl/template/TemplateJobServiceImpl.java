@@ -21,6 +21,8 @@ import com.example.tooltestingdemo.vo.TemplateJobListVO;
 import com.example.tooltestingdemo.vo.TemplateJobLogItemVO;
 import com.example.tooltestingdemo.vo.TemplateJobLogVO;
 import jakarta.annotation.Resource;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,13 +33,14 @@ import jakarta.annotation.PostConstruct;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Value;
 import com.example.tooltestingdemo.mapper.template.TemplateJobBatchMapper;
 import com.example.tooltestingdemo.entity.template.TemplateJobBatch;
 import com.example.tooltestingdemo.enums.TemplateEnums;
@@ -57,15 +60,16 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
     private final TemplateExecuteService executeService;
     private final DynamicJobScheduler jobScheduler;
 
-    private static final ConcurrentHashMap<Long, java.util.concurrent.locks.ReentrantLock> JOB_LOCKS = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Long, ReentrantLock> JOB_LOCKS = new ConcurrentHashMap<>();
+
+    // 批量异步任务幂等控制：key -> batchId
+    private static final ConcurrentHashMap<String, String> BATCH_ASYNC_LOCKS = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, CompletableFuture<Void>> BATCH_ASYNC_FUTURES = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Long, AtomicInteger> JOB_FAIL_COUNTS = new ConcurrentHashMap<>();
+    //达到次数停止
+    private static final int AUTO_DISABLE_THRESHOLD = 3;
     private final Executor templateJobExecutor;
     private final TemplateJobBatchMapper batchMapper;
-
-    @Value("${template.job.item.timeout-ms:120000}")
-    private long itemTimeoutMs;
-
-    @Value("${template.job.item.retry:1}")
-    private int itemRetry;
 
     @Resource
     private JobDispatcher jobDispatcher;
@@ -84,63 +88,28 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
         return page(page, wrapper);
     }
 
-    /**
-     * 执行单个子项并支持重试策略
-     */
-    /*private Map<String, Object> executeItemWithRetry(TemplateJobItem item, Long jobId, String jobName) {
-        long jobStartTime = System.currentTimeMillis();
-        long jobTimeout = 60_000;
-        Map<String, Object> variables = null;
-        if (StringUtils.hasText(item.getVariables())) {
-            try {
-                variables = JSON.parseObject(item.getVariables(), new TypeReference<>() {
-                });
-            } catch (Exception e) {
-                log.warn("解析子项变量失败: jobId={}, itemId={}", jobId, item.getId());
-            }
-        }
-
-        Map<String, Object> lastResult = null;
-        for (int attempt = 1; attempt <= Math.max(1, itemRetry); attempt++) {
-            try {
-                lastResult = executeService.executeTemplateForJob(jobId, jobName, item.getTemplateId(), item.getEnvironmentId(), variables);
-                // 如果执行成功或没有再次重试的必要，返回结果
-                if (Boolean.TRUE.equals(lastResult.get(ApiResultKeys.SUCCESS.getKey())) || attempt == itemRetry) {
-                    return lastResult;
-                }
-                // 否则等待短暂退避后重试
-                try {
-                    Thread.sleep(200L * attempt);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            } catch (Exception e) {
-                log.error("子项执行尝试失败: jobId={}, itemId={}, attempt={}", jobId, item.getId(), attempt, e);
-                lastResult = Map.of(ApiResultKeys.SUCCESS.getKey(), false, ApiResultKeys.MESSAGE.getKey(), e.getMessage(), ApiResultKeys.TEMPLATE_ID.getKey(), item.getTemplateId());
-                if (attempt == itemRetry) {
-                    return lastResult;
-                }
-                try {
-                    Thread.sleep(200L * attempt);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            }
-        }
-        if (System.currentTimeMillis() - jobStartTime > jobTimeout) {
-            log.warn("任务整体执行超时 jobId={}", jobId);
-        }
-        return lastResult == null ? Map.of(ApiResultKeys.SUCCESS.getKey(), false, ApiResultKeys.MESSAGE.getKey(), "执行失败", ApiResultKeys.TEMPLATE_ID.getKey(), item.getTemplateId()) : lastResult;
-    }*/
-
     @Override
     public IPage<TemplateJobListVO> pageJobsWithLastLog(Page<TemplateJob> page, String keyword, Integer status) {
         IPage<TemplateJob> entityPage = pageJobs(page, keyword, status);
-        List<TemplateJobListVO> voList = new ArrayList<>();
+        List<TemplateJob> jobs = entityPage.getRecords();
 
-        for (TemplateJob job : entityPage.getRecords()) {
+        if (jobs.isEmpty()) {
+            return new Page<>(page.getCurrent(), page.getSize(), 0);
+        }
+
+        List<Long> jobIds = jobs.stream().map(TemplateJob::getId).toList();
+
+        // 🔥  一次性查所有“最新日志”
+        List<TemplateJobLog> lastLogs = jobLogMapper.selectLastLogsByJobIds(jobIds);
+
+        Map<Long, TemplateJobLog> logMap = lastLogs.stream()
+                .collect(Collectors.toMap(
+                        TemplateJobLog::getJobId,
+                        Function.identity(),
+                        (a, b) -> a));
+
+        // 🔥组装VO
+        List<TemplateJobListVO> voList = jobs.stream().map(job -> {
             TemplateJobListVO vo = new TemplateJobListVO();
             vo.setId(job.getId());
             vo.setJobName(job.getJobName());
@@ -150,38 +119,24 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
             vo.setLastExecuteTime(job.getLastExecuteTime());
             vo.setCreateTime(job.getCreateTime());
 
-            // 查询最近一次日志
-            List<TemplateJobLog> recentLogs = jobLogMapper.selectRecentByJobId(job.getId(), 1);
-            if (!recentLogs.isEmpty()) {
-                TemplateJobLog lastLog = recentLogs.get(0);
+            TemplateJobLog lastLog = logMap.get(job.getId());
+            if (lastLog != null) {
                 vo.setLastExecuteSuccess(lastLog.getSuccess());
                 vo.setLastExecuteDurationMs(lastLog.getDurationMs());
-
-                // 解析摘要
-                int successCount = 0;
-                int failCount = 0;
-                if (StringUtils.hasText(lastLog.getExecuteResult())) {
-                    try {
-                        List<Map<String, Object>> resultList = JSON.parseObject(lastLog.getExecuteResult(), new TypeReference<List<Map<String, Object>>>() {
-                        });
-                        for (Map<String, Object> item : resultList) {
-                            if (Boolean.TRUE.equals(item.get(ApiResultKeys.SUCCESS.getKey()))) {
-                                successCount++;
-                            } else {
-                                failCount++;
-                            }
-                        }
-                    } catch (Exception e) {
-                        log.warn("解析最近一次日志失败: jobId={}", job.getId());
-                    }
-                }
-                vo.setLastExecuteSummary(successCount + "个成功" + (failCount > 0 ? ", " + failCount + "个失败" : ""));
+                Summary summary = parseSummary(lastLog.getExecuteResult());
+                vo.setLastExecuteSummary(summary.toText());
             }
 
-            voList.add(vo);
-        }
+            // 判断是否正在执行中（通过 ReentrantLock）
+            ReentrantLock lock = JOB_LOCKS.get(job.getId());
+            vo.setExecuting(lock != null && lock.isLocked());
 
-        IPage<TemplateJobListVO> voPage = new Page<>(entityPage.getCurrent(), entityPage.getSize(), entityPage.getTotal());
+            return vo;
+        }).toList();
+
+        IPage<TemplateJobListVO> voPage =
+                new Page<>(entityPage.getCurrent(), entityPage.getSize(), entityPage.getTotal());
+
         voPage.setRecords(voList);
         return voPage;
     }
@@ -189,9 +144,10 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
     @PostConstruct
     public void initScheduledJobs() {
         log.info("初始化加载启用的定时任务...");
+        jobScheduler.cancelAllJobs();
         lambdaQuery().eq(TemplateJob::getStatus, TemplateEnums.JobStatus.ENABLED.getCode()).eq(TemplateJob::getIsDeleted, 0).list()
                 .forEach(job -> jobScheduler.scheduleJob(job.getId(), job.getCronExpression(),
-                        () -> this.doExecuteJob(job.getId(), job.getJobName())));
+                        () -> this.executeJobForSchedule(job.getId(), job.getJobName())));
     }
 
     @Override
@@ -208,7 +164,7 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
 
         TemplateJob detail = getJobDetail(job.getId());
         if (job.getStatus() != null && job.getStatus() == TemplateEnums.JobStatus.ENABLED.getCode()) {
-            jobScheduler.scheduleJob(job.getId(), job.getCronExpression(), () -> this.doExecuteJob(job.getId(), job.getJobName()));
+            jobScheduler.scheduleJob(job.getId(), job.getCronExpression(), () -> this.executeJobForSchedule(job.getId(), job.getJobName()));
         }
 
         log.info("创建模板任务成功: id={}, name={}, items={}", job.getId(), job.getJobName(),
@@ -219,17 +175,21 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TemplateJob updateJob(TemplateJob job) {
-        if (job.getId() == null) {
+        if (null == job.getId()) {
             throw new TemplateValidationException(TemplateValidationException.ErrorType.REQUIRED_FIELD_EMPTY, "任务ID不能为空");
         }
-        updateById(job);
-        jobItemMapper.deleteByJobId(job.getId());
-        saveJobItems(job);
 
-        jobScheduler.cancelJob(job.getId());
         TemplateJob detail = getJobDetail(job.getId());
+        if (job.isUpdateStatus()) {
+            job.setStatus(Optional.ofNullable(job.getStatus()).orElse(TemplateEnums.JobStatus.ENABLED.getCode()));
+        } else {
+            jobItemMapper.deleteByJobId(job.getId());
+            saveJobItems(job);
+        }
+        jobScheduler.cancelJob(job.getId());
+        updateById(job);
         if (detail.getStatus() != null && detail.getStatus() == TemplateEnums.JobStatus.ENABLED.getCode()) {
-            jobScheduler.scheduleJob(job.getId(), detail.getCronExpression(), () -> this.doExecuteJob(job.getId(), detail.getJobName()));
+            jobScheduler.scheduleJob(job.getId(), detail.getCronExpression(), () -> this.executeJobForSchedule(job.getId(), detail.getJobName()));
         }
 
         log.info("更新模板任务成功: id={}", job.getId());
@@ -290,62 +250,80 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
         return result;
     }
 
+    /* submitBatchTriggerAsync(ids)
+       ├── 生成 batchKey + batchId
+       ├── BATCH_ASYNC_LOCKS.putIfAbsent 幂等锁
+       ├── insert PENDING
+       ├── AtomicBoolean dbUpdated = false
+       ├── runAsync
+       │     ├── updateBatch(RUNNING)
+       │     ├── batchTriggerJobs(ids)  ← 可能阻塞很久
+       │     └── updateBatch(DONE)
+       └── orTimeout(5分钟)
+             └── whenComplete
+                   ├── 清理 BATCH_ASYNC_FUTURES / BATCH_ASYNC_LOCKS
+                   ├── 若超时：cancel(true) + updateBatch(FAILED, "执行超时")
+                   └── 若其他异常且未更新：updateBatch(FAILED, 异常信息)*/
     @Override
     public String submitBatchTriggerAsync(Long[] ids) {
-        String batchId = java.util.UUID.randomUUID().toString();
+        String batchKey = Arrays.stream(ids).sorted().map(String::valueOf).collect(Collectors.joining(","));
 
-        // Persist initial batch record using MyBatis-Plus mapper
+        String batchId = UUID.randomUUID().toString();
+        String existBatchId = BATCH_ASYNC_LOCKS.putIfAbsent(batchKey, batchId);
+        if (existBatchId != null) {
+            log.warn("异步批量任务重复提交, 返回已有batchId={}, key={}", existBatchId, batchKey);
+            throw new TemplateValidationException(
+                    TemplateValidationException.ErrorType.OPERATION_NOT_ALLOWED,
+                    String.format("异步批量任务重复提交, 返回已有batchId=%s", existBatchId));
+        }
+
         TemplateJobBatch batch = new TemplateJobBatch();
         batch.setId(batchId);
         batch.setStatus(TemplateEnums.JobBatchStatus.PENDING.getCode());
         batch.setResult(null);
-        batch.setCreateTime(java.time.LocalDateTime.now());
-        batch.setUpdateTime(java.time.LocalDateTime.now());
+        batch.setCreateTime(LocalDateTime.now());
+        batch.setUpdateTime(LocalDateTime.now());
         batchMapper.insert(batch);
 
-        // 使用CompletableFuture异步执行，并设置超时
+        AtomicBoolean dbUpdated = new AtomicBoolean(false);
+
+        BiConsumer<String, String> updateBatch = (status, result) -> {
+            if (dbUpdated.compareAndSet(false, true)) {
+                TemplateJobBatch update = new TemplateJobBatch();
+                update.setId(batchId);
+                update.setStatus(status);
+                update.setResult(result);
+                update.setUpdateTime(LocalDateTime.now());
+                batchMapper.updateById(update);
+            }
+        };
+
         CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
             try {
-                // update status to RUNNING
-                TemplateJobBatch running = new TemplateJobBatch();
-                running.setId(batchId);
-                running.setStatus(TemplateEnums.JobBatchStatus.RUNNING.getCode());
-                running.setUpdateTime(java.time.LocalDateTime.now());
-                batchMapper.updateById(running);
-
+                updateBatch.accept(TemplateEnums.JobBatchStatus.RUNNING.getCode(), null);
                 Map<String, Object> res = batchTriggerJobs(ids);
-
-                // update to DONE with result
-                TemplateJobBatch done = new TemplateJobBatch();
-                done.setId(batchId);
-                done.setStatus(TemplateEnums.JobBatchStatus.DONE.getCode());
-                done.setResult(JSON.toJSONString(res));
-                done.setUpdateTime(java.time.LocalDateTime.now());
-                batchMapper.updateById(done);
+                updateBatch.accept(TemplateEnums.JobBatchStatus.DONE.getCode(), JSON.toJSONString(res));
             } catch (Exception e) {
                 log.error("异步批量触发执行异常: batchId={}", batchId, e);
-                TemplateJobBatch failed = new TemplateJobBatch();
-                failed.setId(batchId);
-                failed.setStatus(TemplateEnums.JobBatchStatus.FAILED.getCode());
-                failed.setResult(e.getMessage());
-                failed.setUpdateTime(java.time.LocalDateTime.now());
-                batchMapper.updateById(failed);
+                updateBatch.accept(TemplateEnums.JobBatchStatus.FAILED.getCode(), e.getMessage());
             }
         }, templateJobExecutor);
 
-        // 设置超时，如果超时则取消任务并更新状态
+        BATCH_ASYNC_FUTURES.put(batchKey, future);
+
         future.orTimeout(300_000, TimeUnit.MILLISECONDS) // 5分钟超时
-                .exceptionally(throwable -> {
-                    if (throwable instanceof java.util.concurrent.TimeoutException) {
+                .whenComplete((v, t) -> {
+                    BATCH_ASYNC_FUTURES.remove(batchKey);
+                    BATCH_ASYNC_LOCKS.remove(batchKey, batchId);
+
+                    if (t instanceof TimeoutException) {
                         log.warn("异步批量触发超时: batchId={}", batchId);
-                        TemplateJobBatch timeoutBatch = new TemplateJobBatch();
-                        timeoutBatch.setId(batchId);
-                        timeoutBatch.setStatus(TemplateEnums.JobBatchStatus.FAILED.getCode());
-                        timeoutBatch.setResult("执行超时");
-                        timeoutBatch.setUpdateTime(java.time.LocalDateTime.now());
-                        batchMapper.updateById(timeoutBatch);
+                        future.cancel(true);
+                        updateBatch.accept(TemplateEnums.JobBatchStatus.FAILED.getCode(), "执行超时");
+                    } else if (t != null && !dbUpdated.get()) {
+                        // 其他未被 catch 的异常兜底
+                        updateBatch.accept(TemplateEnums.JobBatchStatus.FAILED.getCode(), t.getMessage());
                     }
-                    return null;
                 });
 
         return batchId;
@@ -535,7 +513,12 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
 
     private void saveJobItems(TemplateJob job) {
         List<TemplateJobItem> items = job.getItems();
-        if (items == null || items.isEmpty()) return;
+        if (items == null || items.isEmpty()) {
+            throw new TemplateValidationException(
+                    TemplateValidationException.ErrorType.BUSINESS_RULE_VIOLATION,
+                    "任务模板列表不能为空"
+            );
+        }
         int sort = 1;
         for (TemplateJobItem item : items) {
             item.setJobId(job.getId());
@@ -619,6 +602,36 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
         }
     }
 
+    /**
+     * 供自动调度使用的执行入口（带连续失败自动停用保护）
+     */
+    private void executeJobForSchedule(Long jobId, String jobName) {
+        Map<String, Object> result;
+        try {
+            result = doExecuteJob(jobId, jobName);
+        } catch (Exception e) {
+            log.error("定时任务执行异常 jobId={}", jobId, e);
+            result = Map.of("success", false, "message", e.getMessage());
+        }
+
+        AtomicInteger counter = JOB_FAIL_COUNTS.computeIfAbsent(jobId, k -> new AtomicInteger(0));
+        if (Boolean.FALSE.equals(result.get("success"))) {
+            int failCount = counter.incrementAndGet();
+            log.warn("定时任务执行失败 jobId={}, 连续失败次数={}/{}", jobId, failCount, AUTO_DISABLE_THRESHOLD);
+            if (failCount >= AUTO_DISABLE_THRESHOLD) {
+                log.error("定时任务连续失败{}次，自动停用: jobId={}", AUTO_DISABLE_THRESHOLD, jobId);
+                jobScheduler.cancelJob(jobId);
+                TemplateJob stopJob = new TemplateJob();
+                stopJob.setId(jobId);
+                stopJob.setStatus(TemplateEnums.JobStatus.DISABLED.getCode());
+                updateById(stopJob);
+                JOB_FAIL_COUNTS.remove(jobId);
+            }
+        } else {
+            counter.set(0);
+        }
+    }
+
     private Map<String, Object> executeSingleItem(Long jobId,
                                                   String jobName,
                                                   TemplateJobItem item) {
@@ -647,6 +660,43 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
                     "message", e.getMessage(),
                     "templateId", item.getTemplateId()
             );
+        }
+    }
+
+    private Summary parseSummary(String json) {
+        if (!StringUtils.hasText(json)) {
+            return new Summary(0, 0);
+        }
+
+        int success = 0;
+        int fail = 0;
+
+        try {
+            List<Map<String, Object>> resultList =
+                    JSON.parseObject(json, new TypeReference<>() {
+                    });
+            for (Map<String, Object> item : resultList) {
+                if (Boolean.TRUE.equals(item.get(ApiResultKeys.SUCCESS.getKey()))) {
+                    success++;
+                } else {
+                    fail++;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("解析执行结果失败", e);
+        }
+
+        return new Summary(success, fail);
+    }
+
+    @Data
+    @AllArgsConstructor
+    static class Summary {
+        int success;
+        int fail;
+
+        String toText() {
+            return success + "个成功" + (fail > 0 ? ", " + fail + "个失败" : "");
         }
     }
 }

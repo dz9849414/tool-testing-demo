@@ -673,3 +673,81 @@ INSERT INTO `sys_menu` (`id`, `name`, `code`, `description`, `module`, `type`, `
 ('m186', '角色批量操作', 'system:role:batch', '角色批量操作功能', 'system', 'BUTTON', 'm170', 3, 154, 1),
 ('m187', '角色搜索', 'system:role:search', '角色搜索功能', 'system', 'BUTTON', 'm170', 3, 155, 1),
 ('m188', '角色关联', 'system:role:relate', '角色关联功能', 'system', 'BUTTON', 'm170', 3, 156, 1);
+
+-- ===========================================
+-- 补充报告与分析管理模块的API权限
+-- ===========================================
+
+-- 插入报告与分析管理模块的API权限（使用INSERT IGNORE避免重复）
+INSERT IGNORE INTO `sys_permission` (`id`, `name`, `code`, `description`, `module`, `type`, `parent_id`, `level`, `sort`) VALUES
+-- ====================== 报告模板管理API权限 ======================
+('report_api_1', '创建报告模板API', 'report:template:create', '创建报告模板接口权限', 'report', 'API', 'm162', 3, 157),
+('report_api_2', '更新报告模板API', 'report:template:update', '更新报告模板接口权限', 'report', 'API', 'm163', 3, 158),
+('report_api_3', '删除报告模板API', 'report:template:delete', '删除报告模板接口权限', 'report', 'API', 'm164', 3, 159),
+('report_api_4', '查看报告模板API', 'report:template:view', '查看报告模板接口权限', 'report', 'API', 'm165', 3, 160),
+('report_api_5', '导入报告模板API', 'report:template:import', '导入报告模板接口权限', 'report', 'API', 'm166', 3, 161),
+('report_api_6', '导出报告模板API', 'report:template:export', '导出报告模板接口权限', 'report', 'API', 'm166', 3, 162),
+('report_api_7', '关联业务对象API', 'report:template:relate', '关联业务对象接口权限', 'report', 'API', 'm167', 3, 163),
+
+-- ====================== 报告管理API权限 ======================
+('report_api_8', '创建报告API', 'report:create', '创建报告接口权限', 'report', 'API', 'm155', 3, 164),
+('report_api_9', '更新报告API', 'report:update', '更新报告接口权限', 'report', 'API', 'm157', 3, 165),
+('report_api_10', '删除报告API', 'report:delete', '删除报告接口权限', 'report', 'API', 'm159', 3, 166),
+('report_api_11', '查看报告API', 'report:view', '查看报告接口权限', 'report', 'API', 'm155', 3, 167),
+('report_api_12', '自动生成报告API', 'report:auto-generate', '自动生成报告接口权限', 'report', 'API', 'm155', 3, 168),
+('report_api_13', '预览报告API', 'report:preview', '预览报告接口权限', 'report', 'API', 'm158', 3, 169),
+('report_api_14', '导出报告API', 'report:export', '导出报告接口权限', 'report', 'API', 'm159', 3, 170),
+('report_api_15', '批量导出报告API', 'report:batch-export', '批量导出报告接口权限', 'report', 'API', 'm159', 3, 171),
+('report_api_16', '设置定时生成API', 'report:schedule', '设置定时生成接口权限', 'report', 'API', 'm155', 3, 172),
+('report_api_17', '获取报告统计API', 'report:statistics', '获取报告统计接口权限', 'report', 'API', 'm160', 3, 173),
+
+-- ====================== 报告图表管理API权限 ======================
+('report_api_18', '创建图表API', 'report:chart:create', '创建图表接口权限', 'report', 'API', 'm150', 3, 174),
+('report_api_19', '更新图表API', 'report:chart:update', '更新图表接口权限', 'report', 'API', 'm150', 3, 175),
+('report_api_20', '删除图表API', 'report:chart:delete', '删除图表接口权限', 'report', 'API', 'm150', 3, 176),
+('report_api_21', '查看图表API', 'report:chart:view', '查看图表接口权限', 'report', 'API', 'm150', 3, 177),
+('report_api_22', '生成预设图表API', 'report:chart:preset', '生成预设图表接口权限', 'report', 'API', 'm150', 3, 178),
+('report_api_23', '自定义图表配置API', 'report:chart:customize', '自定义图表配置接口权限', 'report', 'API', 'm151', 3, 179),
+('report_api_24', '导出图表API', 'report:chart:export', '导出图表接口权限', 'report', 'API', 'm152', 3, 180),
+('report_api_25', '批量导出图表API', 'report:chart:batch-export', '批量导出图表接口权限', 'report', 'API', 'm152', 3, 181),
+('report_api_26', '图表对比API', 'report:chart:compare', '图表对比接口权限', 'report', 'API', 'm153', 3, 182),
+('report_api_27', '图表数据分析API', 'report:chart:analyze', '图表数据分析接口权限', 'report', 'API', 'm154', 3, 183);
+
+-- ===========================================
+-- 为管理员角色分配报告与分析管理模块的权限
+-- ===========================================
+
+-- 为admin角色分配报告与分析管理模块的权限
+INSERT IGNORE INTO `sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
+-- 报告模板管理权限
+('report_rp_1', 'admin', 'report_api_1', NOW(), 'admin'),
+('report_rp_2', 'admin', 'report_api_2', NOW(), 'admin'),
+('report_rp_3', 'admin', 'report_api_3', NOW(), 'admin'),
+('report_rp_4', 'admin', 'report_api_4', NOW(), 'admin'),
+('report_rp_5', 'admin', 'report_api_5', NOW(), 'admin'),
+('report_rp_6', 'admin', 'report_api_6', NOW(), 'admin'),
+('report_rp_7', 'admin', 'report_api_7', NOW(), 'admin'),
+
+-- 报告管理权限
+('report_rp_8', 'admin', 'report_api_8', NOW(), 'admin'),
+('report_rp_9', 'admin', 'report_api_9', NOW(), 'admin'),
+('report_rp_10', 'admin', 'report_api_10', NOW(), 'admin'),
+('report_rp_11', 'admin', 'report_api_11', NOW(), 'admin'),
+('report_rp_12', 'admin', 'report_api_12', NOW(), 'admin'),
+('report_rp_13', 'admin', 'report_api_13', NOW(), 'admin'),
+('report_rp_14', 'admin', 'report_api_14', NOW(), 'admin'),
+('report_rp_15', 'admin', 'report_api_15', NOW(), 'admin'),
+('report_rp_16', 'admin', 'report_api_16', NOW(), 'admin'),
+('report_rp_17', 'admin', 'report_api_17', NOW(), 'admin'),
+
+-- 报告图表管理权限
+('report_rp_18', 'admin', 'report_api_18', NOW(), 'admin'),
+('report_rp_19', 'admin', 'report_api_19', NOW(), 'admin'),
+('report_rp_20', 'admin', 'report_api_20', NOW(), 'admin'),
+('report_rp_21', 'admin', 'report_api_21', NOW(), 'admin'),
+('report_rp_22', 'admin', 'report_api_22', NOW(), 'admin'),
+('report_rp_23', 'admin', 'report_api_23', NOW(), 'admin'),
+('report_rp_24', 'admin', 'report_api_24', NOW(), 'admin'),
+('report_rp_25', 'admin', 'report_api_25', NOW(), 'admin'),
+('report_rp_26', 'admin', 'report_api_26', NOW(), 'admin'),
+('report_rp_27', 'admin', 'report_api_27', NOW(), 'admin');

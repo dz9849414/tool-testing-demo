@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.entity.template.TemplateJob;
 import com.example.tooltestingdemo.entity.template.TemplateJobLog;
+import com.example.tooltestingdemo.vo.TemplateJobListVO;
 
 import java.util.List;
 import java.util.Map;
@@ -22,7 +23,7 @@ public interface TemplateJobService extends IService<TemplateJob> {
     /**
      * 分页查询任务列表（附带最近一次执行状态，适合管理页面）
      */
-    IPage<com.example.tooltestingdemo.vo.TemplateJobListVO> pageJobsWithLastLog(
+    IPage<TemplateJobListVO> pageJobsWithLastLog(
             Page<TemplateJob> page, String keyword, Integer status);
 
     /**
@@ -81,7 +82,7 @@ public interface TemplateJobService extends IService<TemplateJob> {
     /**
      * 分页查询任务执行日志（结构化）
      */
-    com.baomidou.mybatisplus.core.metadata.IPage<com.example.tooltestingdemo.vo.TemplateJobLogVO> pageJobLogs(
+    IPage<com.example.tooltestingdemo.vo.TemplateJobLogVO> pageJobLogs(
             com.baomidou.mybatisplus.extension.plugins.pagination.Page<TemplateJobLog> page,
             Long jobId,
             Integer success);

@@ -36,18 +36,30 @@ public class JobDispatcher {
     );
 
     /**
-     * 并发执行任务
+     * 并发执行任务（超时 + 重试）
      */
     public List<Map<String, Object>> dispatch(Long jobId, List<TemplateJobItem> items,
                                               Function<TemplateJobItem, Map<String, Object>> executorFunc
     ) {
-        //过滤出符合状态的可执行任务->异步调用
+        int retry = Optional.of(itemRetry).orElse(0);
+        long timeout = Optional.of(itemTimeoutMs).orElse(120000L);
+
+        // 过滤出符合状态的可执行任务 -> 异步调用
         List<CompletableFuture<Map<String, Object>>> futures = items.stream()
                 .filter(item -> Integer.valueOf(1).equals(item.getStatus()))
                 .map(item -> CompletableFuture.supplyAsync(
-                        () -> executeWithControl(jobId, item, executorFunc),
+                        () -> executeWithRetry(jobId, item, executorFunc, retry),
                         executor
-                ))
+                )
+                .orTimeout(timeout, TimeUnit.MILLISECONDS)
+                .exceptionally(e -> {
+                    log.warn("任务异常/超时 jobId={}, itemId={}", jobId, item.getId());
+                    return Map.of(
+                            "success", false,
+                            "message", e.getMessage(),
+                            "templateId", item.getTemplateId()
+                    );
+                }))
                 .toList();
 
         return futures.stream()
@@ -56,35 +68,19 @@ public class JobDispatcher {
     }
 
     /**
-     * 单任务控制（超时 + 重试）
+     * 单任务重试（同步执行，不额外嵌套线程池）
      */
-    private Map<String, Object> executeWithControl(
+    private Map<String, Object> executeWithRetry(
             Long jobId,
             TemplateJobItem item,
-            Function<TemplateJobItem, Map<String, Object>> executorFunc
+            Function<TemplateJobItem, Map<String, Object>> executorFunc,
+            int retry
     ) {
-
-        int retry = Optional.of(itemRetry).orElse(0);
-        int timeout = Math.toIntExact(Optional.of(itemTimeoutMs).orElse(10L));
-
         for (int i = 0; i <= retry; i++) {
             try {
-
-                return CompletableFuture
-                        .supplyAsync(() -> executorFunc.apply(item), executor)
-                        .orTimeout(timeout, TimeUnit.SECONDS)
-                        .exceptionally(e -> {
-                            log.warn("任务异常/超时 jobId={}, itemId={}", jobId, item.getId());
-                            return Map.of(
-                                    "success", false,
-                                    "message", e.getMessage(),
-                                    "templateId", item.getTemplateId()
-                            );
-                        })
-                        .join();
-
+                return executorFunc.apply(item);
             } catch (Exception e) {
-                log.error("任务执行异常 jobId={}, itemId={}", jobId, item.getId(), e);
+                log.error("任务执行异常 jobId={}, itemId={}, attempt={}", jobId, item.getId(), i + 1, e);
             }
         }
 

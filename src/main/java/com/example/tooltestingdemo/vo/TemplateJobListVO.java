@@ -39,6 +39,11 @@ public class TemplateJobListVO {
      */
     private String lastExecuteSummary;
 
+    /**
+     * 当前是否正在执行中
+     */
+    private Boolean executing;
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
 }

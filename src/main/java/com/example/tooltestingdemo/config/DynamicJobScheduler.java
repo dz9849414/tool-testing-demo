@@ -32,7 +32,7 @@ public class DynamicJobScheduler {
         return scheduler;
     }
 
-    /**
+    /**F
      * 注册一个 Cron 任务
      */
     public void scheduleJob(Long jobId, String cronExpression, Runnable task) {
@@ -52,8 +52,22 @@ public class DynamicJobScheduler {
     public void cancelJob(Long jobId) {
         ScheduledFuture<?> future = futureMap.remove(jobId);
         if (future != null && !future.isCancelled()) {
-            future.cancel(false);
+            future.cancel(true);
             log.info("任务已取消: jobId={}", jobId);
         }
+    }
+
+    /**
+     * 取消所有任务（用于启动前清理，防止重复注册）
+     */
+    public void cancelAllJobs() {
+        futureMap.forEach((jobId, future) -> {
+            if (future != null && !future.isCancelled()) {
+                future.cancel(true);
+                log.info("任务已取消: jobId={}", jobId);
+            }
+        });
+        futureMap.clear();
+        log.info("已清空所有动态任务");
     }
 }
