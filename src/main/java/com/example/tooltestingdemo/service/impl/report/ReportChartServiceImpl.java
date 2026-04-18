@@ -2,6 +2,7 @@ package com.example.tooltestingdemo.service.impl.report;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.tooltestingdemo.dto.report.CustomChartConfigDTO;
 import com.example.tooltestingdemo.dto.report.ReportChartDTO;
 import com.example.tooltestingdemo.entity.report.ReportChart;
 import com.example.tooltestingdemo.mapper.report.ReportChartMapper;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -191,5 +193,120 @@ public class ReportChartServiceImpl extends ServiceImpl<ReportChartMapper, Repor
         ReportChartDTO dto = new ReportChartDTO();
         BeanUtils.copyProperties(chart, dto);
         return dto;
+    }
+
+    // ====================== 自定义图表相关方法实现 ======================
+
+    @Override
+    public Long createCustomChart(CustomChartConfigDTO config) {
+        // 创建自定义图表
+        ReportChartDTO chartDTO = new ReportChartDTO();
+        chartDTO.setName(config.getName());
+        chartDTO.setChartType(config.getChartType());
+        chartDTO.setDataSourceType(config.getDataSourceType());
+        chartDTO.setDataSourceIds(config.getDataSourceConfig() != null ? config.getDataSourceConfig().toString() : "{}");
+        chartDTO.setChartConfig(config.getStyleConfig() != null ? config.getStyleConfig().toString() : "{}");
+        chartDTO.setIsCustom(true);
+        chartDTO.setStatus(1);
+        
+        Long chartId = createChart(chartDTO);
+        
+        // 如果配置了保存为模板，则保存模板
+        if (config.getSaveAsTemplate() != null && config.getSaveAsTemplate()) {
+            saveChartAsTemplate(chartId, config.getName(), config.getTemplateDescription());
+        }
+        
+        return chartId;
+    }
+
+    @Override
+    public Boolean updateCustomChart(Long id, CustomChartConfigDTO config) {
+        ReportChart chart = reportChartMapper.selectById(id);
+        if (chart == null) {
+            return false;
+        }
+        
+        chart.setName(config.getName());
+        chart.setChartType(config.getChartType());
+        chart.setDataSourceType(config.getDataSourceType());
+        chart.setDataSourceIds(config.getDataSourceConfig() != null ? config.getDataSourceConfig().toString() : "{}");
+        chart.setChartConfig(config.getStyleConfig() != null ? config.getStyleConfig().toString() : "{}");
+        chart.setIsCustom(true);
+        chart.setUpdateTime(LocalDateTime.now());
+        
+        return reportChartMapper.updateById(chart) > 0;
+    }
+
+    @Override
+    public List<CustomChartConfigDTO> getMyChartTemplates() {
+        // 模拟获取用户图表模板
+        // 实际实现应该查询用户的自定义图表模板
+        return List.of(
+            createCustomChartConfig("任务成功率统计", "BAR", "TASK", "任务统计模板"),
+            createCustomChartConfig("协议类型占比", "PIE", "PROTOCOL", "协议分析模板"),
+            createCustomChartConfig("模板执行趋势", "LINE", "TEMPLATE", "模板监控模板")
+        );
+    }
+
+    @Override
+    public Long saveChartAsTemplate(Long chartId, String templateName, String description) {
+        // 模拟保存图表为模板
+        System.out.println("保存图表 " + chartId + " 为模板：" + templateName);
+        
+        // 实际实现应该创建模板记录
+        return chartId + 1000L; // 返回模板ID
+    }
+
+    @Override
+    public Boolean deleteChartTemplate(Long templateId) {
+        // 模拟删除图表模板
+        System.out.println("删除图表模板：" + templateId);
+        return true;
+    }
+
+    @Override
+    public Object previewChart(CustomChartConfigDTO config) {
+        // 模拟图表预览数据
+        return new Object() {
+            public String chartType = config.getChartType();
+            public String previewData = "预览数据 - " + config.getName();
+            public List<String> sampleData = List.of("数据点1", "数据点2", "数据点3");
+            public Map<String, Object> stylePreview = config.getStyleConfig();
+        };
+    }
+
+    @Override
+    public Object getVisualConfigPanel(String chartType) {
+        // 模拟可视化配置面板数据
+        return new Object() {
+            public String type = chartType != null ? chartType : "BAR";
+            public List<String> availableChartTypes = List.of("BAR", "LINE", "PIE", "SCATTER");
+            public List<String> dataSourceTypes = List.of("TEMPLATE", "TASK", "PROTOCOL", "TEST");
+            public Map<String, Object> styleOptions = Map.of(
+                "colors", List.of("#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4"),
+                "legendPosition", List.of("top", "bottom", "left", "right"),
+                "axisFormat", List.of("default", "percentage", "currency")
+            );
+        };
+    }
+
+    // ====================== 辅助方法 ======================
+
+    private CustomChartConfigDTO createCustomChartConfig(String name, String chartType, String dataSourceType, String description) {
+        CustomChartConfigDTO config = new CustomChartConfigDTO();
+        config.setName(name);
+        config.setChartType(chartType);
+        config.setDataSourceType(dataSourceType);
+        config.setTemplateDescription(description);
+        
+        // 设置默认配置
+        config.setDataSourceConfig(Map.of("type", dataSourceType, "filters", Map.of()));
+        config.setStyleConfig(Map.of(
+            "colors", List.of("#FF6B6B", "#4ECDC4", "#45B7D1"),
+            "title", name,
+            "legend", true
+        ));
+        
+        return config;
     }
 }

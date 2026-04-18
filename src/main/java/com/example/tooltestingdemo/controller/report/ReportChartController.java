@@ -1,6 +1,7 @@
 package com.example.tooltestingdemo.controller.report;
 
 import com.example.tooltestingdemo.common.Result;
+import com.example.tooltestingdemo.dto.report.CustomChartConfigDTO;
 import com.example.tooltestingdemo.dto.report.ReportChartDTO;
 import com.example.tooltestingdemo.service.report.IReportChartService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -175,6 +176,97 @@ public class ReportChartController {
             return Result.success(groups);
         } catch (Exception e) {
             return Result.error("获取图表分组失败：" + e.getMessage());
+        }
+    }
+
+    // ====================== 自定义图表相关接口 ======================
+
+    @PostMapping("/custom")
+    @Operation(summary = "创建自定义图表")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:chart:create')")
+    public Result<Long> createCustomChart(@RequestBody CustomChartConfigDTO config) {
+        try {
+            Long chartId = reportChartService.createCustomChart(config);
+            return Result.success(chartId);
+        } catch (Exception e) {
+            return Result.error("创建自定义图表失败：" + e.getMessage());
+        }
+    }
+
+    @PutMapping("/custom/{id}")
+    @Operation(summary = "更新自定义图表配置")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:chart:update')")
+    public Result<Boolean> updateCustomChart(
+            @PathVariable Long id,
+            @RequestBody CustomChartConfigDTO config) {
+        try {
+            Boolean result = reportChartService.updateCustomChart(id, config);
+            return result ? Result.success(true) : Result.error("图表不存在");
+        } catch (Exception e) {
+            return Result.error("更新自定义图表失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/my-templates")
+    @Operation(summary = "获取我的图表模板")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:chart:view')")
+    public Result<List<CustomChartConfigDTO>> getMyChartTemplates() {
+        try {
+            List<CustomChartConfigDTO> templates = reportChartService.getMyChartTemplates();
+            return Result.success(templates);
+        } catch (Exception e) {
+            return Result.error("获取图表模板失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/save-as-template")
+    @Operation(summary = "保存图表为模板")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:chart:create')")
+    public Result<Long> saveChartAsTemplate(
+            @PathVariable Long id,
+            @RequestParam String templateName,
+            @RequestParam(required = false) String description) {
+        try {
+            Long templateId = reportChartService.saveChartAsTemplate(id, templateName, description);
+            return Result.success(templateId);
+        } catch (Exception e) {
+            return Result.error("保存图表模板失败：" + e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/template/{templateId}")
+    @Operation(summary = "删除图表模板")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:chart:delete')")
+    public Result<Boolean> deleteChartTemplate(@PathVariable Long templateId) {
+        try {
+            Boolean result = reportChartService.deleteChartTemplate(templateId);
+            return result ? Result.success(true) : Result.error("模板不存在");
+        } catch (Exception e) {
+            return Result.error("删除图表模板失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/preview")
+    @Operation(summary = "预览图表效果")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:chart:view')")
+    public Result<Object> previewChart(@RequestBody CustomChartConfigDTO config) {
+        try {
+            Object previewData = reportChartService.previewChart(config);
+            return Result.success(previewData);
+        } catch (Exception e) {
+            return Result.error("预览图表失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/visual-config")
+    @Operation(summary = "获取可视化配置面板")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:chart:view')")
+    public Result<Object> getVisualConfigPanel(@RequestParam(required = false) String chartType) {
+        try {
+            Object configPanel = reportChartService.getVisualConfigPanel(chartType);
+            return Result.success(configPanel);
+        } catch (Exception e) {
+            return Result.error("获取配置面板失败：" + e.getMessage());
         }
     }
 }

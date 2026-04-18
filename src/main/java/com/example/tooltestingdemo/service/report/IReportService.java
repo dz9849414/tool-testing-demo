@@ -1,7 +1,12 @@
 package com.example.tooltestingdemo.service.report;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.example.tooltestingdemo.dto.common.PageResult;
+import com.example.tooltestingdemo.dto.report.AutoReportConfigDTO;
 import com.example.tooltestingdemo.dto.report.ReportDTO;
+import com.example.tooltestingdemo.dto.report.ReportPreviewDTO;
+import com.example.tooltestingdemo.dto.report.TestResultTableDTO;
+import com.example.tooltestingdemo.dto.report.TimelineNodeDTO;
 import com.example.tooltestingdemo.entity.report.Report;
 
 import java.util.List;
@@ -65,4 +70,33 @@ public interface IReportService extends IService<Report> {
      * 获取报告统计
      */
     Object getReportStatistics(String startTime, String endTime, String reportType);
+
+    // ====================== 测试结果展示相关方法 ======================
+
+    /**
+     * 获取测试结果表格数据
+     */
+    PageResult<TestResultTableDTO> getTestResultsTable(String testType, Integer page, Integer size, String status, String timeRange);
+
+    /**
+     * 行内编辑测试结果字段
+     */
+    Boolean updateTestResultField(String id, String field, String value);
+
+    /**
+     * 获取测试结果时间线
+     */
+    List<TimelineNodeDTO> getTestResultsTimeline(String timeRange, String keyword, String nodeType);
+
+    // ====================== 自动报告生成相关方法 ======================
+
+    /**
+     * 设置自动生成报告配置
+     */
+    Long setupAutoReport(AutoReportConfigDTO config);
+
+    /**
+     * 预览报告PDF
+     */
+    ReportPreviewDTO previewReportPdf(Long reportId);
 }

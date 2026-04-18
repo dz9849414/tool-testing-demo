@@ -2,7 +2,8 @@ package com.example.tooltestingdemo.service.impl.report;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.example.tooltestingdemo.dto.report.ReportDTO;
+import com.example.tooltestingdemo.dto.common.PageResult;
+import com.example.tooltestingdemo.dto.report.*;
 import com.example.tooltestingdemo.entity.report.Report;
 import com.example.tooltestingdemo.mapper.report.ReportMapper;
 import com.example.tooltestingdemo.service.report.IReportService;
@@ -190,5 +191,124 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         ReportDTO dto = new ReportDTO();
         BeanUtils.copyProperties(report, dto);
         return dto;
+    }
+
+    // ====================== 测试结果展示相关方法实现 ======================
+
+    @Override
+    public PageResult<TestResultTableDTO> getTestResultsTable(String testType, Integer page, Integer size, String status, String timeRange) {
+        // 模拟测试结果数据
+        List<TestResultTableDTO> testResults = List.of(
+            createTestResult("test1", "PROTOCOL_TEST", "HTTP接口测试", "SUCCESS", "admin", 1500L, 95.5),
+            createTestResult("test2", "PROTOCOL_TEST", "数据库连接测试", "FAILED", "admin", 2000L, 0.0),
+            createTestResult("test3", "TEMPLATE_EXECUTE", "ERP配置模板", "SUCCESS", "user1", 3000L, 100.0)
+        );
+
+        // 应用筛选条件
+        List<TestResultTableDTO> filteredResults = testResults.stream()
+            .filter(result -> testType == null || testType.equals(result.getTestType()))
+            .filter(result -> status == null || status.equals(result.getStatus()))
+            .collect(Collectors.toList());
+
+        // 分页处理
+        int start = (page - 1) * size;
+        int end = Math.min(start + size, filteredResults.size());
+        List<TestResultTableDTO> pageData = filteredResults.subList(start, end);
+
+        return new PageResult<>(page, size, (long) filteredResults.size(), pageData);
+    }
+
+    @Override
+    public Boolean updateTestResultField(String id, String field, String value) {
+        // 模拟更新测试结果字段
+        // 实际实现应该调用测试模块的Service
+        System.out.println("更新测试结果 " + id + " 的字段 " + field + " 为 " + value);
+        return true;
+    }
+
+    @Override
+    public List<TimelineNodeDTO> getTestResultsTimeline(String timeRange, String keyword, String nodeType) {
+        // 模拟时间线数据
+        List<TimelineNodeDTO> timeline = List.of(
+            createTimelineNode("node1", "2024-04-10 10:00:00", "任务执行", "执行任务：HTTP接口测试（成功）", "admin", "TASK_EXECUTE", "SUCCESS"),
+            createTimelineNode("node2", "2024-04-10 09:30:00", "模板更新", "更新模板：ERP配置模板", "user1", "TEMPLATE_UPDATE", "INFO"),
+            createTimelineNode("node3", "2024-04-10 09:00:00", "协议测试", "测试协议：数据库连接（失败）", "admin", "PROTOCOL_TEST", "FAILED")
+        );
+
+        // 应用筛选条件
+        return timeline.stream()
+            .filter(node -> nodeType == null || nodeType.equals(node.getNodeType()))
+            .filter(node -> keyword == null || node.getContent().contains(keyword))
+            .collect(Collectors.toList());
+    }
+
+    // ====================== 自动报告生成相关方法实现 ======================
+
+    @Override
+    public Long setupAutoReport(AutoReportConfigDTO config) {
+        // 创建自动报告配置
+        ReportDTO reportDTO = new ReportDTO();
+        reportDTO.setName(config.getReportName());
+        reportDTO.setReportType(config.getReportType());
+        reportDTO.setTemplateId(config.getTemplateId());
+        reportDTO.setGenerateType("AUTO");
+        reportDTO.setGenerateFrequency(config.getFrequency());
+        reportDTO.setIsScheduled(true);
+        reportDTO.setStatus("SCHEDULED");
+
+        Long reportId = createReport(reportDTO);
+        
+        // 记录自动报告配置
+        System.out.println("设置自动报告配置：" + config.getReportName() + ", 频率：" + config.getFrequency());
+        
+        return reportId;
+    }
+
+    @Override
+    public ReportPreviewDTO previewReportPdf(Long reportId) {
+        Report report = reportMapper.selectById(reportId);
+        if (report == null || report.getIsDeleted() == 1) {
+            return null;
+        }
+
+        ReportPreviewDTO preview = new ReportPreviewDTO();
+        preview.setReportId(reportId);
+        preview.setReportName(report.getName());
+        preview.setPreviewContent("<div>PDF预览内容 - " + report.getName() + "</div>");
+        preview.setPdfPreviewUrl("/preview/reports/" + reportId + ".pdf");
+        preview.setTotalPages(10);
+        preview.setCurrentPage(1);
+        preview.setScale(1.0);
+
+        return preview;
+    }
+
+    // ====================== 辅助方法 ======================
+
+    private TestResultTableDTO createTestResult(String id, String testType, String name, String status, 
+                                               String executor, Long duration, Double successRate) {
+        TestResultTableDTO result = new TestResultTableDTO();
+        result.setId(id);
+        result.setTestType(testType);
+        result.setName(name);
+        result.setStatus(status);
+        result.setExecutor(executor);
+        result.setDuration(duration);
+        result.setSuccessRate(successRate);
+        return result;
+    }
+
+    private TimelineNodeDTO createTimelineNode(String id, String time, String title, String content, 
+                                              String operator, String nodeType, String status) {
+        TimelineNodeDTO node = new TimelineNodeDTO();
+        node.setId(id);
+        node.setTime(java.time.LocalDateTime.parse(time, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        node.setTitle(title);
+        node.setContent(content);
+        node.setOperator(operator);
+        node.setNodeType(nodeType);
+        node.setStatus(status);
+        node.setExpandable(true);
+        return node;
     }
 }

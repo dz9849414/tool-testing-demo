@@ -1,7 +1,12 @@
 package com.example.tooltestingdemo.controller.report;
 
 import com.example.tooltestingdemo.common.Result;
+import com.example.tooltestingdemo.dto.common.PageResult;
+import com.example.tooltestingdemo.dto.report.AutoReportConfigDTO;
 import com.example.tooltestingdemo.dto.report.ReportDTO;
+import com.example.tooltestingdemo.dto.report.ReportPreviewDTO;
+import com.example.tooltestingdemo.dto.report.TestResultTableDTO;
+import com.example.tooltestingdemo.dto.report.TimelineNodeDTO;
 import com.example.tooltestingdemo.service.report.IReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -164,6 +169,83 @@ public class ReportController {
             return Result.success(statistics);
         } catch (Exception e) {
             return Result.error("获取报告统计失败：" + e.getMessage());
+        }
+    }
+
+    // ====================== 测试结果展示相关接口 ======================
+
+    @GetMapping("/test-results/table")
+    @Operation(summary = "获取测试结果表格数据")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:view')")
+    public Result<PageResult<TestResultTableDTO>> getTestResultsTable(
+            @RequestParam String testType,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String timeRange) {
+        try {
+            PageResult<TestResultTableDTO> result = reportService.getTestResultsTable(
+                testType, page, size, status, timeRange);
+            return Result.success(result);
+        } catch (Exception e) {
+            return Result.error("获取测试结果表格失败：" + e.getMessage());
+        }
+    }
+
+    @PutMapping("/test-results/{id}/field")
+    @Operation(summary = "行内编辑测试结果字段")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:update')")
+    public Result<Boolean> updateTestResultField(
+            @PathVariable String id,
+            @RequestParam String field,
+            @RequestParam String value) {
+        try {
+            Boolean result = reportService.updateTestResultField(id, field, value);
+            return result ? Result.success(true) : Result.error("测试结果不存在");
+        } catch (Exception e) {
+            return Result.error("更新测试结果字段失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/test-results/timeline")
+    @Operation(summary = "获取测试结果时间线")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:view')")
+    public Result<List<TimelineNodeDTO>> getTestResultsTimeline(
+            @RequestParam String timeRange,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String nodeType) {
+        try {
+            List<TimelineNodeDTO> timeline = reportService.getTestResultsTimeline(
+                timeRange, keyword, nodeType);
+            return Result.success(timeline);
+        } catch (Exception e) {
+            return Result.error("获取测试结果时间线失败：" + e.getMessage());
+        }
+    }
+
+    // ====================== 自动报告生成相关接口 ======================
+
+    @PostMapping("/auto-generate/config")
+    @Operation(summary = "设置自动生成报告配置")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:auto-generate')")
+    public Result<Long> setupAutoReport(@RequestBody AutoReportConfigDTO config) {
+        try {
+            Long configId = reportService.setupAutoReport(config);
+            return Result.success(configId);
+        } catch (Exception e) {
+            return Result.error("设置自动报告配置失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/preview/{reportId}/pdf")
+    @Operation(summary = "预览报告PDF")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:preview')")
+    public Result<ReportPreviewDTO> previewReportPdf(@PathVariable Long reportId) {
+        try {
+            ReportPreviewDTO preview = reportService.previewReportPdf(reportId);
+            return preview != null ? Result.success(preview) : Result.error("报告不存在");
+        } catch (Exception e) {
+            return Result.error("预览报告失败：" + e.getMessage());
         }
     }
 }
