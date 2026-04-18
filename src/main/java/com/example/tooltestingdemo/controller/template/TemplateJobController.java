@@ -26,18 +26,6 @@ public class TemplateJobController {
 
     private final TemplateJobService jobService;
 
-    /**
-     * 分页查询任务列表（基础版）
-     */
-    @GetMapping("/page")
-    public Result<IPage<TemplateJob>> pageJobs(
-            @RequestParam(defaultValue = "1") Long current,
-            @RequestParam(defaultValue = "10") Long size,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Integer status) {
-        Page<TemplateJob> page = new Page<>(current, size);
-        return Result.success(jobService.pageJobs(page, keyword, status));
-    }
 
     /**
      * 分页查询任务列表（附带最近一次执行状态，推荐管理页面使用）
@@ -86,14 +74,6 @@ public class TemplateJobController {
         return jobService.deleteJob(id) ? Result.success("删除成功") : Result.error("删除失败");
     }
 
-    /**
-     * 批量触发执行任务
-     */
-    @PostMapping("/batch/trigger")
-    public Result<Map<String, Object>> batchTriggerJobs(@RequestBody Long[] ids) {
-        if (ids == null || ids.length == 0) return Result.error("任务ID列表不能为空");
-        return Result.success(jobService.batchTriggerJobs(ids));
-    }
 
     /**
      * 批量停止任务（停用并取消调度）
@@ -123,7 +103,7 @@ public class TemplateJobController {
     }
 
     /**
-     * 手动触发执行
+     * 手动触发执行（单个）
      */
     @PostMapping("/{id}/trigger")
     public Result<Map<String, Object>> triggerJob(@PathVariable Long id) {

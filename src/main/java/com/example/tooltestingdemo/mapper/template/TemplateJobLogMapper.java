@@ -17,4 +17,11 @@ public interface TemplateJobLogMapper extends BaseMapper<TemplateJobLog> {
      * 根据任务ID查询最近N条日志
      */
     List<TemplateJobLog> selectRecentByJobId(@Param("jobId") Long jobId, @Param("limit") Integer limit);
+
+    /**
+     * 批量查询
+     * @param jobIds
+     * @return
+     */
+    List<TemplateJobLog> selectLastLogsByJobIds(@Param("jobIds") List<Long> jobIds);
 }
