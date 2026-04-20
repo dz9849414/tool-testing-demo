@@ -1,5 +1,6 @@
 package com.example.tooltestingdemo.dto;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 /**
