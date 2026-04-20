@@ -90,6 +90,59 @@ public class SecurityService {
         }
         return false;
     }
+
+    // ====================== 权限检查方法 ======================
+
+    /**
+     * 检查是否有任意一个权限
+     */
+    public boolean hasAnyPermission(String... permissions) {
+        if (!isAuthenticated()) return false;
+        
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) return false;
+        
+        for (String permission : permissions) {
+            if (authentication.getAuthorities().stream()
+                    .anyMatch(authority -> authority.getAuthority().equals(permission))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 检查是否有所有权限
+     */
+    public boolean hasAllPermissions(String... permissions) {
+        if (!isAuthenticated()) return false;
+        
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) return false;
+        
+        for (String permission : permissions) {
+            if (authentication.getAuthorities().stream()
+                    .noneMatch(authority -> authority.getAuthority().equals(permission))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * 检查是否有指定角色
+     */
+    public boolean hasRole(String role) {
+        if (!isAuthenticated()) return false;
+        
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) return false;
+        
+        // 检查角色，通常角色以"ROLE_"前缀
+        String roleWithPrefix = role.startsWith("ROLE_") ? role : "ROLE_" + role;
+        return authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals(roleWithPrefix));
+    }
     
     /**
      * 获取当前登录用户的角色ID
