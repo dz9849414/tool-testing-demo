@@ -101,6 +101,9 @@ public class ProtocolParameterConfigServiceImpl extends ServiceImpl<ProtocolPara
         if (isUrlParameter(dto.getParameterName())) {
             validateProtocolPrefix(dto.getParameterValue());
         }
+        if (isPortParameter(dto.getParameterName())) {
+            validateProtocolPrefix(dto.getParameterValue());
+        }
     }
 
     private void ensureParameterUnique(Long protocolId, String parameterName) {
@@ -116,10 +119,15 @@ public class ProtocolParameterConfigServiceImpl extends ServiceImpl<ProtocolPara
         return StringUtils.equalsIgnoreCase(StringUtils.trim(parameterName), "URL");
     }
 
+    private boolean isPortParameter(String parameterName) {
+        return StringUtils.equalsIgnoreCase(StringUtils.trim(parameterName), "PORT");
+    }
+
     private void validateProtocolPrefix(String parameterValue) {
         String normalizedValue = StringUtils.trim(parameterValue);
-        if (!PROTOCOL_PREFIX_PATTERN.matcher(normalizedValue).matches()) {
-            throw new RuntimeException("URL参数必须以 http://、https:// 或自定义协议前缀（如 mqtt://）开头！");
+        int port = Integer.parseInt(normalizedValue);
+        if (port < 0 || port > 65535) {
+            throw new RuntimeException("端口号只能是【0-65535】范围区间!");
         }
     }
 
