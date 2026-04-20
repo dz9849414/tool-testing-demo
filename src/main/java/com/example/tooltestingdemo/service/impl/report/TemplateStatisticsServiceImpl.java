@@ -1,10 +1,16 @@
 package com.example.tooltestingdemo.service.impl.report;
 
 import com.example.tooltestingdemo.dto.report.ReportDTO;
+import com.example.tooltestingdemo.dto.report.ReportTemplateDTO;
+import com.example.tooltestingdemo.entity.template.TemplateJobLog;
+import com.example.tooltestingdemo.mapper.template.TemplateStatisticsMapper;
 import com.example.tooltestingdemo.service.report.ITemplateStatisticsService;
+import com.example.tooltestingdemo.service.report.IReportTemplateService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -15,21 +21,29 @@ import java.util.*;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService {
+
+    private final TemplateStatisticsMapper templateStatisticsMapper;
+    private final IReportTemplateService reportTemplateService;
 
     @Override
     public ReportDTO getTemplateUsageReport(String timeRange, String startDate, String endDate, String templateType) {
         log.info("获取模板使用频率报告，时间范围：{}，模板类型：{}", timeRange, templateType);
         
-        // 生成模板使用统计数据
-        Map<String, Object> usageStats = generateTemplateUsageStatistics(timeRange, templateType);
+        // 计算时间范围
+        LocalDate[] dateRange = calculateDateRange(timeRange, startDate, endDate);
+        
+        // 从数据库获取实际统计数据
+        List<Map<String, Object>> usageStats = templateStatisticsMapper.getTemplateUsageStats(
+            dateRange[0].atStartOfDay(), dateRange[1].atTime(23, 59, 59));
         
         ReportDTO report = new ReportDTO();
         report.setId(System.currentTimeMillis());
         report.setName("模板使用频率报告 - " + getTimeRangeDisplay(timeRange));
-        report.setDescription("基于模板使用日志生成的统计报告");
+        report.setDescription("基于模板任务执行日志生成的统计报告");
         report.setReportType("TEMPLATE_USAGE_STATISTICS");
-        report.setContent(convertToJson(usageStats));
+        report.setContent(convertToJson(buildUsageReportData(usageStats, dateRange)));
         report.setGenerateType("MANUAL");
         report.setStatus("PUBLISHED");
         report.setCreateTime(LocalDateTime.now());
@@ -42,15 +56,70 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     public ReportDTO getTemplateEfficiencyReport(String startDate, String endDate, String templateId) {
         log.info("获取模板执行效率报告，时间范围：{} 至 {}，模板ID：{}", startDate, endDate, templateId);
         
-        // 生成模板效率统计数据
-        Map<String, Object> efficiencyStats = generateTemplateEfficiencyStatistics(startDate, endDate, templateId);
+        // 处理时间参数为空的情况
+        LocalDateTime startTime;
+        LocalDateTime endTime;
         
+        if (startDate == null) {
+            // 如果不传开始时间，默认使用30天前
+            startTime = LocalDateTime.now().minusDays(30);
+        } else {
+            startTime = LocalDate.parse(startDate).atStartOfDay();
+        }
+        
+        if (endDate == null) {
+            // 如果不传结束时间，默认使用当前时间
+            endTime = LocalDateTime.now();
+        } else {
+            endTime = LocalDate.parse(endDate).atTime(23, 59, 59);
+        }
+        
+        // 从数据库获取实际效率统计数据
+        List<Map<String, Object>> efficiencyStats;
+        
+        if (templateId != null && !templateId.trim().isEmpty()) {
+            // 如果指定了模板ID，只统计该模板的效率数据
+            efficiencyStats = templateStatisticsMapper.getTemplateEfficiencyStatsByTemplateId(
+                startTime, endTime, Long.valueOf(templateId));
+        } else {
+            // 如果没有指定模板ID，统计所有模板的效率数据
+            efficiencyStats = templateStatisticsMapper.getTemplateEfficiencyStats(startTime, endTime);
+        }
+        
+        // 构建报告数据
+        Map<String, Object> reportData = buildEfficiencyReportData(efficiencyStats, startTime.toLocalDate().toString(), endTime.toLocalDate().toString());
+        
+        // 如果指定了模板ID，使用模板生成报告内容和格式
         ReportDTO report = new ReportDTO();
         report.setId(System.currentTimeMillis());
-        report.setName("模板执行效率报告 - " + startDate + " 至 " + endDate);
-        report.setDescription("基于模板执行日志生成的效率分析报告");
-        report.setReportType("TEMPLATE_EFFICIENCY_STATISTICS");
-        report.setContent(convertToJson(efficiencyStats));
+        
+        if (templateId != null && !templateId.trim().isEmpty()) {
+            // 使用模板生成报告
+            ReportTemplateDTO template = reportTemplateService.getTemplateDetail(Long.valueOf(templateId));
+            if (template != null) {
+                // 使用模板的名称、描述和格式
+                report.setName(template.getName());
+                report.setDescription(template.getDescription());
+                report.setReportType(template.getTemplateType());
+                
+                // 使用模板结构格式化报告数据
+                String formattedContent = applyTemplateFormat(template.getTemplateStructure(), reportData);
+                report.setContent(formattedContent);
+            } else {
+                // 模板不存在，使用默认格式
+                report.setName("模板执行效率报告 - 模板" + templateId + " - " + startTime.toLocalDate() + " 至 " + endTime.toLocalDate());
+                report.setDescription("基于模板" + templateId + "执行日志生成的效率分析报告");
+                report.setReportType("TEMPLATE_EFFICIENCY_STATISTICS");
+                report.setContent(convertToJson(reportData));
+            }
+        } else {
+            // 没有指定模板ID，使用默认格式
+            report.setName("模板执行效率报告 - " + startTime.toLocalDate() + " 至 " + endTime.toLocalDate());
+            report.setDescription("基于所有模板执行日志生成的效率分析报告");
+            report.setReportType("TEMPLATE_EFFICIENCY_STATISTICS");
+            report.setContent(convertToJson(reportData));
+        }
+        
         report.setGenerateType("MANUAL");
         report.setStatus("PUBLISHED");
         report.setCreateTime(LocalDateTime.now());
@@ -63,152 +132,158 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     public Object generateTemplateUsageChart(String timeRange, String chartType) {
         log.info("生成模板使用统计图表，时间范围：{}，图表类型：{}", timeRange, chartType);
         
-        // 模拟图表数据
-        Map<String, Object> chartData = new HashMap<>();
-        chartData.put("chartType", chartType);
-        chartData.put("timeRange", timeRange);
+        LocalDate[] dateRange = calculateDateRange(timeRange, null, null);
+        List<Map<String, Object>> usageStats = templateStatisticsMapper.getTemplateUsageStats(
+            dateRange[0].atStartOfDay(), dateRange[1].atTime(23, 59, 59));
         
-        switch (chartType) {
-            case "BAR":
-                chartData.put("data", generateBarChartData(timeRange));
-                break;
-            case "LINE":
-                chartData.put("data", generateLineChartData(timeRange));
-                break;
-            case "PIE":
-                chartData.put("data", generatePieChartData(timeRange));
-                break;
-            default:
-                chartData.put("data", generateBarChartData(timeRange));
-        }
-        
-        return chartData;
+        return buildUsageChartData(usageStats, chartType, timeRange);
     }
 
     @Override
     public Object generateTemplateEfficiencyChart(String startDate, String endDate, String chartType) {
         log.info("生成模板效率统计图表，时间范围：{} 至 {}，图表类型：{}", startDate, endDate, chartType);
         
-        // 模拟效率图表数据
-        Map<String, Object> chartData = new HashMap<>();
-        chartData.put("chartType", chartType);
-        chartData.put("startDate", startDate);
-        chartData.put("endDate", endDate);
+        // 处理时间参数为空的情况
+        LocalDateTime startTime;
+        LocalDateTime endTime;
         
-        switch (chartType) {
-            case "LINE":
-                chartData.put("data", generateEfficiencyLineChart(startDate, endDate));
-                break;
-            case "BAR":
-            default:
-                chartData.put("data", generateEfficiencyBarChart(startDate, endDate));
+        if (startDate == null ) {
+            // 如果不传开始时间，默认使用30天前
+            startTime = LocalDateTime.now().minusDays(30);
+        } else {
+            startTime = LocalDate.parse(startDate).atStartOfDay();
         }
         
-        return chartData;
+        if (endDate == null ) {
+            // 如果不传结束时间，默认使用当前时间
+            endTime = LocalDateTime.now();
+        } else {
+            endTime = LocalDate.parse(endDate).atTime(23, 59, 59);
+        }
+        
+        List<Map<String, Object>> efficiencyStats = templateStatisticsMapper.getTemplateEfficiencyStats(startTime, endTime);
+        
+        return buildEfficiencyChartData(efficiencyStats, chartType, startTime.toLocalDate().toString(), endTime.toLocalDate().toString());
     }
 
-    // ====================== 辅助方法 ======================
+    // ====================== 基于实际数据的辅助方法 ======================
 
-    private Map<String, Object> generateTemplateUsageStatistics(String timeRange, String templateType) {
-        Map<String, Object> statistics = new HashMap<>();
+    private LocalDate[] calculateDateRange(String timeRange, String startDate, String endDate) {
+        LocalDate endDateObj = LocalDate.now();
+        LocalDate startDateObj;
         
-        // 模拟不同模板的使用数据
-        String[] templateNames = {"HTTP接口测试模板", "数据库连接模板", "ERP配置模板", "文件处理模板", "数据转换模板"};
-        String[] templateTypes = {"PROTOCOL", "DATABASE", "ERP", "FILE", "TRANSFORM"};
+        switch (timeRange) {
+            case "TODAY":
+                startDateObj = LocalDate.now();
+                break;
+            case "7DAYS":
+                startDateObj = LocalDate.now().minusDays(7);
+                break;
+            case "30DAYS":
+                startDateObj = LocalDate.now().minusDays(30);
+                break;
+            case "CUSTOM":
+                startDateObj = LocalDate.parse(startDate);
+                endDateObj = LocalDate.parse(endDate);
+                break;
+            default:
+                startDateObj = LocalDate.now().minusDays(7);
+        }
         
-        Random random = new Random();
-        List<Map<String, Object>> usageStats = new ArrayList<>();
+        return new LocalDate[]{startDateObj, endDateObj};
+    }
+
+    private Map<String, Object> buildUsageReportData(List<Map<String, Object>> usageStats, LocalDate[] dateRange) {
+        Map<String, Object> reportData = new HashMap<>();
+        
         int totalUsageCount = 0;
         int totalSuccessCount = 0;
+        long totalDuration = 0;
         
-        for (int i = 0; i < templateNames.length; i++) {
-            if (templateType != null && !templateType.equals(templateTypes[i])) {
-                continue;
-            }
+        List<Map<String, Object>> templateStats = new ArrayList<>();
+        
+        for (Map<String, Object> stat : usageStats) {
+            // 直接使用BigDecimal进行计算，避免精度损失
+            BigDecimal templateId = (BigDecimal) stat.get("template_id");
+            BigDecimal usageCount = BigDecimal.valueOf((Long)stat.get("usage_count"));
+            BigDecimal successCount = (BigDecimal) stat.get("success_count");
+            BigDecimal avgDuration = (BigDecimal) stat.get("avg_duration");
             
-            Map<String, Object> stat = new HashMap<>();
-            stat.put("templateId", "template_" + (i + 1));
-            stat.put("templateName", templateNames[i]);
-            stat.put("templateType", templateTypes[i]);
+            Map<String, Object> templateStat = new HashMap<>();
+            templateStat.put("templateId", templateId != null ? templateId.longValue() : null);
+            templateStat.put("templateName", "模板" + (templateId != null ? templateId.longValue() : "未知")); // 实际项目中需要关联模板表获取名称
+            templateStat.put("usageCount", usageCount != null ? usageCount.longValue() : 0);
+            templateStat.put("successCount", successCount != null ? successCount.longValue() : 0);
+            templateStat.put("failureCount", usageCount != null && successCount != null ? 
+                usageCount.subtract(successCount).longValue() : 0);
+            templateStat.put("successRate", usageCount != null && successCount != null && usageCount.compareTo(BigDecimal.ZERO) > 0 ? 
+                successCount.divide(usageCount, 4, BigDecimal.ROUND_HALF_UP).multiply(new BigDecimal("100")).doubleValue() : 0);
+            templateStat.put("avgExecuteTime", avgDuration != null ? avgDuration.longValue() : 0);
             
-            // 根据时间范围生成不同的使用次数
-            int baseUsage = getBaseUsageCount(timeRange);
-            int usageCount = baseUsage + random.nextInt(20);
-            int successCount = usageCount - random.nextInt(5);
-            double successRate = (double) successCount / usageCount * 100;
-            long avgExecuteTime = 500L + random.nextInt(2000);
-            
-            stat.put("usageCount", usageCount);
-            stat.put("successCount", successCount);
-            stat.put("failureCount", usageCount - successCount);
-            stat.put("successRate", successRate);
-            stat.put("avgExecuteTime", avgExecuteTime);
-            stat.put("lastUsedTime", LocalDate.now().minusDays(random.nextInt(7)).toString());
-            stat.put("creator", "user" + (i % 3 + 1));
-            stat.put("status", "ENABLED");
-            
-            usageStats.add(stat);
-            totalUsageCount += usageCount;
-            totalSuccessCount += successCount;
+            templateStats.add(templateStat);
+            totalUsageCount += usageCount != null ? usageCount.longValue() : 0;
+            totalSuccessCount += successCount != null ? successCount.longValue() : 0;
+            totalDuration += avgDuration != null ? avgDuration.doubleValue() * (usageCount != null ? usageCount.longValue() : 0) : 0;
         }
         
-        statistics.put("usageStats", usageStats);
-        statistics.put("totalUsageCount", totalUsageCount);
-        statistics.put("totalSuccessCount", totalSuccessCount);
-        statistics.put("avgSuccessRate", totalUsageCount > 0 ? (double) totalSuccessCount / totalUsageCount * 100 : 0);
-        statistics.put("timeRange", timeRange);
-        statistics.put("templateType", templateType);
-        statistics.put("generateTime", LocalDateTime.now().toString());
+        reportData.put("usageStats", templateStats);
+        reportData.put("totalUsageCount", totalUsageCount);
+        reportData.put("totalSuccessCount", totalSuccessCount);
+        reportData.put("avgSuccessRate", totalUsageCount > 0 ? (double) totalSuccessCount / totalUsageCount * 100 : 0);
+        reportData.put("avgExecuteTime", totalUsageCount > 0 ? totalDuration / totalUsageCount : 0);
+        reportData.put("startTime", dateRange[0].format(DateTimeFormatter.ISO_DATE));
+        reportData.put("endTime", dateRange[1].format(DateTimeFormatter.ISO_DATE));
+        reportData.put("generateTime", LocalDate.now().format(DateTimeFormatter.ISO_DATE));
         
-        return statistics;
+        return reportData;
     }
 
-    private Map<String, Object> generateTemplateEfficiencyStatistics(String startDate, String endDate, String templateId) {
-        Map<String, Object> statistics = new HashMap<>();
+    private Map<String, Object> buildEfficiencyReportData(List<Map<String, Object>> efficiencyStats, String startDate, String endDate) {
+        Map<String, Object> reportData = new HashMap<>();
         
-        LocalDate start = LocalDate.parse(startDate);
-        LocalDate end = LocalDate.parse(endDate);
-        Random random = new Random();
-        
-        List<Map<String, Object>> efficiencyStats = new ArrayList<>();
         int totalJobs = 0;
         int totalSuccess = 0;
         long totalDuration = 0;
         
-        // 生成每天的效率数据
-        for (LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
-            Map<String, Object> stat = new HashMap<>();
-            int jobCount = 10 + random.nextInt(20);
-            int successCount = jobCount - random.nextInt(3);
-            long avgDuration = 800L + random.nextInt(1500);
+        List<Map<String, Object>> dailyStats = new ArrayList<>();
+        
+        for (Map<String, Object> stat : efficiencyStats) {
+            String date = String.valueOf( stat.get("date"));
+            Long jobCount = (Long)stat.get("job_count");
+            BigDecimal successCount = (BigDecimal)stat.get("success_count");
+            BigDecimal avgDuration = (BigDecimal)stat.get("avg_duration");
+            Long maxDuration = (Long)stat.get("max_duration");
+            Long minDuration = (Long)stat.get("min_duration");
             
-            stat.put("date", date.format(DateTimeFormatter.ISO_DATE));
-            stat.put("jobCount", jobCount);
-            stat.put("successCount", successCount);
-            stat.put("failureCount", jobCount - successCount);
-            stat.put("successRate", (double) successCount / jobCount * 100);
-            stat.put("avgDuration", avgDuration);
-            stat.put("maxDuration", avgDuration + random.nextInt(1000));
-            stat.put("minDuration", Math.max(100L, avgDuration - random.nextInt(500)));
+            Map<String, Object> dailyStat = new HashMap<>();
+            dailyStat.put("date", date);
+            dailyStat.put("jobCount", jobCount != null ? jobCount.longValue() : 0);
+            dailyStat.put("successCount", successCount != null ? successCount.longValue() : 0);
+            dailyStat.put("failureCount", jobCount != null && successCount != null ? 
+                BigDecimal.valueOf(jobCount).subtract(successCount).longValue() : 0);
+            dailyStat.put("successRate", jobCount != null && successCount != null && jobCount.compareTo(0l) > 0 ?
+                successCount.divide(BigDecimal.valueOf(jobCount), 4, BigDecimal.ROUND_HALF_UP).multiply(new BigDecimal("100")).doubleValue() : 0);
+            dailyStat.put("avgDuration", avgDuration != null ? avgDuration.longValue() : 0);
+            dailyStat.put("maxDuration", maxDuration != null ? maxDuration.longValue() : 0);
+            dailyStat.put("minDuration", minDuration != null ? minDuration.longValue() : 0);
             
-            efficiencyStats.add(stat);
-            totalJobs += jobCount;
-            totalSuccess += successCount;
-            totalDuration += avgDuration * jobCount;
+            dailyStats.add(dailyStat);
+            totalJobs += jobCount != null ? jobCount.longValue() : 0;
+            totalSuccess += successCount != null ? successCount.longValue() : 0;
+            totalDuration += avgDuration != null ? avgDuration.doubleValue() * (jobCount != null ? jobCount.longValue() : 0) : 0;
         }
         
-        statistics.put("efficiencyStats", efficiencyStats);
-        statistics.put("totalJobs", totalJobs);
-        statistics.put("totalSuccess", totalSuccess);
-        statistics.put("overallSuccessRate", totalJobs > 0 ? (double) totalSuccess / totalJobs * 100 : 0);
-        statistics.put("avgDuration", totalJobs > 0 ? totalDuration / totalJobs : 0);
-        statistics.put("reportPeriod", efficiencyStats.size() + " 天");
-        statistics.put("startDate", startDate);
-        statistics.put("endDate", endDate);
-        statistics.put("templateId", templateId);
-        statistics.put("generateTime", LocalDateTime.now().toString());
+        reportData.put("efficiencyStats", dailyStats);
+        reportData.put("totalJobs", totalJobs);
+        reportData.put("totalSuccess", totalSuccess);
+        reportData.put("overallSuccessRate", totalJobs > 0 ? (double) totalSuccess / totalJobs * 100 : 0);
+        reportData.put("avgDuration", totalJobs > 0 ? totalDuration / totalJobs : 0);
+        reportData.put("reportPeriod", dailyStats.size() + " 天");
+        reportData.put("startDate", startDate);
+        reportData.put("endDate", endDate);
+        reportData.put("generateTime", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME));
         
-        return statistics;
+        return reportData;
     }
 
     private String convertToJson(Object data) {
@@ -301,5 +376,144 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
         return data;
     }
 
+    private Map<String, Object> buildUsageChartData(List<Map<String, Object>> usageStats, String chartType, String timeRange) {
+        Map<String, Object> chartData = new HashMap<>();
+        
+        List<String> labels = new ArrayList<>();
+        List<Long> values = new ArrayList<>();
+        
+        for (Map<String, Object> stat : usageStats) {
+            Long templateId = (Long) stat.get("template_id");
+            Long usageCount = (Long) stat.get("usage_count");
+            
+            labels.add("模板" + templateId);
+            values.add(usageCount);
+        }
+        
+        chartData.put("chartType", chartType);
+        chartData.put("labels", labels);
+        chartData.put("values", values);
+        chartData.put("title", "模板使用频率统计 - " + getTimeRangeDisplay(timeRange));
+        
+        return chartData;
+    }
 
+    private Map<String, Object> buildEfficiencyChartData(List<Map<String, Object>> efficiencyStats, String chartType, String startDate, String endDate) {
+        Map<String, Object> chartData = new HashMap<>();
+        
+        List<String> labels = new ArrayList<>();
+        List<Long> durations = new ArrayList<>();
+        List<Double> successRates = new ArrayList<>();
+        
+        for (Map<String, Object> stat : efficiencyStats) {
+            String date =  ((java.sql.Date) stat.get("date")).toString();
+            BigDecimal avgDuration = (BigDecimal)stat.get("avg_duration") ;
+            Long jobCount = (Long) stat.get("job_count");
+            BigDecimal successCount = (BigDecimal)stat.get("success_count");
+            
+            labels.add(date.substring(5)); // 显示月-日格式
+            durations.add(avgDuration != null ? avgDuration.longValue() : 0);
+            successRates.add(jobCount > 0 ? successCount.divide(BigDecimal.valueOf(jobCount), 2).multiply(BigDecimal.valueOf(100)).doubleValue() : 0);
+        }
+        
+        chartData.put("chartType", chartType);
+        chartData.put("labels", labels);
+        chartData.put("durations", durations);
+        chartData.put("successRates", successRates);
+        chartData.put("title", "模板执行效率趋势 - " + startDate + " 至 " + endDate);
+        
+        return chartData;
+    }
+
+    // ====================== 模板格式化方法 ======================
+
+    /**
+     * 应用模板格式，将报告数据填充到模板内容中
+     */
+    private String applyTemplateFormat(String templateContent, Map<String, Object> reportData) {
+        if (templateContent == null || templateContent.trim().isEmpty()) {
+            return convertToJson(reportData);
+        }
+        
+        try {
+            // 简单的模板变量替换，支持 ${variableName} 格式
+            String formattedContent = templateContent;
+            
+            // 替换基本变量
+            formattedContent = replaceTemplateVariables(formattedContent, reportData);
+            
+            // 替换日期变量
+            formattedContent = replaceDateVariables(formattedContent);
+            
+            // 替换统计变量
+            formattedContent = replaceStatisticsVariables(formattedContent, reportData);
+            
+            return formattedContent;
+        } catch (Exception e) {
+            log.error("模板格式化失败，使用默认格式", e);
+            return convertToJson(reportData);
+        }
+    }
+
+    /**
+     * 替换模板中的变量 ${variableName}
+     */
+    private String replaceTemplateVariables(String content, Map<String, Object> data) {
+        String result = content;
+        
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
+            String variable = "\\${" + entry.getKey() + "}";
+            String value = entry.getValue() != null ? entry.getValue().toString() : "";
+            result = result.replace(variable, value);
+        }
+        
+        return result;
+    }
+
+    /**
+     * 替换模板中的日期变量
+     */
+    private String replaceDateVariables(String content) {
+        String result = content;
+        
+        // 当前日期
+        LocalDate now = LocalDate.now();
+        result = result.replace("${currentDate}", now.toString());
+        result = result.replace("${currentYear}", String.valueOf(now.getYear()));
+        result = result.replace("${currentMonth}", String.valueOf(now.getMonthValue()));
+        result = result.replace("${currentDay}", String.valueOf(now.getDayOfMonth()));
+        
+        return result;
+    }
+
+    /**
+     * 替换模板中的统计变量
+     */
+    private String replaceStatisticsVariables(String content, Map<String, Object> data) {
+        String result = content;
+        
+        // 总任务数
+        if (data.containsKey("totalJobs")) {
+            result = result.replace("${totalJobs}", data.get("totalJobs").toString());
+        }
+        
+        // 成功任务数
+        if (data.containsKey("totalSuccess")) {
+            result = result.replace("${totalSuccess}", data.get("totalSuccess").toString());
+        }
+        
+        // 平均成功率
+        if (data.containsKey("avgSuccessRate")) {
+            double successRate = (double) data.get("avgSuccessRate");
+            result = result.replace("${avgSuccessRate}", String.format("%.2f%%", successRate));
+        }
+        
+        // 平均执行时间
+        if (data.containsKey("avgDuration")) {
+            double avgDuration = (double) data.get("avgDuration");
+            result = result.replace("${avgDuration}", String.format("%.2fms", avgDuration));
+        }
+        
+        return result;
+    }
 }

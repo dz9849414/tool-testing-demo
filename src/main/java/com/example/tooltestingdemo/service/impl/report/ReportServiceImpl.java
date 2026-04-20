@@ -5,14 +5,18 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.common.PageResult;
 import com.example.tooltestingdemo.dto.report.*;
 import com.example.tooltestingdemo.entity.report.Report;
+import com.example.tooltestingdemo.entity.template.TemplateJobLog;
 import com.example.tooltestingdemo.mapper.report.ReportMapper;
+import com.example.tooltestingdemo.mapper.template.TemplateJobLogMapper;
 import com.example.tooltestingdemo.service.report.IReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -23,6 +27,7 @@ import java.util.stream.Collectors;
 public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> implements IReportService {
 
     private final ReportMapper reportMapper;
+    private final TemplateJobLogMapper templateJobLogMapper;
 
     @Override
     public Long createReport(ReportDTO reportDTO) {
@@ -197,25 +202,25 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
 
     @Override
     public PageResult<TestResultTableDTO> getTestResultsTable(String testType, Integer page, Integer size, String status, String timeRange) {
-        // 模拟测试结果数据
-        List<TestResultTableDTO> testResults = List.of(
-            createTestResult("test1", "PROTOCOL_TEST", "HTTP接口测试", "SUCCESS", "admin", 1500L, 95.5),
-            createTestResult("test2", "PROTOCOL_TEST", "数据库连接测试", "FAILED", "admin", 2000L, 0.0),
-            createTestResult("test3", "TEMPLATE_EXECUTE", "ERP配置模板", "SUCCESS", "user1", 3000L, 100.0)
-        );
-
-        // 应用筛选条件
-        List<TestResultTableDTO> filteredResults = testResults.stream()
+        // 计算时间范围
+        LocalDateTime[] dateRange = calculateDateRange(timeRange);
+        
+        // 从数据库获取实际的测试结果数据
+        List<Map<String, Object>> jobLogs = getJobLogsByDateRange(dateRange[0], dateRange[1]);
+        
+        // 转换为TestResultTableDTO
+        List<TestResultTableDTO> testResults = jobLogs.stream()
+            .map(this::convertToTestResultTableDTO)
             .filter(result -> testType == null || testType.equals(result.getTestType()))
             .filter(result -> status == null || status.equals(result.getStatus()))
             .collect(Collectors.toList());
 
         // 分页处理
         int start = (page - 1) * size;
-        int end = Math.min(start + size, filteredResults.size());
-        List<TestResultTableDTO> pageData = filteredResults.subList(start, end);
+        int end = Math.min(start + size, testResults.size());
+        List<TestResultTableDTO> pageData = testResults.subList(start, end);
 
-        return new PageResult<>(page, size, (long) filteredResults.size(), pageData);
+        return new PageResult<>(page, size, (long) testResults.size(), pageData);
     }
 
     @Override
@@ -228,18 +233,20 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
 
     @Override
     public List<TimelineNodeDTO> getTestResultsTimeline(String timeRange, String keyword, String nodeType) {
-        // 模拟时间线数据
-        List<TimelineNodeDTO> timeline = List.of(
-            createTimelineNode("node1", "2024-04-10 10:00:00", "任务执行", "执行任务：HTTP接口测试（成功）", "admin", "TASK_EXECUTE", "SUCCESS"),
-            createTimelineNode("node2", "2024-04-10 09:30:00", "模板更新", "更新模板：ERP配置模板", "user1", "TEMPLATE_UPDATE", "INFO"),
-            createTimelineNode("node3", "2024-04-10 09:00:00", "协议测试", "测试协议：数据库连接（失败）", "admin", "PROTOCOL_TEST", "FAILED")
-        );
-
-        // 应用筛选条件
-        return timeline.stream()
+        // 计算时间范围
+        LocalDateTime[] dateRange = calculateDateRange(timeRange);
+        
+        // 从数据库获取实际的执行日志数据
+        List<Map<String, Object>> jobLogs = getJobLogsByDateRange(dateRange[0], dateRange[1]);
+        
+        // 转换为TimelineNodeDTO
+        List<TimelineNodeDTO> timeline = jobLogs.stream()
+            .map(this::convertToTimelineNodeDTO)
             .filter(node -> nodeType == null || nodeType.equals(node.getNodeType()))
             .filter(node -> keyword == null || node.getContent().contains(keyword))
             .collect(Collectors.toList());
+
+        return timeline;
     }
 
     // ====================== 自动报告生成相关方法实现 ======================
@@ -309,6 +316,119 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         node.setNodeType(nodeType);
         node.setStatus(status);
         node.setExpandable(true);
+        return node;
+    }
+
+    // ====================== 基于实际数据的辅助方法 ======================
+
+    /**
+     * 计算时间范围
+     */
+    private LocalDateTime[] calculateDateRange(String timeRange) {
+        LocalDateTime endTime = LocalDateTime.now();
+        LocalDateTime startTime;
+        
+        switch (timeRange) {
+            case "TODAY":
+                startTime = LocalDate.now().atStartOfDay();
+                break;
+            case "7DAYS":
+                startTime = LocalDate.now().minusDays(7).atStartOfDay();
+                break;
+            case "30DAYS":
+                startTime = LocalDate.now().minusDays(30).atStartOfDay();
+                break;
+            default:
+                startTime = LocalDate.now().minusDays(7).atStartOfDay();
+        }
+        
+        return new LocalDateTime[]{startTime, endTime};
+    }
+
+    /**
+     * 根据时间范围获取任务日志
+     */
+    private List<Map<String, Object>> getJobLogsByDateRange(LocalDateTime startTime, LocalDateTime endTime) {
+        // 使用MyBatis Plus查询
+        LambdaQueryWrapper<TemplateJobLog> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.between(TemplateJobLog::getCreateTime, startTime, endTime);
+        queryWrapper.orderByDesc(TemplateJobLog::getCreateTime);
+        
+        List<TemplateJobLog> jobLogs = templateJobLogMapper.selectList(queryWrapper);
+        
+        // 转换为Map格式便于处理
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (TemplateJobLog log : jobLogs) {
+            Map<String, Object> logMap = new HashMap<>();
+            logMap.put("id", log.getId());
+            logMap.put("jobId", log.getJobId());
+            logMap.put("templateId", log.getTemplateId());
+            logMap.put("success", log.getSuccess());
+            logMap.put("durationMs", log.getDurationMs());
+            logMap.put("errorMsg", log.getErrorMsg());
+            logMap.put("createTime", log.getCreateTime());
+            result.add(logMap);
+        }
+        
+        return result;
+    }
+
+    /**
+     * 将任务日志转换为测试结果表格DTO
+     */
+    private TestResultTableDTO convertToTestResultTableDTO(Map<String, Object> jobLog) {
+        TestResultTableDTO result = new TestResultTableDTO();
+        
+        Long logId = (Long) jobLog.get("id");
+        Long templateId = (Long) jobLog.get("templateId");
+        Integer success = (Integer) jobLog.get("success");
+        Long durationMs = (Long) jobLog.get("durationMs");
+        LocalDateTime createTime = (LocalDateTime) jobLog.get("createTime");
+        
+        result.setId("log_" + logId);
+        result.setTestType("TEMPLATE_EXECUTE");
+        result.setName("模板执行 - " + (templateId != null ? "模板" + templateId : "未知模板"));
+        result.setStatus(success != null && success == 1 ? "SUCCESS" : "FAILED");
+        result.setExecutor("系统用户"); // 实际项目中需要关联用户表
+        result.setDuration(durationMs != null ? durationMs : 0L);
+        result.setSuccessRate(success != null && success == 1 ? 100.0 : 0.0);
+        result.setExecuteTime(createTime);
+        
+        return result;
+    }
+
+    /**
+     * 将任务日志转换为时间线节点DTO
+     */
+    private TimelineNodeDTO convertToTimelineNodeDTO(Map<String, Object> jobLog) {
+        TimelineNodeDTO node = new TimelineNodeDTO();
+        
+        Long logId = (Long) jobLog.get("id");
+        Long templateId = (Long) jobLog.get("templateId");
+        Integer success = (Integer) jobLog.get("success");
+        String errorMsg = (String) jobLog.get("errorMsg");
+        LocalDateTime createTime = (LocalDateTime) jobLog.get("createTime");
+        
+        node.setId("node_" + logId);
+        node.setTime(createTime);
+        node.setTitle("模板任务执行");
+        
+        String content = "执行模板：" + (templateId != null ? "模板" + templateId : "未知模板");
+        if (success != null && success == 1) {
+            content += "（成功）";
+        } else {
+            content += "（失败）";
+            if (errorMsg != null && !errorMsg.isEmpty()) {
+                content += " - " + errorMsg;
+            }
+        }
+        
+        node.setContent(content);
+        node.setOperator("系统用户"); // 实际项目中需要关联用户表
+        node.setNodeType("TASK_EXECUTE");
+        node.setStatus(success != null && success == 1 ? "SUCCESS" : "FAILED");
+        node.setExpandable(true);
+        
         return node;
     }
 }

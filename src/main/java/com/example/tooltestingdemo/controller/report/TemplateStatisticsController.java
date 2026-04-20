@@ -2,11 +2,16 @@ package com.example.tooltestingdemo.controller.report;
 
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.service.report.ITemplateStatisticsService;
+import com.example.tooltestingdemo.utils.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Collection;
+import java.util.List;
 
 /**
  * 模板统计控制器
