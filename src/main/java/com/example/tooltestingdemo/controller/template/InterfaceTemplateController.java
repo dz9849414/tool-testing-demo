@@ -398,10 +398,7 @@ public class InterfaceTemplateController {
      */
     @GetMapping("/files/{fileId}/download")
     public ResponseEntity<byte[]> downloadFile(@PathVariable Long fileId) {
-        TemplateFile file = fileService.getFilesByTemplateId(fileId).stream()
-                .filter(f -> f.getId().equals(fileId))
-                .findFirst()
-                .orElse(null);
+        TemplateFile file = fileService.getFileById(fileId);
         
         if (file == null) {
             return ResponseEntity.notFound().build();

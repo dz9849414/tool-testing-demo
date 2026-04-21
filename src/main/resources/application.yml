@@ -44,6 +44,25 @@ security:
 
 # 文件上传配置
 app:
+  trace-id:
+    enabled: true
+    request-header: X-Trace-Id
+    response-header: X-Trace-Id
+    allow-request-override: true
+    include-in-response-header: true
+  method-trace:
+    enabled: true
+    include-packages:
+      - com.example.tooltestingdemo.service.impl.template
+    log-args: true
+    log-result: false
+    max-length: 300
+  trace-log-query:
+    enabled: true
+    max-entries-per-trace: 500
+    max-trace-count: 200
+    include-logger-prefixes:
+      - com.example.tooltestingdemo
   file:
     # 文件上传路径（绝对路径，默认使用用户目录下的 tool-testing-uploads 文件夹）
     # 示例：C:\Users\用户名\tool-testing-uploads 或 /home/用户名/tool-testing-uploads
@@ -64,6 +83,8 @@ app:
 
 # 日志配置
 logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [traceId=%X{traceId:-}] - %msg%n"
   level:
     com.example.tooltestingdemo: DEBUG
-    org.springframework.security: DEBUG
+    org.springframework.security: INFO

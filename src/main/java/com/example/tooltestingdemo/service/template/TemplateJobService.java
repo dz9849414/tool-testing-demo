@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.entity.template.TemplateJob;
 import com.example.tooltestingdemo.entity.template.TemplateJobLog;
 import com.example.tooltestingdemo.vo.TemplateJobListVO;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -91,4 +92,14 @@ public interface TemplateJobService extends IService<TemplateJob> {
      * 获取任务详情（包含子项）
      */
     TemplateJob getJobDetail(Long id);
+
+    /**
+     * 导出任务配置为JSON
+     */
+    String exportJobs(Long[] ids);
+
+    /**
+     * 从JSON文件导入任务配置
+     */
+    Map<String, Object> importJobs(MultipartFile file);
 }

@@ -38,9 +38,11 @@ CREATE TABLE IF NOT EXISTS template_job_log (
     success TINYINT DEFAULT 0 COMMENT '是否成功：0-否 1-是',
     duration_ms BIGINT COMMENT '执行耗时ms',
     error_msg TEXT COMMENT '错误信息',
+    trace_id VARCHAR(64) COMMENT '链路追踪ID',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '执行时间',
     INDEX idx_job_id (job_id),
     INDEX idx_template_id (template_id),
+    INDEX idx_trace_id (trace_id),
     INDEX idx_create_time (create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板定时任务执行日志表';
 
@@ -58,6 +60,7 @@ CREATE TABLE IF NOT EXISTS template_execute_log (
     duration_ms BIGINT COMMENT '执行耗时（ms）',
     execute_result TEXT COMMENT '执行结果（JSON）',
     error_msg TEXT COMMENT '错误信息',
+    trace_id VARCHAR(64) COMMENT '链路追踪ID',
     create_id BIGINT COMMENT '执行人ID（手动执行时填充）',
     create_name VARCHAR(50) COMMENT '执行人姓名',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '执行时间',
@@ -65,6 +68,7 @@ CREATE TABLE IF NOT EXISTS template_execute_log (
     INDEX idx_job_id (job_id),
     INDEX idx_execute_type (execute_type),
     INDEX idx_success (success),
+    INDEX idx_trace_id (trace_id),
     INDEX idx_create_time (create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板执行统一日志表';
 
@@ -75,3 +79,24 @@ CREATE TABLE IF NOT EXISTS template_job_batch (
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
+
+CREATE TABLE mock_pdm_json_data (
+                                    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+                                    data_json JSON NOT NULL COMMENT 'PDM模拟业务数据JSON'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='PDM模拟数据表';
+
+
+ALTER TABLE template_job_log
+    ADD COLUMN trace_id VARCHAR(64) NULL COMMENT '链路追踪ID' AFTER error_msg;
+
+ALTER TABLE template_job_log
+    ADD INDEX idx_trace_id (trace_id);
+
+ALTER TABLE template_execute_log
+    ADD COLUMN trace_id VARCHAR(64) NULL COMMENT '链路追踪ID' AFTER error_msg;
+
+ALTER TABLE template_execute_log
+    ADD INDEX idx_trace_id (trace_id);
