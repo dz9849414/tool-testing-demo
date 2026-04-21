@@ -1,9 +1,9 @@
 package com.example.tooltestingdemo.controller.protocol;
 
 import com.example.tooltestingdemo.common.Result;
-import com.example.tooltestingdemo.dto.ProtocolParameterConfigCreateDTO;
+import com.example.tooltestingdemo.dto.ProtocolConfigCreateDTO;
 import com.example.tooltestingdemo.entity.protocol.ProtocolConfig;
-import com.example.tooltestingdemo.service.protocol.IProtocolParameterConfigService;
+import com.example.tooltestingdemo.service.protocol.IProtocolConfigService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,17 +22,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("api/protocol/protocolConfig")
 @RequiredArgsConstructor
-public class ProtocolParameterConfigController {
-
-    private final IProtocolParameterConfigService protocolParameterConfigService;
+public class ProtocolConfigController {
+    private final IProtocolConfigService protocolConfigService;
 
     /**
-     * 新增协议参数配置
+     * 新增协议配置。
      */
     @PostMapping
-    public Result<ProtocolConfig> createProtocolParameterConfig(@RequestBody @Valid ProtocolParameterConfigCreateDTO dto) {
-        ProtocolConfig result = protocolParameterConfigService.createProtocolParameterConfig(dto);
-        return Result.success("创建成功", result);
+    public Result<ProtocolConfig> createProtocolConfig(@Valid @RequestBody ProtocolConfigCreateDTO dto) {
+        ProtocolConfig created = protocolConfigService.createProtocolConfig(dto);
+        return Result.success("创建成功", created);
     }
-
 }
