@@ -3,7 +3,7 @@ package com.example.tooltestingdemo.service.protocol.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.ProtocolParameterConfigCreateDTO;
-import com.example.tooltestingdemo.entity.protocol.ProtocolParameterConfig;
+import com.example.tooltestingdemo.entity.protocol.ProtocolConfig;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.mapper.protocol.ProtocolParameterConfigMapper;
 import com.example.tooltestingdemo.mapper.protocol.ProtocolTypeMapper;
@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ProtocolParameterConfigServiceImpl extends ServiceImpl<ProtocolParameterConfigMapper, ProtocolParameterConfig> implements IProtocolParameterConfigService {
+public class ProtocolParameterConfigServiceImpl extends ServiceImpl<ProtocolParameterConfigMapper, ProtocolConfig> implements IProtocolParameterConfigService {
 
     private static final Pattern PROTOCOL_PREFIX_PATTERN = Pattern.compile("^[A-Za-z][A-Za-z0-9+.-]*://.+$");
 
@@ -39,7 +39,7 @@ public class ProtocolParameterConfigServiceImpl extends ServiceImpl<ProtocolPara
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public ProtocolParameterConfig createProtocolParameterConfig(ProtocolParameterConfigCreateDTO dto) {
+    public ProtocolConfig createProtocolParameterConfig(ProtocolParameterConfigCreateDTO dto) {
         validateCreateDTO(dto);
 
         ProtocolType protocolType = protocolTypeMapper.selectById(dto.getProtocolId());
@@ -51,12 +51,8 @@ public class ProtocolParameterConfigServiceImpl extends ServiceImpl<ProtocolPara
         String normalizedParameterValue = StringUtils.trim(dto.getParameterValue());
         ensureParameterUnique(dto.getProtocolId(), normalizedParameterName);
 
-        ProtocolParameterConfig entity = new ProtocolParameterConfig();
+        ProtocolConfig entity = new ProtocolConfig();
         entity.setProtocolId(dto.getProtocolId());
-        entity.setParameterName(normalizedParameterName);
-        entity.setParameterValue(normalizedParameterValue);
-        entity.setIsSensitive(dto.getIsSensitive() == null ? 0 : dto.getIsSensitive());
-        entity.setEncryptedValue(StringUtils.trimToNull(dto.getEncryptedValue()));
 
         Long operatorId = getCurrentOperatorId();
         entity.setCreateId(operatorId);
@@ -68,7 +64,7 @@ public class ProtocolParameterConfigServiceImpl extends ServiceImpl<ProtocolPara
             throw new RuntimeException("协议参数配置新增失败！");
         }
 
-        log.info("新增协议参数配置成功: id={}, protocolId={}, parameterName={}", entity.getId(), entity.getProtocolId(), entity.getParameterName());
+        log.info("新增协议参数配置成功: id={}, protocolId={}, parameterName={}", entity.getId(), entity.getProtocolId(), entity.getConfigName());
         return entity;
     }
 
@@ -102,14 +98,14 @@ public class ProtocolParameterConfigServiceImpl extends ServiceImpl<ProtocolPara
             validateProtocolPrefix(dto.getParameterValue());
         }
         if (isPortParameter(dto.getParameterName())) {
-            validateProtocolPrefix(dto.getParameterValue());
+            validateProtocolPort(dto.getParameterValue());
         }
     }
 
     private void ensureParameterUnique(Long protocolId, String parameterName) {
-        LambdaQueryWrapper<ProtocolParameterConfig> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(ProtocolParameterConfig::getProtocolId, protocolId)
-                .eq(ProtocolParameterConfig::getParameterName, parameterName);
+        LambdaQueryWrapper<ProtocolConfig> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(ProtocolConfig::getProtocolId, protocolId)
+                .eq(ProtocolConfig::getConfigName, parameterName);
         if (protocolParameterConfigMapper.selectCount(queryWrapper) > 0) {
             throw new RuntimeException("同一协议下参数名称重复，请重新输入！");
         }
@@ -123,11 +119,18 @@ public class ProtocolParameterConfigServiceImpl extends ServiceImpl<ProtocolPara
         return StringUtils.equalsIgnoreCase(StringUtils.trim(parameterName), "PORT");
     }
 
-    private void validateProtocolPrefix(String parameterValue) {
+    private void validateProtocolPort(String parameterValue) {
         String normalizedValue = StringUtils.trim(parameterValue);
         int port = Integer.parseInt(normalizedValue);
         if (port < 0 || port > 65535) {
             throw new RuntimeException("端口号只能是【0-65535】范围区间!");
+        }
+    }
+
+    private void validateProtocolPrefix(String parameterValue) {
+        String normalizedValue = StringUtils.trim(parameterValue);
+        if (!PROTOCOL_PREFIX_PATTERN.matcher(normalizedValue).matches()) {
+            throw new RuntimeException("URL参数必须以 http://、https:// 或自定义协议前缀（如 mqtt://）开头！");
         }
     }
 

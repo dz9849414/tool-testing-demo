@@ -1,7 +1,7 @@
 package com.example.tooltestingdemo.mapper.protocol;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.example.tooltestingdemo.entity.protocol.ProtocolParameterConfig;
+import com.example.tooltestingdemo.entity.protocol.ProtocolConfig;
 
 /**
  * <p>
@@ -11,6 +11,6 @@ import com.example.tooltestingdemo.entity.protocol.ProtocolParameterConfig;
  * @author wanggang
  * @since 2026-04-13
  */
-public interface ProtocolParameterConfigMapper extends BaseMapper<ProtocolParameterConfig> {
+public interface ProtocolParameterConfigMapper extends BaseMapper<ProtocolConfig> {
 
 }

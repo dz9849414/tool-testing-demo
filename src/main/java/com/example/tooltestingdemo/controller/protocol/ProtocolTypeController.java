@@ -2,7 +2,7 @@ package com.example.tooltestingdemo.controller.protocol;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.example.tooltestingdemo.common.Result;
-import com.example.tooltestingdemo.dto.ProtocolTypeModifyDTO;
+import com.example.tooltestingdemo.dto.*;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.service.protocol.IProtocolTypeService;
 import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
@@ -11,7 +11,6 @@ import com.example.tooltestingdemo.vo.ProtocolTypeStatusChangeVO;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,36 +24,28 @@ import java.io.IOException;
  * @author wanggang
  * @since 2026-04-11
  */
-@Slf4j
 @RestController
-@RequestMapping("api/protocol/protocolType")
+@RequestMapping("/api/protocol/protocolType")
 @RequiredArgsConstructor
 public class ProtocolTypeController {
 
     private final IProtocolTypeService protocolTypeService;
 
-
     /**
      * 新增协议类型
-     * <p>
-     * 接口地址：POST /api/protocol/protocolType
-     *
      */
     @PostMapping
-    public Result<ProtocolType> createProtocolType(@RequestBody @Valid ProtocolType protocolType) {
-        ProtocolType vo = protocolTypeService.createProtocolType(protocolType);
+    public Result<ProtocolType> createProtocolType(@RequestBody @Valid ProtocolTypeCreateDTO dto) {
+        ProtocolType vo = protocolTypeService.createProtocolType(dto);
         return Result.success("创建成功", vo);
     }
 
     /**
-     * 获取协议类型列表
-     * <p>
-     * 接口地址：get /api/protocol/protocolType/list
-     *
+     * 查询协议类型分页列表
      */
     @GetMapping("/list")
-    public Result<IPage<ProtocolType>> getProtocolTypeList(ProtocolType protocolType) {
-        IPage<ProtocolType> protocolTypePage = protocolTypeService.getProtocolTypeList(protocolType);
+    public Result<IPage<ProtocolType>> getProtocolTypeList(@ModelAttribute ProtocolTypeQueryDTO dto) {
+        IPage<ProtocolType> protocolTypePage = protocolTypeService.getProtocolTypeList(dto);
         return Result.success(protocolTypePage);
     }
 
@@ -95,35 +86,27 @@ public class ProtocolTypeController {
      *
      */
     @GetMapping("/export")
-    public void exportProtocolTypes(ProtocolType protocolType, HttpServletResponse response) throws IOException {
-        protocolTypeService.exportProtocolTypes(protocolType, response);
+    public void exportProtocolTypes(@ModelAttribute ProtocolTypeQueryDTO dto,
+                                    HttpServletResponse response) throws IOException {
+        protocolTypeService.exportProtocolTypes(dto, response);
     }
 
     /**
-     * 启用/禁用协议类型
+     * 变更协议类型状态
      */
-    @PutMapping("/{id}/status")
-    public Result<ProtocolTypeStatusChangeVO> updateProtocolTypeStatus(@PathVariable Long id,
-                                                                       @RequestParam Integer status) {
-        ProtocolTypeStatusChangeVO result = protocolTypeService.updateProtocolTypeStatus(id, status);
+    @PostMapping("/status")
+    public Result<ProtocolTypeStatusChangeVO> updateProtocolTypeStatus(@RequestBody @Valid ProtocolTypeStatusUpdateDTO dto) {
+        ProtocolTypeStatusChangeVO result = protocolTypeService.updateProtocolTypeStatus(dto);
         return Result.success(result.getMessage(), result);
     }
 
     /**
      * 编辑协议类型
-     * <p>
-     * 接口地址：POST /api/protocol/protocolType/modify
-     *
      */
     @PostMapping("/modify")
-    public Result<ProtocolType> modifyProtocolType(@RequestBody @Valid ProtocolTypeModifyDTO dto) {
+    public Result<ProtocolType> modifyProtocolType(@RequestBody ProtocolTypeModifyDTO dto) {
         ProtocolType vo = protocolTypeService.modifyProtocolType(dto);
-        long relatedProjectCount = vo.getRelatedProjectCount() == null ? 0L : vo.getRelatedProjectCount();
-        long relatedTemplateCount = vo.getRelatedTemplateCount() == null ? 0L : vo.getRelatedTemplateCount();
-        String message = relatedProjectCount > 0 || relatedTemplateCount > 0
-                ? String.format("编辑成功，关联影响范围：%d 个项目、%d 个模板。", relatedProjectCount, relatedTemplateCount)
-                : "编辑成功";
-        return Result.success(message, vo);
+        return Result.success("编辑成功", vo);
     }
 
     /**
@@ -145,12 +128,11 @@ public class ProtocolTypeController {
      *
      */
     @DeleteMapping("/batch")
-    public Result<ProtocolTypeDeleteResultVO> batchDeleteProtocolTypes(@RequestBody Long[] ids) {
-        if (ids == null || ids.length == 0) {
+    public Result<ProtocolTypeDeleteResultVO> batchDeleteProtocolTypes(@RequestBody ProtocolTypeBatchDeleteDTO dto) {
+        if (dto == null || dto.getIds() == null || dto.getIds().length == 0) {
             return Result.error("协议类型ID列表不能为空");
         }
-        ProtocolTypeDeleteResultVO result = protocolTypeService.batchDeleteProtocolTypes(ids);
+        ProtocolTypeDeleteResultVO result = protocolTypeService.batchDeleteProtocolTypes(dto.getIds());
         return Result.success(result.getSummaryMessage(), result);
     }
-
 }

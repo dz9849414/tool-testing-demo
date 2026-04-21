@@ -11,17 +11,16 @@ public class ProtocolTypeExportVO {
     /**
      * 类型编码
      */
-    private String protocolIdentifier;
+    private String protocolCode;
 
     /**
      * 名称
      */
     private String protocolName;
 
-    /**
-     * 分类（当前按适用系统导出）
-     */
-    private String classification;
+    private String protocolCategory;
+
+    private String systemType;
 
     /**
      * 状态文本

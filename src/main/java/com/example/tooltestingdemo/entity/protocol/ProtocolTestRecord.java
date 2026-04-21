@@ -1,32 +1,28 @@
 package com.example.tooltestingdemo.entity.protocol;
 
-import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.example.tooltestingdemo.entity.BaseEntity;
 import lombok.Data;
-
-import java.io.Serializable;
-import java.time.LocalDateTime;
+import lombok.EqualsAndHashCode;
+import lombok.experimental.Accessors;
 
 /**
- * <p>
- * 协议测试记录表
- * </p>
- *
- * @author wanggang
- * @since 2026-04-13
+ * 协议测试记录表实体类
+ * 表名：protocol_test_record
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
+@Accessors(chain = true)
 @TableName("protocol_test_record")
-public class ProtocolTestRecord implements Serializable {
-
+public class ProtocolTestRecord extends BaseEntity {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 测试记录ID
+     * 主键ID
      */
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
@@ -34,85 +30,110 @@ public class ProtocolTestRecord implements Serializable {
     /**
      * 协议类型ID
      */
-    @TableField("protocol_id")
     private Long protocolId;
 
     /**
-     * 测试类型：CONNECT-连接测试，DATA_TRANSFER-数据传输测试
+     * 协议配置ID（可为空，表示使用默认配置）
      */
-    @TableField("test_type")
+    private Long configId;
+
+    /**
+     * 测试类型：CONNECT-连接测试, TRANSFER-数据传输, COMPREHENSIVE-综合测试
+     */
     private String testType;
 
     /**
-     * 测试结果：0-失败，1-成功
+     * 测试场景：NETWORK-网络连通, AUTH-认证, PROTOCOL-协议
      */
-    @TableField("test_status")
-    private Integer testStatus;
+    private String testScenario;
+
+    /**
+     * 测试数据（JSON格式）
+     */
+    private String testData;
+
+    /**
+     * 结果状态：SUCCESS-成功, FAILED-失败
+     */
+    private String resultStatus;
+
+    /**
+     * 响应码（如200, 401, 500等）
+     */
+    private String responseCode;
 
     /**
      * 响应时间（毫秒）
      */
-    @TableField("response_time")
     private Integer responseTime;
-
-    /**
-     * 错误码（如401、500）
-     */
-    @TableField("error_code")
-    private String errorCode;
 
     /**
      * 错误信息
      */
-    @TableField("error_message")
     private String errorMessage;
 
     /**
-     * 测试数据样本ID
+     * 比对结果（JSON格式存储校验和、数据差异等）
      */
-    @TableField("test_data_sample_id")
-    private Long testDataSampleId;
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private String comparisonResult;
 
     /**
-     * 创建人
+     * 测试专用参数配置
      */
-    @TableField(value = "create_id", fill = FieldFill.INSERT)
-    private Long createId;
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private String testParams;
 
     /**
-     * 创建时间
+     * 是否手动测试：0-自动，1-手动
      */
-    @TableField(value = "create_time", fill = FieldFill.INSERT)
-    private LocalDateTime createTime;
+    private Integer isManual;
 
-    /**
-     * 更新人
-     */
-    @TableField(value = "update_id", fill = FieldFill.INSERT_UPDATE)
-    private Long updateId;
+    // 枚举类定义
+    public enum TestType {
+        CONNECT("连接测试"),
+        TRANSFER("数据传输"),
+        COMPREHENSIVE("综合测试");
 
-    /**
-     * 更新时间
-     */
-    @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updateTime;
+        private final String description;
 
-    /**
-     * 是否删除：0-否，1-是
-     */
-    @TableLogic
-    @TableField("is_deleted")
-    private Integer isDeleted;
+        TestType(String description) {
+            this.description = description;
+        }
 
-    /**
-     * 删除人
-     */
-    @TableField("deleted_by")
-    private Long deletedBy;
+        public String getDescription() {
+            return description;
+        }
+    }
 
-    /**
-     * 删除时间
-     */
-    @TableField("deleted_time")
-    private LocalDateTime deletedTime;
+    public enum TestScenario {
+        NETWORK("网络连通"),
+        AUTH("认证"),
+        PROTOCOL("协议");
+
+        private final String description;
+
+        TestScenario(String description) {
+            this.description = description;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+    }
+
+    public enum ResultStatus {
+        SUCCESS("成功"),
+        FAILED("失败");
+
+        private final String description;
+
+        ResultStatus(String description) {
+            this.description = description;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+    }
 }

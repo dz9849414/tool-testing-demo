@@ -12,9 +12,9 @@ public class ProtocolTypeStatusChangeVO {
 
     private String protocolName;
 
-    private Integer currentStatus;
+    private String currentStatus;
 
-    private Integer targetStatus;
+    private String targetStatus;
 
     private Boolean statusChanged;
 

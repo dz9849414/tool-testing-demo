@@ -1,19 +1,19 @@
 package com.example.tooltestingdemo.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 /**
- * 协议类型编辑 DTO
+ * 协议类型新增请求 DTO
  */
 @Data
-public class ProtocolTypeModifyDTO {
+public class ProtocolTypeCreateDTO {
 
-    @NotNull(message = "协议类型ID不能为空")
-    private Long id;
-
+    @NotBlank(message = "协议编码不能为空")
     private String protocolCode;
 
+    @NotBlank(message = "协议名称不能为空")
     private String protocolName;
 
     private String protocolCategory;
@@ -23,6 +23,4 @@ public class ProtocolTypeModifyDTO {
     private String status;
 
     private String description;
-
-    private Integer version;
 }
