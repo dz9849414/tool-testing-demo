@@ -1,9 +1,11 @@
 package com.example.tooltestingdemo.config;
 
 import com.example.tooltestingdemo.entity.template.TemplateJobItem;
+import com.example.tooltestingdemo.util.TraceIdContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -11,6 +13,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 @Slf4j
 @Component
@@ -43,12 +46,14 @@ public class JobDispatcher {
     ) {
         int retry = Optional.of(itemRetry).orElse(0);
         long timeout = Optional.of(itemTimeoutMs).orElse(120000L);
+        Map<String, String> contextMap = MDC.getCopyOfContextMap();
+        String traceId = TraceIdContext.get();
 
         // 过滤出符合状态的可执行任务 -> 异步调用
         List<CompletableFuture<Map<String, Object>>> futures = items.stream()
                 .filter(item -> Integer.valueOf(1).equals(item.getStatus()))
                 .map(item -> CompletableFuture.supplyAsync(
-                        () -> executeWithRetry(jobId, item, executorFunc, retry),
+                        () -> executeWithMdc(contextMap, () -> executeWithRetry(jobId, item, executorFunc, retry)),
                         executor
                 )
                 .orTimeout(timeout, TimeUnit.MILLISECONDS)
@@ -57,7 +62,8 @@ public class JobDispatcher {
                     return Map.of(
                             "success", false,
                             "message", e.getMessage(),
-                            "templateId", item.getTemplateId()
+                            "templateId", item.getTemplateId(),
+                            "traceId", traceId
                     );
                 }))
                 .toList();
@@ -85,5 +91,24 @@ public class JobDispatcher {
         }
 
         return Map.of("success", false, "message", "执行失败（重试后）");
+    }
+
+    private Map<String, Object> executeWithMdc(Map<String, String> contextMap,
+                                               Supplier<Map<String, Object>> supplier) {
+        Map<String, String> previous = MDC.getCopyOfContextMap();
+        try {
+            if (contextMap == null || contextMap.isEmpty()) {
+                MDC.clear();
+            } else {
+                MDC.setContextMap(contextMap);
+            }
+            return supplier.get();
+        } finally {
+            if (previous == null || previous.isEmpty()) {
+                MDC.clear();
+            } else {
+                MDC.setContextMap(previous);
+            }
+        }
     }
 }

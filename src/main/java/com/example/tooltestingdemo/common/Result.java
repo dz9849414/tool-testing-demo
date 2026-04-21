@@ -1,5 +1,6 @@
 package com.example.tooltestingdemo.common;
 
+import com.example.tooltestingdemo.util.TraceIdContext;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -31,9 +32,15 @@ public class Result<T> implements Serializable {
      * 时间戳
      */
     private Long timestamp;
+
+    /**
+     * 当前请求链路追踪ID
+     */
+    private String traceId;
     
     public Result() {
         this.timestamp = System.currentTimeMillis();
+        this.traceId = TraceIdContext.get();
     }
     
     public static <T> Result<T> success() {

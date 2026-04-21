@@ -57,6 +57,12 @@ public class TemplateJobLog {
     @TableField(value = "error_msg")
     private String errorMsg;
 
+    /**
+     * 链路追踪ID
+     */
+    @TableField(value = "trace_id")
+    private String traceId;
+
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 }

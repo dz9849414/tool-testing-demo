@@ -8,10 +8,15 @@ import com.example.tooltestingdemo.entity.template.TemplateJobLog;
 import com.example.tooltestingdemo.service.template.TemplateJobService;
 import com.example.tooltestingdemo.vo.TemplateJobListVO;
 import com.example.tooltestingdemo.vo.TemplateJobLogVO;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -25,7 +30,6 @@ import java.util.Map;
 public class TemplateJobController {
 
     private final TemplateJobService jobService;
-
 
     /**
      * 分页查询任务列表（附带最近一次执行状态，推荐管理页面使用）
@@ -58,6 +62,37 @@ public class TemplateJobController {
     }
 
     /**
+     * 导出任务配置为 JSON
+     */
+    @GetMapping("/export/json")
+    public void exportJobs(@RequestParam("jobIds") String[] rawJobIds, HttpServletResponse response) throws IOException {
+        Long[] jobIds = parseJobIds(rawJobIds);
+        String content = jobService.exportJobs(jobIds);
+        response.setContentType("application/json;charset=UTF-8");
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setHeader("Content-Disposition",
+                "attachment; filename=template_jobs_" + System.currentTimeMillis() + ".json");
+        response.getWriter().write(content);
+        response.getWriter().flush();
+    }
+
+    /**
+     * 导入任务配置
+     */
+    @PostMapping("/import")
+    public Result<Map<String, Object>> importJobs(@RequestParam("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return Result.error("导入文件不能为空");
+        }
+        Map<String, Object> result = jobService.importJobs(file);
+        Integer failCount = getIntValue(result.get("failCount"));
+        if (failCount != null && failCount > 0) {
+            return Result.error(500, buildImportErrorMessage(result), result);
+        }
+        return Result.success("导入成功", result);
+    }
+
+    /**
      * 更新任务
      */
     @PutMapping("/{id}")
@@ -74,13 +109,14 @@ public class TemplateJobController {
         return jobService.deleteJob(id) ? Result.success("删除成功") : Result.error("删除失败");
     }
 
-
     /**
      * 批量停止任务（停用并取消调度）
      */
     @PostMapping("/batch/stop")
     public Result<Map<String, Object>> batchStopJobs(@RequestBody Long[] ids) {
-        if (ids == null || ids.length == 0) return Result.error("任务ID列表不能为空");
+        if (ids == null || ids.length == 0) {
+            return Result.error("任务ID列表不能为空");
+        }
         return Result.success(jobService.batchStopJobs(ids));
     }
 
@@ -89,7 +125,9 @@ public class TemplateJobController {
      */
     @PostMapping("/batch/trigger-async")
     public Result<String> submitBatchTriggerAsync(@RequestBody Long[] ids) {
-        if (ids == null || ids.length == 0) return Result.error("任务ID列表不能为空");
+        if (ids == null || ids.length == 0) {
+            return Result.error("任务ID列表不能为空");
+        }
         String batchId = jobService.submitBatchTriggerAsync(ids);
         return Result.success("提交成功", batchId);
     }
@@ -135,5 +173,76 @@ public class TemplateJobController {
             @PathVariable Long id,
             @RequestParam(required = false, defaultValue = "10") Integer limit) {
         return Result.success(jobService.getRecentLogs(id, limit));
+    }
+
+    private Long[] parseJobIds(String[] rawJobIds) {
+        if (rawJobIds == null || rawJobIds.length == 0) {
+            throw new IllegalArgumentException("jobIds 不能为空");
+        }
+
+        List<Long> parsed = new ArrayList<>();
+        for (String rawJobId : rawJobIds) {
+            if (rawJobId == null) {
+                continue;
+            }
+
+            String normalized = rawJobId.trim();
+            if (normalized.isEmpty()) {
+                continue;
+            }
+
+            normalized = normalized.replace("[", "").replace("]", "");
+            String[] parts = normalized.split(",");
+            for (String part : parts) {
+                String value = part.trim();
+                if (!value.isEmpty()) {
+                    parsed.add(Long.valueOf(value));
+                }
+            }
+        }
+
+        if (parsed.isEmpty()) {
+            throw new IllegalArgumentException("jobIds 不能为空");
+        }
+
+        return parsed.toArray(new Long[0]);
+    }
+
+    @SuppressWarnings("unchecked")
+    private String buildImportErrorMessage(Map<String, Object> result) {
+        Object failItemsObj = result.get("failItems");
+        if (failItemsObj instanceof List<?> failItems && !failItems.isEmpty()) {
+            List<String> messages = new ArrayList<>();
+            for (Object failItem : failItems) {
+                if (failItem instanceof Map<?, ?> failMap) {
+                    Object message = failMap.get("message");
+                    if (message != null) {
+                        String text = String.valueOf(message).trim();
+                        if (!text.isEmpty() && !messages.contains(text)) {
+                            messages.add(text);
+                        }
+                    }
+                }
+            }
+            if (!messages.isEmpty()) {
+                return String.join("; ", messages);
+            }
+        }
+        Integer failCount = getIntValue(result.get("failCount"));
+        return failCount == null ? "导入失败" : "导入失败，失败数量: " + failCount;
+    }
+
+    private Integer getIntValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            return Integer.valueOf(String.valueOf(value));
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

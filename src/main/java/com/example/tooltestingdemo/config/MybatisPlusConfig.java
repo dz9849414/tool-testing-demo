@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
 import javax.sql.DataSource;
 
@@ -18,53 +19,42 @@ import javax.sql.DataSource;
  */
 @Configuration
 public class MybatisPlusConfig {
-    
-    /**
-     * 分页插件配置
-     */
+
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
-        // 添加分页插件
         interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
-
-        // 添加乐观锁插件
         interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
         return interceptor;
     }
 
-    /**
-     * 全局配置，包含逻辑删除配置
-     */
     @Bean
     public GlobalConfig globalConfig() {
         GlobalConfig globalConfig = new GlobalConfig();
         GlobalConfig.DbConfig dbConfig = new GlobalConfig.DbConfig();
-
-        // 配置逻辑删除
-        dbConfig.setLogicDeleteField("isDeleted"); // 逻辑删除字段名
-        dbConfig.setLogicDeleteValue("1");         // 已删除的值
-        dbConfig.setLogicNotDeleteValue("0");      // 未删除的值
-
+        dbConfig.setLogicDeleteField("isDeleted");
+        dbConfig.setLogicDeleteValue("1");
+        dbConfig.setLogicNotDeleteValue("0");
         globalConfig.setDbConfig(dbConfig);
         return globalConfig;
     }
 
-    /**
-     * 配置SqlSessionFactory，注入全局配置和分页插件
-     */
     @Bean
-    public SqlSessionFactory sqlSessionFactory(DataSource dataSource, GlobalConfig globalConfig, MybatisPlusInterceptor mybatisPlusInterceptor) throws Exception {
+    public SqlSessionFactory sqlSessionFactory(
+            DataSource dataSource,
+            GlobalConfig globalConfig,
+            MybatisPlusInterceptor mybatisPlusInterceptor) throws Exception {
         MybatisSqlSessionFactoryBean sessionFactory = new MybatisSqlSessionFactoryBean();
         sessionFactory.setDataSource(dataSource);
         sessionFactory.setGlobalConfig(globalConfig);
-        
-        // 配置MyBatis配置，添加分页插件
+        sessionFactory.setMapperLocations(
+                new PathMatchingResourcePatternResolver().getResources("classpath*:/mapper/**/*.xml"));
+
         MybatisConfiguration configuration = new MybatisConfiguration();
         configuration.addInterceptor(mybatisPlusInterceptor);
+        configuration.setMapUnderscoreToCamelCase(true);
         sessionFactory.setConfiguration(configuration);
-        
+
         return sessionFactory.getObject();
     }
-
 }

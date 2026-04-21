@@ -4,22 +4,15 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.entity.template.TemplateExecuteLog;
+import com.example.tooltestingdemo.vo.TraceChainDetailVO;
 
 /**
- * 模板执行统一日志 Service
+ * 模板执行统一日志 Service。
  */
 public interface TemplateExecuteLogService extends IService<TemplateExecuteLog> {
 
     /**
-     * 分页查询执行日志（管理页面）
-     *
-     * @param page          分页参数
-     * @param templateId    模板ID
-     * @param jobId         任务ID
-     * @param executeType   执行类型：MANUAL / JOB
-     * @param success       是否成功：0-否 1-是
-     * @param keyword       模板名称/任务名称/执行人姓名模糊搜索
-     * @return 分页结果
+     * 分页查询执行日志。
      */
     IPage<TemplateExecuteLog> pageLogs(Page<TemplateExecuteLog> page,
                                        Long templateId,
@@ -27,4 +20,9 @@ public interface TemplateExecuteLogService extends IService<TemplateExecuteLog> 
                                        String executeType,
                                        Integer success,
                                        String keyword);
+
+    /**
+     * 根据 traceId 查询完整链路信息。
+     */
+    TraceChainDetailVO getTraceChainDetail(String traceId);
 }

@@ -31,6 +31,11 @@ public interface TemplateFileService {
     List<TemplateFile> getFilesByTemplateIdAndCategory(Long templateId, String fileCategory);
 
     /**
+     * 按文件ID获取文件信息
+     */
+    TemplateFile getFileById(Long fileId);
+
+    /**
      * 删除文件
      */
     boolean deleteFile(Long fileId);

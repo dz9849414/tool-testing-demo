@@ -23,13 +23,13 @@ import java.util.stream.Collectors;
 
 /**
  * 模板执行引擎
- * 
+ * <p>
  * 核心调度器，负责：
  * 1. 构建执行上下文
  * 2. 调用对应的执行器
  * 3. 执行拦截器链
  * 4. 返回执行结果
- * 
+ *
  * @author PDM接口测试工具
  * @since 1.0
  */
@@ -45,7 +45,7 @@ public class ExecutionEngine {
 
     /**
      * 执行模板
-     * 
+     *
      * <p>标准执行流程：</p>
      * <ol>
      *   <li>构建执行上下文</li>
@@ -67,37 +67,37 @@ public class ExecutionEngine {
         try {
             // 1. 构建执行上下文
             TemplateContext context = buildContext(request);
-            
+
             // 2. 获取执行器（根据协议类型获取不同的执行器）
             TemplateExecutor executor = executorFactory.getExecutor(context.getProtocolType());
-            
+
             // 3. 验证模板
             TemplateExecutor.ValidationResult validation = executor.validate(context);
             if (!validation.isValid()) {
                 log.warn("模板验证失败: {}", validation.getMessage());
-                return buildErrorResult(request.getTemplateId(), 
-                        context.getTemplate() != null ? context.getTemplate().getName() : null,
-                        validation.getMessage(), startTime);
+                return buildErrorResult(request.getTemplateId(),
+                    context.getTemplate() != null ? context.getTemplate().getName() : null,
+                    validation.getMessage(), startTime);
             }
-            
+
             // 4. 执行前拦截器
             executeBeforeInterceptors(context);
-            
+
             // 5. 执行
             ExecutionResult result = executor.execute(context);
-            
+
             // 6. 执行后拦截器
             executeAfterInterceptors(context, result);
-            
+
             // 7. 记录结束时间
             result.setEndTime(LocalDateTime.now());
             result.setDurationMs(System.currentTimeMillis() - startTime);
-            
-            log.info("模板执行完成: templateId={}, duration={}ms, success={}", 
-                    request.getTemplateId(), result.getDurationMs(), result.isSuccess());
-            
+
+            log.info("模板执行完成: templateId={}, duration={}ms, success={}",
+                request.getTemplateId(), result.getDurationMs(), result.isSuccess());
+
             return result;
-            
+
         } catch (Exception e) {
             log.error("模板执行异常: templateId={}", request.getTemplateId(), e);
             return buildErrorResult(request.getTemplateId(), null, e.getMessage(), startTime);
@@ -111,16 +111,17 @@ public class ExecutionEngine {
      * @return 预览结果
      */
     public TemplateExecutor.PreviewResult preview(ExecutionRequest request) {
-        log.info("预览模板请求: templateId={}", request.getTemplateId());
-        
+      /*  log.info("预览模板请求: templateId={}", request.getTemplateId());
+
         // 1. 构建上下文
         TemplateContext context = buildContext(request);
-        
+
         // 2. 获取执行器
         TemplateExecutor executor = executorFactory.getExecutor(context.getProtocolType());
-        
+
         // 3. 调用预览
-        return executor.preview(context);
+        return executor.preview(context);*/
+        return null; // 预览功能暂未实现
     }
 
     /**
@@ -131,13 +132,13 @@ public class ExecutionEngine {
      */
     public TemplateExecutor.ValidationResult validate(Long templateId) {
         log.info("验证模板配置: templateId={}", templateId);
-        
+
         // 1. 加载模板
         InterfaceTemplateVO templateVO = templateService.getTemplateDetail(templateId);
         if (templateVO == null) {
             return TemplateExecutor.ValidationResult.failure("模板不存在");
         }
-        
+
         // 2. 构建最小上下文
         TemplateContext context = new TemplateContext();
         InterfaceTemplate template = new InterfaceTemplate();
@@ -148,7 +149,7 @@ public class ExecutionEngine {
         template.setBaseUrl(templateVO.getBaseUrl());
         template.setPath(templateVO.getPath());
         context.setTemplate(template);
-        
+
         // 3. 获取执行器并验证
         TemplateExecutor executor = executorFactory.getExecutor(context.getProtocolType());
         return executor.validate(context);
@@ -160,17 +161,17 @@ public class ExecutionEngine {
     private TemplateContext buildContext(ExecutionRequest request) {
         TemplateContext context = new TemplateContext();
         context.setRequest(request);
-        
+
         // 1. 加载模板
         InterfaceTemplateVO templateVO = templateService.getTemplateDetail(request.getTemplateId());
         if (templateVO == null) {
             throw new TemplateValidationException(TemplateValidationException.ErrorType.NOT_FOUND, "模板不存在: " + request.getTemplateId());
         }
-        
+
         // 2. 设置模板信息
         InterfaceTemplate template = convertToEntity(templateVO);
         context.setTemplate(template);
-        
+
         // 3. 加载环境
         if (request.getEnvironmentId() != null) {
             TemplateEnvironmentVO envVO = environmentService.getEnvironmentById(request.getEnvironmentId());
@@ -188,12 +189,12 @@ public class ExecutionEngine {
                 loadEnvironmentVariables(context, convertToEntity(defaultEnv));
             }
         }
-        
+
         // 4. 加载传入的变量
         if (!CollectionUtils.isEmpty(request.getVariables())) {
             context.getTemplateVariables().putAll(request.getVariables());
         }
-        
+
         return context;
     }
 
@@ -204,12 +205,12 @@ public class ExecutionEngine {
         if (CollectionUtils.isEmpty(interceptors)) {
             return;
         }
-        
+
         List<ExecutionInterceptor> sortedInterceptors = interceptors.stream()
-                .filter(i -> i.isEnabled(context))
-                .sorted(Comparator.comparingInt(ExecutionInterceptor::getOrder))
-                .collect(Collectors.toList());
-        
+            .filter(i -> i.isEnabled(context))
+            .sorted(Comparator.comparingInt(ExecutionInterceptor::getOrder))
+            .collect(Collectors.toList());
+
         for (ExecutionInterceptor interceptor : sortedInterceptors) {
             try {
                 interceptor.beforeExecute(context);
@@ -226,12 +227,12 @@ public class ExecutionEngine {
         if (CollectionUtils.isEmpty(interceptors)) {
             return;
         }
-        
+
         List<ExecutionInterceptor> sortedInterceptors = interceptors.stream()
-                .filter(i -> i.isEnabled(context))
-                .sorted(Comparator.comparingInt(ExecutionInterceptor::getOrder))
-                .collect(Collectors.toList());
-        
+            .filter(i -> i.isEnabled(context))
+            .sorted(Comparator.comparingInt(ExecutionInterceptor::getOrder))
+            .collect(Collectors.toList());
+
         for (ExecutionInterceptor interceptor : sortedInterceptors) {
             try {
                 interceptor.afterExecute(context, result);
@@ -248,7 +249,7 @@ public class ExecutionEngine {
         if (env == null || !StringUtils.hasText(env.getVariables())) {
             return;
         }
-        
+
         try {
             String vars = env.getVariables().trim();
             if (vars.startsWith("{") && vars.endsWith("}")) {
@@ -316,17 +317,17 @@ public class ExecutionEngine {
     /**
      * 构建错误结果
      */
-    private ExecutionResult buildErrorResult(Long templateId, String templateName, 
-                                              String message, long startTime) {
+    private ExecutionResult buildErrorResult(Long templateId, String templateName,
+                                             String message, long startTime) {
         return ExecutionResult.builder()
-                .success(false)
-                .statusCode("ERROR")
-                .message(message)
-                .templateId(templateId)
-                .templateName(templateName)
-                .startTime(LocalDateTime.now())
-                .endTime(LocalDateTime.now())
-                .durationMs(System.currentTimeMillis() - startTime)
-                .build();
+            .success(false)
+            .statusCode("ERROR")
+            .message(message)
+            .templateId(templateId)
+            .templateName(templateName)
+            .startTime(LocalDateTime.now())
+            .endTime(LocalDateTime.now())
+            .durationMs(System.currentTimeMillis() - startTime)
+            .build();
     }
 }

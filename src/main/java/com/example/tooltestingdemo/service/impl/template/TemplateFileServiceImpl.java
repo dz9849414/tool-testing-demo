@@ -95,6 +95,11 @@ public class TemplateFileServiceImpl implements TemplateFileService {
     }
 
     @Override
+    public TemplateFile getFileById(Long fileId) {
+        return fileMapper.selectById(fileId);
+    }
+
+    @Override
     public boolean deleteFile(Long fileId) {
         TemplateFile file = fileMapper.selectById(fileId);
         if (file == null) return false;
