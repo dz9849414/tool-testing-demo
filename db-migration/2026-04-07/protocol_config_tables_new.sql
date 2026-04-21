@@ -28,31 +28,27 @@ CREATE TABLE `protocol_type`
 DROP TABLE protocol_config;
 CREATE TABLE `protocol_config`
 (
-    `id`                bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `protocol_id`       bigint(20) NOT NULL COMMENT '关联协议类型ID',
-    `config_name`       varchar(100) NOT NULL COMMENT '配置名称',
-    `url`               varchar(500)          DEFAULT NULL COMMENT '访问URL（支持多个，JSON格式存储）',
-    `port`              int(11) DEFAULT NULL COMMENT '端口号（1-65535）',
-    `auth_type`         varchar(20)           DEFAULT NULL COMMENT '认证方式：NONE-无认证, BASIC-基础认证, TOKEN-Token认证, OAUTH2-OAuth2, CERT-证书认证',
-    `auth_config`       json                  DEFAULT NULL COMMENT '认证配置（JSON格式，加密存储）',
-    `timeout_connect`   int(11) DEFAULT 5000 COMMENT '连接超时时间（毫秒）',
-    `timeout_read`      int(11) DEFAULT 30000 COMMENT '读取超时时间（毫秒）',
-    `retry_count`       int(11) DEFAULT 3 COMMENT '重试次数（0-10）',
-    `retry_interval`    int(11) DEFAULT 1000 COMMENT '重试间隔（毫秒）',
-    `data_format`       varchar(20)           DEFAULT 'JSON' COMMENT '数据格式：JSON/XML/FORM/TEXT/BINARY',
-    `format_config`     json                  DEFAULT NULL COMMENT '格式校验配置（如JSON Schema、XSD等）',
-    `additional_params` json                  DEFAULT NULL COMMENT '额外参数（JSON格式存储）',
-    `status`            varchar(20)  NOT NULL DEFAULT 'ENABLED' COMMENT '状态：ENABLED-启用, DISABLED-禁用',
-
-    -- 必须字段
-    `create_id`         bigint(20) DEFAULT NULL COMMENT '创建人ID',
-    `create_time`       datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_id`         bigint(20) DEFAULT NULL COMMENT '更新人ID',
-    `update_time`       datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `id`                bigint                                  NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `protocol_id`       bigint                                  NOT NULL COMMENT '关联协议类型ID',
+    `config_name`       varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '配置名称',
+    `url_config`        json                                                         DEFAULT NULL COMMENT 'URL配置（支持多个，JSON格式存储）',
+    `auth_config`       json                                                         DEFAULT NULL COMMENT '认证配置（JSON格式，加密存储）',
+    `timeout_connect`   int                                                          DEFAULT '5000' COMMENT '连接超时时间（毫秒）',
+    `timeout_read`      int                                                          DEFAULT '30000' COMMENT '读取超时时间（毫秒）',
+    `retry_count`       int                                                          DEFAULT '3' COMMENT '重试次数（0-10）',
+    `retry_interval`    int                                                          DEFAULT '1000' COMMENT '重试间隔（毫秒）',
+    `retry_condition`   varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '重试触发条件：1-链接超时，2-响应超时，3-响应错误码',
+    `data_format`       varchar(20) COLLATE utf8mb4_unicode_ci                       DEFAULT 'JSON' COMMENT '数据格式：JSON/XML/FORM/TEXT/BINARY',
+    `format_config`     json                                                         DEFAULT NULL COMMENT '格式校验配置（如JSON Schema、XSD等）',
+    `additional_params` json                                                         DEFAULT NULL COMMENT '额外参数（JSON格式存储）',
+    `status`            tinyint                                 NOT NULL             DEFAULT '0' COMMENT '状态：0-禁用，1-启用',
+    `create_id`         bigint                                                       DEFAULT NULL COMMENT '创建人ID',
+    `create_time`       datetime                                NOT NULL             DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_id`         bigint                                                       DEFAULT NULL COMMENT '更新人ID',
+    `update_time`       datetime                                NOT NULL             DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `is_deleted`        tinyint(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标记：0-未删除，1-已删除',
-    `deleted_by`        bigint(20) DEFAULT NULL COMMENT '删除人ID',
-    `deleted_time`      datetime              DEFAULT NULL COMMENT '删除时间',
-
+    `deleted_by`        bigint                                                       DEFAULT NULL COMMENT '删除人ID',
+    `deleted_time`      datetime                                                     DEFAULT NULL COMMENT '删除时间',
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='协议参数配置表';
 
@@ -85,23 +81,19 @@ CREATE TABLE `protocol_project`
 DROP TABLE protocol_template;
 CREATE TABLE `protocol_template`
 (
-    `id`                bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `template_name`     varchar(100) NOT NULL COMMENT '模板名称',
-    `template_code`     varchar(50)  NOT NULL COMMENT '模板编码（唯一）',
-    `protocol_category` varchar(50)           DEFAULT NULL COMMENT '关联的协议分类',
-    `params_snapshot`   json         NOT NULL COMMENT '参数快照（JSON格式存储完整参数配置）',
-    `param_groups`      json                  DEFAULT NULL COMMENT '参数分组配置',
-    `is_public`         tinyint(1) DEFAULT 0 COMMENT '是否公开模板：0-私有，1-公开',
-
-    -- 必须字段
-    `create_id`         bigint(20) DEFAULT NULL COMMENT '创建人ID',
-    `create_time`       datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_id`         bigint(20) DEFAULT NULL COMMENT '更新人ID',
-    `update_time`       datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    `is_deleted`        tinyint(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标记：0-未删除，1-已删除',
-    `deleted_by`        bigint(20) DEFAULT NULL COMMENT '删除人ID',
-    `deleted_time`      datetime              DEFAULT NULL COMMENT '删除时间',
-
+    `id`              bigint                                  NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `protocol_id`     bigint                                  NOT NULL COMMENT '协议类型ID',
+    `template_name`   varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '模板名称',
+    `template_code`   varchar(50) COLLATE utf8mb4_unicode_ci  NOT NULL COMMENT '模板编码（唯一）',
+    `params_snapshot` json                                    NOT NULL COMMENT '参数快照（JSON格式存储完整参数配置）',
+    `is_public`       tinyint(1) DEFAULT 0 COMMENT '是否公开模板：0-私有，1-公开',
+    `create_id`       bigint                                           DEFAULT NULL COMMENT '创建人ID',
+    `create_time`     datetime                                NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_id`       bigint                                           DEFAULT NULL COMMENT '更新人ID',
+    `update_time`     datetime                                NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `is_deleted`      tinyint(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标记：0-未删除，1-已删除',
+    `deleted_by`      bigint                                           DEFAULT NULL COMMENT '删除人ID',
+    `deleted_time`    datetime                                         DEFAULT NULL COMMENT '删除时间',
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='协议参数模板表';
 
@@ -248,3 +240,19 @@ CREATE TABLE `file_export_record`
 
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文件导出记录表';
+
+CREATE TABLE `protocol_template_group`
+(
+    `id`                   bigint   NOT NULL COMMENT '主键ID',
+    `protocol_template_id` bigint   NOT NULL COMMENT '参数模板ID',
+    `group_name`           varchar(50)       DEFAULT NULL COMMENT '分组名称',
+    `params_config`        json              DEFAULT NULL COMMENT '模板分组参数配置',
+    `create_id`            bigint            DEFAULT NULL COMMENT '创建人ID',
+    `create_time`          datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_id`            bigint            DEFAULT NULL COMMENT '更新人ID',
+    `update_time`          datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `is_deleted`           tinyint(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标记：0-未删除，1-已删除',
+    `deleted_by`           bigint            DEFAULT NULL COMMENT '删除人ID',
+    `deleted_time`         datetime          DEFAULT NULL COMMENT '删除时间',
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='协议参数模板分组表';

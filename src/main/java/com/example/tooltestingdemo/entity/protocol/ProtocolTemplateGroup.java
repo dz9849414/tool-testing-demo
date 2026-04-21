@@ -13,51 +13,37 @@ import lombok.experimental.Accessors;
 import java.io.Serial;
 
 /**
- * 协议参数模板表实体类
- * 表名：protocol_template
+ * 协议参数模板分组表实体类
+ * 表名：protocol_template_group
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
-@TableName(value = "protocol_template", autoResultMap = true)
-public class ProtocolTemplate extends BaseEntity {
+@TableName(value = "protocol_template_group", autoResultMap = true)
+public class ProtocolTemplateGroup extends BaseEntity {
     @Serial
     private static final long serialVersionUID = 1L;
 
     /**
      * 主键ID
      */
-    @TableId(value = "id", type = IdType.AUTO)
+    @TableId(value = "id", type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
-     * 协议配置ID
+     * 参数模板ID
      */
-    private Long protocolConfigId;
+    private Long protocolTemplateId;
 
     /**
-     * 关联协议类型ID字符串（多个用中文逗号，分割）
+     * 分组名称
      */
-    private String protocolIdStr;
+    private String groupName;
 
     /**
-     * 模板名称
-     */
-    private String templateName;
-
-    /**
-     * 模板编码（唯一）
-     */
-    private String templateCode;
-
-    /**
-     * 参数快照（JSON格式存储完整参数配置）
+     * 模板分组参数配置
      */
     @TableField(typeHandler = JacksonTypeHandler.class)
-    private String paramsSnapshot;
-
-    /**
-     * 是否公开模板：0-私有，1-公开
-     */
-    private Integer isPublic;
+    private String paramsConfig;
 }
+
