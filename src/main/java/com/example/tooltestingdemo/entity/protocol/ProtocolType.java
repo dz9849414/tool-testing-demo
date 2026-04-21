@@ -1,124 +1,83 @@
 package com.example.tooltestingdemo.entity.protocol;
 
-import com.baomidou.mybatisplus.annotation.*;
-import com.example.tooltestingdemo.common.PageQuery;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
+import com.example.tooltestingdemo.entity.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.experimental.Accessors;
 
-import java.time.LocalDateTime;
+import java.io.Serial;
 
 /**
- * <p>
- * 协议类型主表
- * </p>
- *
- * @author wanggang
- * @since 2026-04-11
+ * 协议类型主表实体类
+ * 表名：protocol_type
  */
-@EqualsAndHashCode(callSuper = true)
 @Data
+@EqualsAndHashCode(callSuper = true)
+@Accessors(chain = true)
 @TableName("protocol_type")
-public class ProtocolType extends PageQuery {
+public class ProtocolType extends BaseEntity {
+    @Serial
+    private static final long serialVersionUID = 1L;
+
     /**
-     * 协议类型ID
+     * 主键ID
      */
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
     /**
-     * 协议类型名称
+     * 协议编码（唯一标识）
      */
-    @TableField("protocol_name")
+    private String protocolCode;
+
+    /**
+     * 协议名称
+     */
     private String protocolName;
 
     /**
-     * 协议标识符
+     * 协议分类（CAD/ERP/PLM/数据交换/接口协议）
      */
-    @TableField("protocol_identifier")
-    private String protocolIdentifier;
+    private String protocolCategory;
 
     /**
-     * 适用系统类型（CAD、ERP、PLM等）
+     * 适用系统类型（CAD/ERP/PLM等）
      */
-    @TableField("applicable_system")
-    private String applicableSystem;
+    private String systemType;
 
     /**
-     * 描述信息
+     * 协议描述
      */
-    @TableField("description")
     private String description;
 
     /**
-     * 状态：0-禁用，1-启用
+     * 状态：PENDING-待启用, ENABLED-已启用, DISABLED-已禁用
      */
-    @TableField("status")
-    private Integer status;
+    private String status;
 
     /**
-     * 创建人
+     * 版本号（乐观锁）
      */
-    @TableField(value = "create_id", fill = FieldFill.INSERT)
-    private Long createId;
-
-    /**
-     * 创建时间
-     */
-    @TableField(value = "create_time", fill = FieldFill.INSERT)
-    private LocalDateTime createTime;
-
-    /**
-     * 更新人
-     */
-    @TableField(value = "update_id", fill = FieldFill.INSERT_UPDATE)
-    private Long updateId;
-
-    /**
-     * 更新时间
-     */
-    @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updateTime;
-
-    /**
-     * 是否删除：0-否，1-是
-     */
-    @TableLogic
-    @TableField("is_deleted")
-    private Integer isDeleted;
-
-    /**
-     * 删除人
-     */
-    @TableField("deleted_by")
-    private Long deletedBy;
-
-    /**
-     * 删除时间
-     */
-    @TableField("deleted_time")
-    private LocalDateTime deletedTime;
-
-    /**
-     * 版本号，用于乐观锁
-     */
-    @TableField("version")
+    @Version
     private Integer version;
 
-    /**
-     * 关联项目数量（仅返回前端使用）
-     */
-    @TableField(exist = false)
-    private Long relatedProjectCount;
+    // 枚举类定义
+    @Getter
+    public enum Status {
+        PENDING("待启用"),
+        ENABLED("已启用"),
+        DISABLED("已禁用");
 
-    /**
-     * 关联模板数量（仅返回前端使用）
-     */
-    @TableField(exist = false)
-    private Long relatedTemplateCount;
+        private final String description;
 
-    /**
-     * 关联影响范围提示（仅返回前端使用）
-     */
-    @TableField(exist = false)
-    private String relationImpactScope;
+        Status(String description) {
+            this.description = description;
+        }
+
+    }
 }

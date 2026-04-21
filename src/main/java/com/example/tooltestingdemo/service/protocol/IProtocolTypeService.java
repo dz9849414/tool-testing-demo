@@ -2,7 +2,10 @@ package com.example.tooltestingdemo.service.protocol;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.example.tooltestingdemo.dto.ProtocolTypeCreateDTO;
+import com.example.tooltestingdemo.dto.ProtocolTypeQueryDTO;
 import com.example.tooltestingdemo.dto.ProtocolTypeModifyDTO;
+import com.example.tooltestingdemo.dto.ProtocolTypeStatusUpdateDTO;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
 import com.example.tooltestingdemo.vo.ProtocolTypeImportResultVO;
@@ -22,13 +25,13 @@ import java.io.IOException;
  */
 public interface IProtocolTypeService extends IService<ProtocolType> {
 
-    ProtocolType createProtocolType(ProtocolType protocolType);
+    ProtocolType createProtocolType(ProtocolTypeCreateDTO dto);
 
-    IPage<ProtocolType> getProtocolTypeList(ProtocolType protocolType);
+    IPage<ProtocolType> getProtocolTypeList(ProtocolTypeQueryDTO dto);
 
     ProtocolTypeImportResultVO importProtocolTypes(MultipartFile file, String strategy) throws IOException;
 
-    ProtocolTypeStatusChangeVO updateProtocolTypeStatus(Long id, Integer status);
+    ProtocolTypeStatusChangeVO updateProtocolTypeStatus(ProtocolTypeStatusUpdateDTO dto);
 
     ProtocolType modifyProtocolType(ProtocolTypeModifyDTO dto);
 
@@ -36,7 +39,7 @@ public interface IProtocolTypeService extends IService<ProtocolType> {
 
     void downloadImportFailureReport(String reportId, HttpServletResponse response) throws IOException;
 
-    void exportProtocolTypes(ProtocolType protocolType, HttpServletResponse response) throws IOException;
+    void exportProtocolTypes(ProtocolTypeQueryDTO dto, HttpServletResponse response) throws IOException;
 
     void deleteProtocolType(Long id);
 

@@ -3,18 +3,19 @@ package com.example.tooltestingdemo.service.protocol.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.tooltestingdemo.dto.ProtocolTypeCreateDTO;
 import com.example.tooltestingdemo.dto.ProtocolTypeModifyDTO;
-import com.example.tooltestingdemo.entity.SysDictionary;
+import com.example.tooltestingdemo.dto.ProtocolTypeQueryDTO;
+import com.example.tooltestingdemo.dto.ProtocolTypeStatusUpdateDTO;
 import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.enums.ProtocolTypeImportStrategy;
-import com.example.tooltestingdemo.enums.TemplateEnums;
 import com.example.tooltestingdemo.mapper.SysUserMapper;
 import com.example.tooltestingdemo.mapper.protocol.ProtocolTypeMapper;
 import com.example.tooltestingdemo.service.SecurityService;
-import com.example.tooltestingdemo.service.SysDictionaryService;
 import com.example.tooltestingdemo.service.protocol.IProtocolTypeService;
 import com.example.tooltestingdemo.service.protocol.support.ProtocolTypeImportFailureReportStore;
+import com.example.tooltestingdemo.util.LocalDateUtil;
 import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
 import com.example.tooltestingdemo.vo.ProtocolTypeExportVO;
 import com.example.tooltestingdemo.vo.ProtocolTypeImportResultVO;
@@ -54,132 +55,108 @@ import java.util.stream.Collectors;
 @Service
 public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, ProtocolType> implements IProtocolTypeService {
 
-    private static final DateTimeFormatter EXPORT_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter FILE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final String EXPORT_FILE_NAME = "协议类型导出";
     private static final String IMPORT_TEMPLATE_FILE_NAME = "协议类型导入模板.xlsx";
     private static final String IMPORT_TEMPLATE_PATH = "templates/协议类型导入模板.xlsx";
     private static final String FAILURE_REPORT_FILE_PREFIX = "协议类型导入失败原因_";
-    private static final List<String> SYSTEM_DICT_TYPES = List.of(
-            "pdm_system_type",
-            "applicable_system",
-            "protocol_applicable_system",
-            "protocol_type_classification"
-    );
-
     private final ProtocolTypeMapper protocolTypeMapper;
     private final SysUserMapper sysUserMapper;
-    private final SysDictionaryService sysDictionaryService;
     private final ProtocolTypeImportFailureReportStore failureReportStore;
     private final SecurityService securityService;
 
     public ProtocolTypeServiceImpl(ProtocolTypeMapper protocolTypeMapper,
                                    SysUserMapper sysUserMapper,
-                                   SysDictionaryService sysDictionaryService,
                                    ProtocolTypeImportFailureReportStore failureReportStore,
                                    SecurityService securityService) {
         this.protocolTypeMapper = protocolTypeMapper;
         this.sysUserMapper = sysUserMapper;
-        this.sysDictionaryService = sysDictionaryService;
         this.failureReportStore = failureReportStore;
         this.securityService = securityService;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public ProtocolType createProtocolType(ProtocolType protocolType) {
-        // 校验协议标识符（协议编码）唯一性
-        LambdaQueryWrapper<ProtocolType> lambdaQuery = new LambdaQueryWrapper<>();
-        lambdaQuery.eq(ProtocolType::getProtocolIdentifier, protocolType.getProtocolIdentifier());
-        if (protocolTypeMapper.selectCount(lambdaQuery) > 0) {
-            throw new RuntimeException("协议编码重复，请重新输入！");
-        }
+    public ProtocolType createProtocolType(ProtocolTypeCreateDTO dto) {
+        String protocolCode = normalizeText(dto.getProtocolCode());
+        ensureProtocolCodeUnique(protocolCode, null);
 
-        protocolType.setCreateId(getCurrentOperatorId());
+        ProtocolType entity = new ProtocolType();
+        entity.setProtocolCode(protocolCode);
+        entity.setProtocolName(normalizeText(dto.getProtocolName()));
+        entity.setProtocolCategory(normalizeText(dto.getProtocolCategory()));
+        entity.setSystemType(normalizeText(dto.getSystemType()));
+        entity.setDescription(normalizeText(dto.getDescription()));
+        entity.setStatus(resolveStatus(dto.getStatus(), ProtocolType.Status.PENDING.name()));
+        entity.setCreateId(getCurrentOperatorId());
+        entity.setUpdateId(getCurrentOperatorId());
 
-
-        save(protocolType);
-        log.info("新增协议类型成功: id={}, name={}", protocolType.getId(), protocolType.getProtocolName());
-        return protocolType;
+        save(entity);
+        log.info("协议类型创建成功: id={}, code={}, name={}", entity.getId(), entity.getProtocolCode(), entity.getProtocolName());
+        return entity;
     }
 
     @Override
-    public IPage<ProtocolType> getProtocolTypeList(ProtocolType protocolType) {
-        ProtocolType query = protocolType == null ? new ProtocolType() : protocolType;
+    public IPage<ProtocolType> getProtocolTypeList(ProtocolTypeQueryDTO dto) {
+        ProtocolTypeQueryDTO query = dto == null ? new ProtocolTypeQueryDTO() : dto;
         return protocolTypeMapper.selectPage(query.toPage(), buildQueryWrapper(query));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public ProtocolTypeStatusChangeVO updateProtocolTypeStatus(Long id, Integer status) {
-        if (id == null) {
-            throw new RuntimeException("协议类型ID不能为空！");
-        }
-        validateStatusValue(status);
-
+    public ProtocolTypeStatusChangeVO updateProtocolTypeStatus(ProtocolTypeStatusUpdateDTO dto) {
+        Long id = dto.getId();
         ProtocolType existing = getExistingProtocolType(id);
+        String targetStatus = resolveStatus(dto.getStatus(), null);
         RelationStats relationStats = getRelationStats(id);
-        fillRelationImpactFields(existing, relationStats.relatedProjectCount(), relationStats.relatedTemplateCount());
-
-        if (Objects.equals(existing.getStatus(), status)) {
-            return buildStatusChangeVO(
-                    existing,
-                    existing.getStatus(),
-                    status,
-                    false,
-                    false,
-                    Integer.valueOf(1).equals(status) ? "协议类型已启用，无需重复操作" : "协议类型已禁用，无需重复操作"
-            );
+        boolean requireConfirm = ProtocolType.Status.DISABLED.name().equals(targetStatus)
+                && relationStats.hasRelatedData()
+                && !Boolean.TRUE.equals(dto.getConfirm());
+        if (requireConfirm) {
+            String message = buildDisableConfirmMessage(relationStats);
+            log.warn("协议类型禁用需要确认: id={}, relatedProjectCount={}, relatedTemplateCount={}",
+                    id, relationStats.relatedProjectCount(), relationStats.relatedTemplateCount());
+            return buildStatusChangeVO(existing, existing.getStatus(), targetStatus, false, true, message, relationStats);
+        }
+        if (Objects.equals(existing.getStatus(), targetStatus)) {
+            return buildStatusChangeVO(existing, existing.getStatus(), targetStatus, false, false, "状态未发生变化", relationStats);
         }
 
         ProtocolType updateEntity = new ProtocolType();
-        updateEntity.setId(existing.getId());
-        updateEntity.setStatus(status);
+        updateEntity.setId(id);
+        updateEntity.setStatus(targetStatus);
         updateEntity.setUpdateId(getCurrentOperatorId());
         updateEntity.setUpdateTime(LocalDateTime.now());
-
         if (protocolTypeMapper.updateById(updateEntity) <= 0) {
-            throw new RuntimeException("协议类型状态更新失败！");
+            throw new RuntimeException("状态更新失败");
         }
 
         ProtocolType updated = getExistingProtocolType(id);
-        fillRelationImpactFields(updated, relationStats.relatedProjectCount(), relationStats.relatedTemplateCount());
-        log.info("协议类型状态更新成功: id={}, name={}, fromStatus={}, toStatus={}, operatorId={}",
-                updated.getId(), updated.getProtocolName(), existing.getStatus(), status, getCurrentOperatorId());
-
-        return buildStatusChangeVO(
-                updated,
-                existing.getStatus(),
-                status,
-                true,
-                false,
-                buildStatusChangeSuccessMessage(status, updated.getRelationImpactScope())
-        );
+        log.info("协议类型状态更新成功: id={}, fromStatus={}, toStatus={}, operatorId={}",
+                id, existing.getStatus(), targetStatus, getCurrentOperatorId());
+        return buildStatusChangeVO(updated, existing.getStatus(), targetStatus, true, false, "状态更新成功", relationStats);
     }
 
     @Override
     public ProtocolTypeImportResultVO importProtocolTypes(MultipartFile file, String strategy) throws IOException {
         validateImportFile(file);
-
         ProtocolTypeImportStrategy importStrategy = ProtocolTypeImportStrategy.fromCode(strategy);
         List<RowImportData> importRows = parseImportRows(file);
         if (importRows.isEmpty()) {
             throw new RuntimeException("导入文件中没有可处理的数据");
         }
 
-        Map<String, String> legalSystemMap = buildLegalSystemMap();
-        Map<String, Integer> rowNumberByIdentifier = new HashMap<>();
+        Map<String, Integer> rowNumberByCode = new java.util.HashMap<>();
         List<RowImportData> readyRows = new ArrayList<>();
         List<RowFailure> failures = new ArrayList<>();
 
         for (RowImportData row : importRows) {
-            List<String> rowErrors = validateImportRow(row, legalSystemMap, rowNumberByIdentifier);
+            List<String> rowErrors = validateImportRow(row, rowNumberByCode);
             if (!rowErrors.isEmpty()) {
                 failures.add(new RowFailure(row, String.join("；", rowErrors)));
                 continue;
             }
-            row.setApplicableSystem(legalSystemMap.get(normalizeKey(row.getApplicableSystem())));
-            rowNumberByIdentifier.put(normalizeKey(row.getProtocolIdentifier()), row.getRowNumber());
+            rowNumberByCode.put(normalizeKey(row.getProtocolCode()), row.getRowNumber());
             readyRows.add(row);
         }
 
@@ -189,7 +166,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         Long operatorId = getCurrentOperatorId();
 
         for (RowImportData row : readyRows) {
-            ProtocolType existing = existingProtocolMap.get(normalizeKey(row.getProtocolIdentifier()));
+            ProtocolType existing = existingProtocolMap.get(normalizeKey(row.getProtocolCode()));
             try {
                 if (existing == null) {
                     insertProtocolType(row, operatorId);
@@ -205,7 +182,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
                 overwriteProtocolType(existing, row, operatorId);
                 successCount++;
             } catch (Exception ex) {
-                log.warn("导入协议类型失败: row={}, identifier={}, reason={}", row.getRowNumber(), row.getProtocolIdentifier(), ex.getMessage());
+                log.warn("导入协议类型失败: row={}, protocolCode={}, reason={}", row.getRowNumber(), row.getProtocolCode(), ex.getMessage());
                 failures.add(new RowFailure(row, defaultString(ex.getMessage())));
             }
         }
@@ -250,8 +227,8 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     }
 
     @Override
-    public void exportProtocolTypes(ProtocolType protocolType, HttpServletResponse response) throws IOException {
-        List<ProtocolType> protocolTypes = listProtocolTypes(protocolType);
+    public void exportProtocolTypes(ProtocolTypeQueryDTO dto, HttpServletResponse response) throws IOException {
+        List<ProtocolType> protocolTypes = listProtocolTypes(dto);
         List<ProtocolTypeExportVO> exportRows = buildExportRows(protocolTypes);
 
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
@@ -259,8 +236,8 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
             XSSFCellStyle headerStyle = createHeaderStyle(workbook);
             XSSFCellStyle dataStyle = createDataStyle(workbook);
 
-            String[] headers = {"类型编码", "名称", "分类", "状态", "创建人", "创建时间", "描述"};
-            int[] columnWidths = {20, 24, 18, 12, 18, 24, 40};
+            String[] headers = {"协议编码", "协议名称", "协议分类", "系统类型", "状态", "创建人", "创建时间", "描述"};
+            int[] columnWidths = {20, 24, 18, 18, 12, 18, 24, 40};
             writeHeaderRow(sheet, headerStyle, headers, columnWidths);
             writeDataRows(sheet, dataStyle, exportRows);
 
@@ -270,63 +247,52 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
 
         log.info("导出协议类型成功: total={}, filterName={}, filterSystem={}, filterStatus={}",
                 exportRows.size(),
-                protocolType != null ? protocolType.getProtocolName() : null,
-                protocolType != null ? protocolType.getApplicableSystem() : null,
-                protocolType != null ? protocolType.getStatus() : null);
+                dto != null ? dto.getProtocolName() : null,
+                dto != null ? dto.getSystemType() : null,
+                dto != null ? dto.getStatus() : null);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ProtocolType modifyProtocolType(ProtocolTypeModifyDTO dto) {
-        if (dto == null || dto.getId() == null) {
-            throw new RuntimeException("协议类型ID不能为空！");
-        }
-
         ProtocolType existing = protocolTypeMapper.selectById(dto.getId());
         if (existing == null) {
-            throw new RuntimeException("协议类型不存在！");
+            throw new RuntimeException("协议类型不存在");
         }
-
-        if (StringUtils.isBlank(dto.getProtocolName())) {
-            throw new RuntimeException("协议类型名称不能为空！");
-        }
-
-        long relatedProjectCount = getRelatedProjectCount(dto.getId());
-        long relatedTemplateCount = getRelatedTemplateCount(dto.getId());
 
         ProtocolType updateEntity = new ProtocolType();
         updateEntity.setId(existing.getId());
-        updateEntity.setProtocolIdentifier(existing.getProtocolIdentifier());
-        updateEntity.setApplicableSystem(existing.getApplicableSystem());
-        updateEntity.setStatus(existing.getStatus());
-        updateEntity.setProtocolName(dto.getProtocolName());
-        updateEntity.setDescription(dto.getDescription());
+        String targetCode = StringUtils.isBlank(dto.getProtocolCode()) ? existing.getProtocolCode() : normalizeText(dto.getProtocolCode());
+        ensureProtocolCodeUnique(targetCode, existing.getId());
+        updateEntity.setProtocolCode(targetCode);
+        updateEntity.setProtocolName(resolveNullableUpdateValue(dto.getProtocolName(), existing.getProtocolName()));
+        updateEntity.setProtocolCategory(resolveNullableUpdateValue(dto.getProtocolCategory(), existing.getProtocolCategory()));
+        updateEntity.setSystemType(resolveNullableUpdateValue(dto.getSystemType(), existing.getSystemType()));
+        updateEntity.setStatus(resolveStatus(dto.getStatus(), existing.getStatus()));
+        updateEntity.setDescription(resolveNullableUpdateValue(dto.getDescription(), existing.getDescription()));
+        updateEntity.setVersion(dto.getVersion() == null ? existing.getVersion() : dto.getVersion());
         updateEntity.setUpdateId(getCurrentOperatorId());
         updateEntity.setUpdateTime(LocalDateTime.now());
 
         if (protocolTypeMapper.updateById(updateEntity) <= 0) {
-            throw new RuntimeException("协议类型修改失败！");
+            throw new RuntimeException("协议类型编辑失败");
         }
 
         ProtocolType updated = protocolTypeMapper.selectById(dto.getId());
-        fillRelationImpactFields(updated, relatedProjectCount, relatedTemplateCount);
-        log.info("编辑协议类型成功: id={}, name={}", updated.getId(), updated.getProtocolName());
+        log.info("协议类型编辑成功: id={}, protocolCode={}, protocolName={}, operatorId={}",
+                updated.getId(), updated.getProtocolCode(), updated.getProtocolName(), getCurrentOperatorId());
         return updated;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteProtocolType(Long id) {
-        if (id == null) {
-            throw new RuntimeException("协议类型ID不能为空！");
-        }
-
         ProtocolType existing = getExistingProtocolType(id);
         RelationStats relationStats = getRelationStats(id);
         if (relationStats.hasRelatedData()) {
-            String message = buildDeleteBlockedMessage(relationStats.relatedProjectCount, relationStats.relatedTemplateCount);
+            String message = buildDeleteBlockedMessage(relationStats.relatedProjectCount(), relationStats.relatedTemplateCount());
             log.warn("删除协议类型失败，存在关联数据: id={}, name={}, relatedProjects={}, relatedTemplates={}",
-                    existing.getId(), existing.getProtocolName(), relationStats.relatedProjectCount, relationStats.relatedTemplateCount);
+                    existing.getId(), existing.getProtocolName(), relationStats.relatedProjectCount(), relationStats.relatedTemplateCount());
             throw new RuntimeException(message);
         }
 
@@ -336,16 +302,9 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ProtocolTypeDeleteResultVO batchDeleteProtocolTypes(Long[] ids) {
-        if (ids == null || ids.length == 0) {
-            throw new RuntimeException("协议类型ID列表不能为空！");
-        }
-
         LinkedHashSet<Long> uniqueIds = Arrays.stream(ids)
                 .filter(Objects::nonNull)
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        if (uniqueIds.isEmpty()) {
-            throw new RuntimeException("协议类型ID列表不能为空！");
-        }
 
         List<Long> deletedIds = new ArrayList<>();
         List<ProtocolTypeDeleteResultVO.UndeletableItem> undeletableItems = new ArrayList<>();
@@ -362,9 +321,9 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
                 undeletableItems.add(buildUndeletableItem(
                         existing.getId(),
                         existing.getProtocolName(),
-                        relationStats.relatedProjectCount,
-                        relationStats.relatedTemplateCount,
-                        buildDeleteBlockedMessage(relationStats.relatedProjectCount, relationStats.relatedTemplateCount)
+                        relationStats.relatedProjectCount(),
+                        relationStats.relatedTemplateCount(),
+                        buildDeleteBlockedMessage(relationStats.relatedProjectCount(), relationStats.relatedTemplateCount())
                 ));
                 continue;
             }
@@ -393,6 +352,9 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         return count == null ? 0L : count;
     }
 
+    /**
+     * 校验导入文件，仅允许 xls/xlsx。
+     */
     private void validateImportFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new RuntimeException("导入文件不能为空");
@@ -424,12 +386,14 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
 
                 RowImportData rowData = new RowImportData();
                 rowData.setRowNumber(rowIndex + 1);
-                rowData.setProtocolIdentifier(readCellValue(row, headerIndexMap, formatter, 0,
-                        "类型编码", "协议编码", "编码", "protocolIdentifier"));
+                rowData.setProtocolCode(readCellValue(row, headerIndexMap, formatter, 0,
+                        "协议编码", "类型编码", "编码", "protocolCode"));
                 rowData.setProtocolName(readCellValue(row, headerIndexMap, formatter, 1,
                         "名称", "协议名称", "协议类型名称", "protocolName"));
-                rowData.setApplicableSystem(readCellValue(row, headerIndexMap, formatter, 2,
-                        "分类", "适用系统", "applicableSystem"));
+                rowData.setProtocolCategory(readCellValue(row, headerIndexMap, formatter, 2,
+                        "协议分类", "分类", "protocolCategory"));
+                rowData.setSystemType(readCellValue(row, headerIndexMap, formatter, 3,
+                        "系统类型", "适用系统", "systemType"));
                 rowData.setStatusText(readCellValue(row, headerIndexMap, formatter, 3,
                         "状态", "status"));
                 rowData.setDescription(readCellValue(row, headerIndexMap, formatter, 4,
@@ -461,7 +425,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         if (row == null) {
             return true;
         }
-        for (int cellIndex = 0; cellIndex <= 4; cellIndex++) {
+        for (int cellIndex = 0; cellIndex <= 5; cellIndex++) {
             String value = formatter.formatCellValue(row.getCell(cellIndex));
             if (StringUtils.isNotBlank(value)) {
                 return false;
@@ -496,14 +460,13 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     }
 
     private List<String> validateImportRow(RowImportData row,
-                                           Map<String, String> legalSystemMap,
-                                           Map<String, Integer> rowNumberByIdentifier) {
+                                           Map<String, Integer> rowNumberByCode) {
         List<String> errors = new ArrayList<>();
 
-        if (StringUtils.isBlank(row.getProtocolIdentifier())) {
-            errors.add("类型编码不能为空");
-        } else if (row.getProtocolIdentifier().length() > 50) {
-            errors.add("类型编码长度不能超过50");
+        if (StringUtils.isBlank(row.getProtocolCode())) {
+            errors.add("协议编码不能为空");
+        } else if (row.getProtocolCode().length() > 50) {
+            errors.add("协议编码长度不能超过50");
         }
 
         if (StringUtils.isBlank(row.getProtocolName())) {
@@ -512,21 +475,23 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
             errors.add("名称长度不能超过100");
         }
 
-        if (StringUtils.isBlank(row.getApplicableSystem())) {
-            errors.add("分类不能为空");
-        } else if (!legalSystemMap.containsKey(normalizeKey(row.getApplicableSystem()))) {
-            errors.add("分类不合法，可选值：" + String.join("/", listAllowedSystemCodes(legalSystemMap)));
+        if (StringUtils.isBlank(row.getProtocolCategory())) {
+            errors.add("协议分类不能为空");
+        }
+
+        if (StringUtils.isBlank(row.getSystemType())) {
+            errors.add("系统类型不能为空");
         }
 
         if (StringUtils.isNotBlank(row.getDescription()) && row.getDescription().length() > 500) {
             errors.add("描述长度不能超过500");
         }
 
-        if (StringUtils.isNotBlank(row.getProtocolIdentifier())) {
-            String normalizedIdentifier = normalizeKey(row.getProtocolIdentifier());
-            Integer previousRowNumber = rowNumberByIdentifier.get(normalizedIdentifier);
+        if (StringUtils.isNotBlank(row.getProtocolCode())) {
+            String normalizedIdentifier = normalizeKey(row.getProtocolCode());
+            Integer previousRowNumber = rowNumberByCode.get(normalizedIdentifier);
             if (previousRowNumber != null) {
-                errors.add("类型编码与第 " + previousRowNumber + " 行重复");
+                errors.add("协议编码与第 " + previousRowNumber + " 行重复");
             }
         }
 
@@ -539,39 +504,13 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         return errors;
     }
 
-    private Map<String, String> buildLegalSystemMap() {
-        Map<String, String> legalSystemMap = new LinkedHashMap<>();
-        for (TemplateEnums.PdmSystemType systemType : TemplateEnums.PdmSystemType.values()) {
-            legalSystemMap.put(normalizeKey(systemType.getCode()), systemType.getCode());
-            legalSystemMap.put(normalizeKey(systemType.getDesc()), systemType.getCode());
-        }
-
-        for (String dictType : SYSTEM_DICT_TYPES) {
-            List<SysDictionary> dictionaries = sysDictionaryService.getDictionariesByType(dictType);
-            for (SysDictionary dictionary : dictionaries) {
-                if (StringUtils.isNotBlank(dictionary.getCode())) {
-                    legalSystemMap.put(normalizeKey(dictionary.getCode()), dictionary.getCode());
-                }
-                if (StringUtils.isNotBlank(dictionary.getValue())) {
-                    legalSystemMap.put(normalizeKey(dictionary.getValue()),
-                            StringUtils.defaultIfBlank(dictionary.getCode(), dictionary.getValue()));
-                }
-            }
-        }
-        return legalSystemMap;
-    }
-
-    private List<String> listAllowedSystemCodes(Map<String, String> legalSystemMap) {
-        return legalSystemMap.values().stream().distinct().toList();
-    }
-
     private Map<String, ProtocolType> loadExistingProtocolMap(List<RowImportData> readyRows) {
         if (readyRows.isEmpty()) {
             return Collections.emptyMap();
         }
 
         List<String> identifiers = readyRows.stream()
-                .map(RowImportData::getProtocolIdentifier)
+                .map(RowImportData::getProtocolCode)
                 .filter(StringUtils::isNotBlank)
                 .distinct()
                 .toList();
@@ -580,16 +519,17 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         }
 
         LambdaQueryWrapper<ProtocolType> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.in(ProtocolType::getProtocolIdentifier, identifiers);
+        queryWrapper.in(ProtocolType::getProtocolCode, identifiers);
         return protocolTypeMapper.selectList(queryWrapper).stream()
-                .collect(Collectors.toMap(item -> normalizeKey(item.getProtocolIdentifier()), item -> item, (left, right) -> left));
+                .collect(Collectors.toMap(item -> normalizeKey(item.getProtocolCode()), item -> item, (left, right) -> left));
     }
 
     private void insertProtocolType(RowImportData row, Long operatorId) {
         ProtocolType entity = new ProtocolType();
-        entity.setProtocolIdentifier(row.getProtocolIdentifier());
+        entity.setProtocolCode(row.getProtocolCode());
         entity.setProtocolName(row.getProtocolName());
-        entity.setApplicableSystem(row.getApplicableSystem());
+        entity.setProtocolCategory(row.getProtocolCategory());
+        entity.setSystemType(row.getSystemType());
         entity.setStatus(row.getStatus());
         entity.setDescription(row.getDescription());
         entity.setCreateId(operatorId);
@@ -602,9 +542,10 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     private void overwriteProtocolType(ProtocolType existing, RowImportData row, Long operatorId) {
         ProtocolType updateEntity = new ProtocolType();
         updateEntity.setId(existing.getId());
-        updateEntity.setProtocolIdentifier(existing.getProtocolIdentifier());
+        updateEntity.setProtocolCode(existing.getProtocolCode());
         updateEntity.setProtocolName(row.getProtocolName());
-        updateEntity.setApplicableSystem(row.getApplicableSystem());
+        updateEntity.setProtocolCategory(row.getProtocolCategory());
+        updateEntity.setSystemType(row.getSystemType());
         updateEntity.setStatus(row.getStatus());
         updateEntity.setDescription(row.getDescription());
         updateEntity.setUpdateId(operatorId);
@@ -618,20 +559,21 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
             XSSFCellStyle headerStyle = createHeaderStyle(workbook);
             XSSFCellStyle dataStyle = createDataStyle(workbook);
 
-            String[] headers = {"行号", "类型编码", "名称", "分类", "状态", "描述", "失败原因"};
-            int[] widths = {10, 20, 24, 18, 12, 36, 48};
+            String[] headers = {"行号", "协议编码", "名称", "协议分类", "系统类型", "状态", "描述", "失败原因"};
+            int[] widths = {10, 20, 24, 18, 18, 12, 36, 48};
             writeHeaderRow(sheet, headerStyle, headers, widths);
 
             int rowIndex = 1;
             for (RowFailure failure : failures) {
                 XSSFRow row = sheet.createRow(rowIndex++);
                 setCellValue(row, 0, String.valueOf(failure.row.getRowNumber()), dataStyle);
-                setCellValue(row, 1, failure.row.getProtocolIdentifier(), dataStyle);
+                setCellValue(row, 1, failure.row.getProtocolCode(), dataStyle);
                 setCellValue(row, 2, failure.row.getProtocolName(), dataStyle);
-                setCellValue(row, 3, failure.row.getApplicableSystem(), dataStyle);
-                setCellValue(row, 4, defaultString(failure.row.getStatusText()), dataStyle);
-                setCellValue(row, 5, failure.row.getDescription(), dataStyle);
-                setCellValue(row, 6, failure.reason, dataStyle);
+                setCellValue(row, 3, failure.row.getProtocolCategory(), dataStyle);
+                setCellValue(row, 4, failure.row.getSystemType(), dataStyle);
+                setCellValue(row, 5, defaultString(failure.row.getStatusText()), dataStyle);
+                setCellValue(row, 6, failure.row.getDescription(), dataStyle);
+                setCellValue(row, 7, failure.reason, dataStyle);
             }
 
             workbook.write(outputStream);
@@ -640,7 +582,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     }
 
     private String buildFailureReportFileName() {
-        return FAILURE_REPORT_FILE_PREFIX + FILE_TIME_FORMATTER.format(LocalDateTime.now()) + ".xlsx";
+        return FAILURE_REPORT_FILE_PREFIX + LocalDateUtil.formatDateTime(LocalDateTime.now(), FILE_TIME_FORMATTER) + ".xlsx";
     }
 
     private void writeExcelResponse(HttpServletResponse response, String fileName, byte[] content) throws IOException {
@@ -654,54 +596,32 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         }
     }
 
-    private List<ProtocolType> listProtocolTypes(ProtocolType protocolType) {
-        return protocolTypeMapper.selectList(buildQueryWrapper(protocolType));
+    private List<ProtocolType> listProtocolTypes(ProtocolTypeQueryDTO queryDTO) {
+        return protocolTypeMapper.selectList(buildQueryWrapper(queryDTO));
     }
 
-    private Integer parseStatus(String statusText) {
+    private String parseStatus(String statusText) {
         if (StringUtils.isBlank(statusText)) {
-            return 1;
+            return ProtocolType.Status.PENDING.name();
         }
-
-        String normalizedStatus = normalizeKey(statusText);
-        if (Arrays.asList("1", "启用", "enabled", "true").contains(normalizedStatus)) {
-            return 1;
-        }
-        if (Arrays.asList("0", "禁用", "disabled", "false").contains(normalizedStatus)) {
-            return 0;
-        }
-        throw new RuntimeException("状态不合法，仅支持 启用/禁用 或 enabled/disabled 或 true/false 或 1/0");
+        return resolveStatus(statusText, null);
     }
 
-    private void validateStatusValue(Integer status) {
-        if (!Integer.valueOf(0).equals(status) && !Integer.valueOf(1).equals(status)) {
-            throw new RuntimeException("状态值必须是0（禁用）或1（启用）");
-        }
-    }
-
-    private String buildDisableConfirmMessage(String relationImpactScope) {
+    private String buildDisableConfirmMessage(RelationStats relationStats) {
+        String relationImpactScope = buildRelationImpactScope(relationStats.relatedProjectCount(), relationStats.relatedTemplateCount());
         if (StringUtils.isNotBlank(relationImpactScope)) {
-            return String.format("禁用后关联协议不可使用。%s。确认禁用？", relationImpactScope);
+            return String.format("禁用后将影响关联数据。%s，是否继续？", relationImpactScope);
         }
-        return "禁用后关联协议不可使用，确认禁用？";
-    }
-
-    private String buildStatusChangeSuccessMessage(Integer status, String relationImpactScope) {
-        if (Integer.valueOf(1).equals(status)) {
-            return "启用成功";
-        }
-        if (StringUtils.isNotBlank(relationImpactScope)) {
-            return String.format("禁用成功。禁用后关联协议不可使用。%s。", relationImpactScope);
-        }
-        return "禁用成功。禁用后关联协议不可使用。";
+        return "禁用后将影响关联数据，是否继续？";
     }
 
     private ProtocolTypeStatusChangeVO buildStatusChangeVO(ProtocolType protocolType,
-                                                           Integer currentStatus,
-                                                           Integer targetStatus,
+                                                           String currentStatus,
+                                                           String targetStatus,
                                                            boolean statusChanged,
                                                            boolean requiresConfirm,
-                                                           String message) {
+                                                           String message,
+                                                           RelationStats relationStats) {
         ProtocolTypeStatusChangeVO result = new ProtocolTypeStatusChangeVO();
         result.setId(protocolType.getId());
         result.setProtocolName(protocolType.getProtocolName());
@@ -710,25 +630,29 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         result.setStatusChanged(statusChanged);
         result.setRequiresConfirm(requiresConfirm);
         result.setMessage(message);
-        result.setRelatedProjectCount(protocolType.getRelatedProjectCount());
-        result.setRelatedTemplateCount(protocolType.getRelatedTemplateCount());
-        result.setRelationImpactScope(protocolType.getRelationImpactScope());
+        result.setRelatedProjectCount(relationStats.relatedProjectCount());
+        result.setRelatedTemplateCount(relationStats.relatedTemplateCount());
+        result.setRelationImpactScope(buildRelationImpactScope(relationStats.relatedProjectCount(), relationStats.relatedTemplateCount()));
         return result;
     }
 
-    private LambdaQueryWrapper<ProtocolType> buildQueryWrapper(ProtocolType protocolType) {
+    private LambdaQueryWrapper<ProtocolType> buildQueryWrapper(ProtocolTypeQueryDTO protocolType) {
         LambdaQueryWrapper<ProtocolType> lambdaQuery = new LambdaQueryWrapper<>();
         if (protocolType != null) {
+            if (StringUtils.isNotBlank(protocolType.getProtocolCode())) {
+                lambdaQuery.like(ProtocolType::getProtocolCode, protocolType.getProtocolCode());
+            }
             if (StringUtils.isNotBlank(protocolType.getProtocolName())) {
                 lambdaQuery.like(ProtocolType::getProtocolName, protocolType.getProtocolName());
             }
-
-            if (StringUtils.isNotBlank(protocolType.getApplicableSystem())) {
-                lambdaQuery.eq(ProtocolType::getApplicableSystem, protocolType.getApplicableSystem());
+            if (StringUtils.isNotBlank(protocolType.getProtocolCategory())) {
+                lambdaQuery.eq(ProtocolType::getProtocolCategory, protocolType.getProtocolCategory());
             }
-
-            if (protocolType.getStatus() != null) {
-                lambdaQuery.eq(ProtocolType::getStatus, protocolType.getStatus());
+            if (StringUtils.isNotBlank(protocolType.getSystemType())) {
+                lambdaQuery.eq(ProtocolType::getSystemType, protocolType.getSystemType());
+            }
+            if (StringUtils.isNotBlank(protocolType.getStatus())) {
+                lambdaQuery.eq(ProtocolType::getStatus, resolveStatus(protocolType.getStatus(), null));
             }
         }
 
@@ -748,12 +672,13 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
 
     private ProtocolTypeExportVO buildExportRow(ProtocolType protocolType) {
         ProtocolTypeExportVO exportVO = new ProtocolTypeExportVO();
-        exportVO.setProtocolIdentifier(protocolType.getProtocolIdentifier());
+        exportVO.setProtocolCode(protocolType.getProtocolCode());
         exportVO.setProtocolName(protocolType.getProtocolName());
-        exportVO.setClassification(defaultString(protocolType.getApplicableSystem()));
-        exportVO.setStatus(getStatusText(protocolType.getStatus()));
+        exportVO.setProtocolCategory(defaultString(protocolType.getProtocolCategory()));
+        exportVO.setSystemType(defaultString(protocolType.getSystemType()));
+        exportVO.setStatus(defaultString(protocolType.getStatus()));
         exportVO.setCreateUserName(resolveCreateUserName(protocolType.getCreateId()));
-        exportVO.setCreateTime(formatDateTime(protocolType.getCreateTime()));
+        exportVO.setCreateTime(LocalDateUtil.formatDateTime(protocolType.getCreateTime()));
         exportVO.setDescription(defaultString(protocolType.getDescription()));
         return exportVO;
     }
@@ -774,17 +699,6 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
             return sysUser.getUsername();
         }
         return String.valueOf(createId);
-    }
-
-    private String getStatusText(Integer status) {
-        if (status == null) {
-            return "";
-        }
-        return Integer.valueOf(1).equals(status) ? "启用" : "禁用";
-    }
-
-    private String formatDateTime(LocalDateTime dateTime) {
-        return dateTime == null ? "" : EXPORT_TIME_FORMATTER.format(dateTime);
     }
 
     private String defaultString(String value) {
@@ -809,13 +723,14 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         int rowIndex = 1;
         for (ProtocolTypeExportVO exportRow : exportRows) {
             XSSFRow row = sheet.createRow(rowIndex++);
-            setCellValue(row, 0, exportRow.getProtocolIdentifier(), dataStyle);
+            setCellValue(row, 0, exportRow.getProtocolCode(), dataStyle);
             setCellValue(row, 1, exportRow.getProtocolName(), dataStyle);
-            setCellValue(row, 2, exportRow.getClassification(), dataStyle);
-            setCellValue(row, 3, exportRow.getStatus(), dataStyle);
-            setCellValue(row, 4, exportRow.getCreateUserName(), dataStyle);
-            setCellValue(row, 5, exportRow.getCreateTime(), dataStyle);
-            setCellValue(row, 6, exportRow.getDescription(), dataStyle);
+            setCellValue(row, 2, exportRow.getProtocolCategory(), dataStyle);
+            setCellValue(row, 3, exportRow.getSystemType(), dataStyle);
+            setCellValue(row, 4, exportRow.getStatus(), dataStyle);
+            setCellValue(row, 5, exportRow.getCreateUserName(), dataStyle);
+            setCellValue(row, 6, exportRow.getCreateTime(), dataStyle);
+            setCellValue(row, 7, exportRow.getDescription(), dataStyle);
         }
     }
 
@@ -856,12 +771,6 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         return count == null ? 0L : count;
     }
 
-    private void fillRelationImpactFields(ProtocolType protocolType, long relatedProjectCount, long relatedTemplateCount) {
-        protocolType.setRelatedProjectCount(relatedProjectCount);
-        protocolType.setRelatedTemplateCount(relatedTemplateCount);
-        protocolType.setRelationImpactScope(buildRelationImpactScope(relatedProjectCount, relatedTemplateCount));
-    }
-
     private String buildRelationImpactScope(long relatedProjectCount, long relatedTemplateCount) {
         if (relatedProjectCount <= 0 && relatedTemplateCount <= 0) {
             return null;
@@ -896,9 +805,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         if (protocolTypeMapper.updateById(deleteEntity) <= 0) {
             throw new RuntimeException("协议类型删除失败！");
         }
-
         protocolTypeMapper.deleteById(deleteEntity.getId());
-
         log.info("删除协议类型成功: id={}, name={}, operatorId={}", existing.getId(), existing.getProtocolName(), operatorId);
     }
 
@@ -908,6 +815,46 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
             return Long.valueOf(currentUserId);
         }
         return 1L;
+    }
+
+    private void ensureProtocolCodeUnique(String protocolCode, Long excludeId) {
+        LambdaQueryWrapper<ProtocolType> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ProtocolType::getProtocolCode, protocolCode);
+        if (excludeId != null) {
+            wrapper.ne(ProtocolType::getId, excludeId);
+        }
+        Long count = protocolTypeMapper.selectCount(wrapper);
+        if (count != null && count > 0) {
+            throw new RuntimeException("协议编码已存在");
+        }
+    }
+
+    private String resolveNullableUpdateValue(String incomingValue, String oldValue) {
+        return StringUtils.isBlank(incomingValue) ? oldValue : normalizeText(incomingValue);
+    }
+
+    private String normalizeText(String value) {
+        return StringUtils.trimToNull(value);
+    }
+
+    private String resolveStatus(String status, String defaultValue) {
+        if (StringUtils.isBlank(status)) {
+            if (defaultValue == null) {
+                throw new RuntimeException("状态不能为空");
+            }
+            return defaultValue;
+        }
+        String normalized = normalizeKey(status);
+        if (Arrays.asList("PENDING", "待启用").contains(normalized)) {
+            return ProtocolType.Status.PENDING.name();
+        }
+        if (Arrays.asList("ENABLED", "1", "启用", "TRUE").contains(normalized)) {
+            return ProtocolType.Status.ENABLED.name();
+        }
+        if (Arrays.asList("DISABLED", "0", "禁用", "FALSE").contains(normalized)) {
+            return ProtocolType.Status.DISABLED.name();
+        }
+        throw new RuntimeException("状态不合法，仅支持 PENDING/ENABLED/DISABLED");
     }
 
     private ProtocolTypeDeleteResultVO.UndeletableItem buildUndeletableItem(Long id, String protocolName,
@@ -946,11 +893,12 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     @Getter
     private static class RowImportData {
         private Integer rowNumber;
-        private String protocolIdentifier;
+        private String protocolCode;
         private String protocolName;
-        private String applicableSystem;
+        private String protocolCategory;
+        private String systemType;
         private String statusText;
-        private Integer status;
+        private String status;
         private String description;
 
     }

@@ -31,15 +31,15 @@ public class PageQuery implements Serializable {
     @TableField(exist = false)
     private Long size = DEFAULT_SIZE;
 
-    public long getSafeCurrent() {
+    private long getSafeCurrent() {
         return current == null || current <= 0 ? DEFAULT_CURRENT : current;
     }
 
-    public long getSafeSize() {
+    private long getSafeSize() {
         return size == null || size <= 0 ? DEFAULT_SIZE : size;
     }
 
     public <T> Page<T> toPage() {
-        return new Page<>(getSafeCurrent(), getSafeSize());
+        return Page.of(getSafeCurrent(), getSafeSize());
     }
 }

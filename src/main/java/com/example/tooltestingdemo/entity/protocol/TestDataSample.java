@@ -1,32 +1,26 @@
 package com.example.tooltestingdemo.entity.protocol;
 
-import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.example.tooltestingdemo.entity.BaseEntity;
 import lombok.Data;
-
-import java.io.Serializable;
-import java.time.LocalDateTime;
+import lombok.EqualsAndHashCode;
+import lombok.experimental.Accessors;
 
 /**
- * <p>
- * 测试数据样本库
- * </p>
- *
- * @author wanggang
- * @since 2026-04-13
+ * 测试数据样本库实体类
+ * 表名：test_data_sample
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
+@Accessors(chain = true)
 @TableName("test_data_sample")
-public class TestDataSample implements Serializable {
-
+public class TestDataSample extends BaseEntity {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 样本ID
+     * 主键ID
      */
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
@@ -34,73 +28,63 @@ public class TestDataSample implements Serializable {
     /**
      * 样本名称
      */
-    @TableField("sample_name")
     private String sampleName;
+
+    /**
+     * 样本类型：BOM-物料清单, DRAWING-图纸, DOCUMENT-文档, CUSTOM-自定义
+     */
+    private String sampleType;
+
+    /**
+     * 适用的协议分类
+     */
+    private String protocolCategory;
+
+    /**
+     * 数据格式
+     */
+    private String dataFormat;
+
+    /**
+     * 样本数据（支持大文本存储）
+     */
+    private String sampleData;
+
+    /**
+     * 数据大小（字节）
+     */
+    private Integer dataSize;
+
+    /**
+     * 校验和
+     */
+    private String checksum;
 
     /**
      * 样本描述
      */
-    @TableField("sample_description")
-    private String sampleDescription;
+    private String description;
 
     /**
-     * 样本数据内容
+     * 是否标准样本：0-用户自定义，1-系统标准
      */
-    @TableField("sample_data")
-    private String sampleData;
+    private Integer isStandard;
 
-    /**
-     * 数据格式：JSON、XML、CSV
-     */
-    @TableField("data_format")
-    private String dataFormat;
+    // 枚举类定义
+    public enum SampleType {
+        BOM("物料清单"),
+        DRAWING("图纸"),
+        DOCUMENT("文档"),
+        CUSTOM("自定义");
 
-    /**
-     * 是否公开：0-私有，1-公开
-     */
-    @TableField("is_public")
-    private Integer isPublic;
+        private final String description;
 
-    /**
-     * 创建人
-     */
-    @TableField(value = "create_id", fill = FieldFill.INSERT)
-    private Long createId;
+        SampleType(String description) {
+            this.description = description;
+        }
 
-    /**
-     * 创建时间
-     */
-    @TableField(value = "create_time", fill = FieldFill.INSERT)
-    private LocalDateTime createTime;
-
-    /**
-     * 更新人
-     */
-    @TableField(value = "update_id", fill = FieldFill.INSERT_UPDATE)
-    private Long updateId;
-
-    /**
-     * 更新时间
-     */
-    @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updateTime;
-
-    /**
-     * 是否删除：0-否，1-是
-     */
-    @TableLogic
-    @TableField("is_deleted")
-    private Integer isDeleted;
-
-    /**
-     * 删除人
-     */
-    @TableField("deleted_by")
-    private Long deletedBy;
-
-    /**
-     * 删除时间
-     */
-    @TableField("deleted_time")
-    private LocalDateTime deletedTime;
+        public String getDescription() {
+            return description;
+        }
+    }
 }
