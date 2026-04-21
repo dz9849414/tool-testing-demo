@@ -3,6 +3,7 @@ package com.example.tooltestingdemo.service.report;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.dto.report.ReportTemplateDTO;
 import com.example.tooltestingdemo.entity.report.ReportTemplate;
+import com.example.tooltestingdemo.entity.report.TemplateXml;
 
 import java.util.List;
 
@@ -29,7 +30,13 @@ public interface IReportTemplateService extends IService<ReportTemplate> {
     /**
      * 获取模板列表
      */
-    List<ReportTemplateDTO> getTemplateList(String templateType, Boolean isPublic);
+    List<ReportTemplateDTO> getTemplateList(String templateType, Boolean isPublic, String name);
+
+    /**
+     * 分页获取模板列表
+     */
+    com.baomidou.mybatisplus.extension.plugins.pagination.Page<ReportTemplateDTO> getTemplateListPage(
+            Integer page, Integer size, String templateType, Boolean isPublic, String name);
     
     /**
      * 获取模板详情
@@ -39,12 +46,17 @@ public interface IReportTemplateService extends IService<ReportTemplate> {
     /**
      * 导入模板
      */
-    Boolean importTemplate(String xmlContent);
-    
+    Long importTemplate(String xmlContent, String newName);
+
     /**
      * 导出模板
      */
     String exportTemplate(Long id);
+
+    /**
+     * 预览XML模板内容
+     */
+    TemplateXml previewTemplateXml(String xmlContent);
     
     /**
      * 关联业务对象

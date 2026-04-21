@@ -9,6 +9,7 @@ import com.example.tooltestingdemo.dto.report.TestResultTableDTO;
 import com.example.tooltestingdemo.dto.report.TimelineNodeDTO;
 import com.example.tooltestingdemo.entity.report.Report;
 
+import java.io.File;
 import java.util.List;
 
 /**
@@ -52,9 +53,14 @@ public interface IReportService extends IService<Report> {
     String previewReport(Long id);
     
     /**
-     * 导出报告
+     * 导出报告（返回文件路径）
      */
     String exportReport(Long id, String format, String pageRange);
+    
+    /**
+     * 导出报告文件（返回File对象）
+     */
+    File exportReportFile(Long id, String format, String pageRange);
     
     /**
      * 批量导出报告

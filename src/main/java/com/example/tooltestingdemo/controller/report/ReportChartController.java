@@ -28,8 +28,55 @@ public class ReportChartController {
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:chart:create')")
     public Result<Long> createChart(@RequestBody ReportChartDTO chartDTO) {
         try {
+            // 参数校验
+            if (chartDTO.getName() == null || chartDTO.getName().trim().isEmpty()) {
+                return Result.error("图表名称不能为空");
+            }
+            if (chartDTO.getChartType() == null || chartDTO.getChartType().trim().isEmpty()) {
+                return Result.error("图表类型不能为空");
+            }
+            if (chartDTO.getDataSourceType() == null || chartDTO.getDataSourceType().trim().isEmpty()) {
+                return Result.error("数据源类型不能为空");
+            }
+            
+            // 处理chartConfig，确保是有效的JSON格式
+            if (chartDTO.getChartConfig() != null && !chartDTO.getChartConfig().trim().isEmpty()) {
+                String chartConfig = chartDTO.getChartConfig().trim();
+                if (!chartConfig.startsWith("[") && !chartConfig.startsWith("{")) {
+                    return Result.error("图表配置必须是有效的JSON格式");
+                }
+                
+                // 验证JSON格式
+                try {
+                    com.alibaba.fastjson2.JSON.parse(chartConfig);
+                } catch (Exception e) {
+                    return Result.error("图表配置JSON格式不正确");
+                }
+            } else {
+                // 如果没有提供chartConfig，设置为空对象
+                chartDTO.setChartConfig("{}");
+            }
+            
+            // 处理styleConfig，确保是有效的JSON格式
+            if (chartDTO.getStyleConfig() != null && !chartDTO.getStyleConfig().trim().isEmpty()) {
+                String styleConfig = chartDTO.getStyleConfig().trim();
+                if (!styleConfig.startsWith("[") && !styleConfig.startsWith("{")) {
+                    return Result.error("样式配置必须是有效的JSON格式");
+                }
+                
+                // 验证JSON格式
+                try {
+                    com.alibaba.fastjson2.JSON.parse(styleConfig);
+                } catch (Exception e) {
+                    return Result.error("样式配置JSON格式不正确");
+                }
+            } else {
+                // 如果没有提供styleConfig，设置为空对象
+                chartDTO.setStyleConfig("{}");
+            }
+            
             Long chartId = reportChartService.createChart(chartDTO);
-            return Result.success(chartId);
+            return Result.success("图表创建成功", chartId);
         } catch (Exception e) {
             return Result.error("创建图表失败：" + e.getMessage());
         }

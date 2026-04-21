@@ -29,6 +29,9 @@ public class ReportTemplateDTO {
     /** 模板结构（JSON格式存储） */
     private String templateStructure;
     
+    /** 章节结构（JSON格式存储） */
+    private String chapterStructure;
+    
     /** 模板内容（用于前端展示） */
     private String content;
     

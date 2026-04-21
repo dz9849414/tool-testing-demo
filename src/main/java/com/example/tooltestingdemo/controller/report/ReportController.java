@@ -11,9 +11,14 @@ import com.example.tooltestingdemo.service.report.IReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.File;
 import java.util.List;
 
 /**
@@ -32,8 +37,70 @@ public class ReportController {
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:create')")
     public Result<Long> createReport(@RequestBody ReportDTO reportDTO) {
         try {
+            // 参数校验
+            if (reportDTO.getName() == null || reportDTO.getName().trim().isEmpty()) {
+                return Result.error("报告名称不能为空");
+            }
+            if (reportDTO.getReportType() == null || reportDTO.getReportType().trim().isEmpty()) {
+                return Result.error("报告类型不能为空");
+            }
+            
+            // 处理content，确保是有效的JSON格式
+            if (reportDTO.getContent() != null && !reportDTO.getContent().trim().isEmpty()) {
+                String content = reportDTO.getContent().trim();
+                if (!content.startsWith("[") && !content.startsWith("{")) {
+                    // 如果是普通文本，转换为JSON对象格式
+                    reportDTO.setContent("{\"text\": \"" + content.replace("\"", "\\\"") + "\"}");
+                }
+            } else {
+                // 如果没有提供content，设置为空对象
+                reportDTO.setContent("{}");
+            }
+            
+            // 处理styleConfig，确保是有效的JSON格式
+            if (reportDTO.getStyleConfig() != null && !reportDTO.getStyleConfig().trim().isEmpty()) {
+                String styleConfig = reportDTO.getStyleConfig().trim();
+                if (!styleConfig.startsWith("[") && !styleConfig.startsWith("{")) {
+                    return Result.error("样式配置必须是有效的JSON格式");
+                }
+                
+                // 验证JSON格式
+                try {
+                    com.alibaba.fastjson2.JSON.parse(styleConfig);
+                } catch (Exception e) {
+                    return Result.error("样式配置JSON格式不正确");
+                }
+            } else {
+                // 如果没有提供styleConfig，设置为空对象
+                reportDTO.setStyleConfig("{}");
+            }
+            
+            // 处理dataSourceIds，确保是有效的JSON格式
+            if (reportDTO.getDataSourceIds() != null && !reportDTO.getDataSourceIds().trim().isEmpty()) {
+                String dataSourceIds = reportDTO.getDataSourceIds().trim();
+                if (!dataSourceIds.startsWith("[") && !dataSourceIds.startsWith("{")) {
+                    // 如果是逗号分隔的ID列表，转换为JSON数组格式
+                    reportDTO.setDataSourceIds("[" + dataSourceIds + "]");
+                }
+            } else {
+                // 如果没有提供dataSourceIds，设置为空数组
+                reportDTO.setDataSourceIds("[]");
+            }
+            
+            // 处理chartIds，确保是有效的JSON格式
+            if (reportDTO.getChartIds() != null && !reportDTO.getChartIds().trim().isEmpty()) {
+                String chartIds = reportDTO.getChartIds().trim();
+                if (!chartIds.startsWith("[") && !chartIds.startsWith("{")) {
+                    // 如果是逗号分隔的ID列表，转换为JSON数组格式
+                    reportDTO.setChartIds("[" + chartIds + "]");
+                }
+            } else {
+                // 如果没有提供chartIds，设置为空数组
+                reportDTO.setChartIds("[]");
+            }
+            
             Long reportId = reportService.createReport(reportDTO);
-            return Result.success(reportId);
+            return Result.success("报告创建成功", reportId);
         } catch (Exception e) {
             return Result.error("创建报告失败：" + e.getMessage());
         }
@@ -96,8 +163,30 @@ public class ReportController {
             @RequestParam String reportType,
             @RequestParam String dataSourceIds) {
         try {
-            Long reportId = reportService.autoGenerateReport(reportType, dataSourceIds);
-            return Result.success(reportId);
+            // 参数校验
+            if (reportType == null || reportType.trim().isEmpty()) {
+                return Result.error("报告类型不能为空");
+            }
+            if (dataSourceIds == null || dataSourceIds.trim().isEmpty()) {
+                return Result.error("数据源ID不能为空");
+            }
+            
+            // 处理dataSourceIds，确保是有效的JSON格式
+            String processedDataSourceIds = dataSourceIds.trim();
+            if (!processedDataSourceIds.startsWith("[") && !processedDataSourceIds.startsWith("{")) {
+                // 如果是逗号分隔的ID列表，转换为JSON数组格式
+                processedDataSourceIds = "[" + processedDataSourceIds + "]";
+            }
+            
+            // 验证JSON格式
+            try {
+                com.alibaba.fastjson2.JSON.parse(processedDataSourceIds);
+            } catch (Exception e) {
+                return Result.error("数据源ID格式不正确，请使用逗号分隔的ID列表或JSON数组格式");
+            }
+            
+            Long reportId = reportService.autoGenerateReport(reportType, processedDataSourceIds);
+            return Result.success("报告自动生成成功", reportId);
         } catch (Exception e) {
             return Result.error("自动生成报告失败：" + e.getMessage());
         }
@@ -118,15 +207,52 @@ public class ReportController {
     @GetMapping("/{id}/export")
     @Operation(summary = "导出报告")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:export')")
-    public Result<String> exportReport(
+    public ResponseEntity<Resource> exportReport(
             @PathVariable Long id,
             @RequestParam(defaultValue = "pdf") String format,
             @RequestParam(defaultValue = "all") String pageRange) {
         try {
-            String exportPath = reportService.exportReport(id, format, pageRange);
-            return exportPath != null ? Result.success(exportPath) : Result.error("报告不存在");
+            // 获取报告文件
+            File exportFile = reportService.exportReportFile(id, format, pageRange);
+            if (exportFile == null || !exportFile.exists()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            // 构建文件资源
+            Resource resource = new FileSystemResource(exportFile);
+            
+            // 设置响应头
+            String filename = "report_" + id + "_" + System.currentTimeMillis() + "." + format;
+            String contentType = getContentType(format);
+            
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                    .header(HttpHeaders.CONTENT_TYPE, contentType)
+                    .contentLength(exportFile.length())
+                    .body(resource);
+                    
         } catch (Exception e) {
-            return Result.error("导出报告失败：" + e.getMessage());
+            throw new RuntimeException("导出报告失败：" + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 根据文件格式获取Content-Type
+     */
+    private String getContentType(String format) {
+        switch (format.toLowerCase()) {
+            case "pdf":
+                return "application/pdf";
+            case "docx":
+                return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            case "xlsx":
+                return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            case "html":
+                return "text/html";
+            case "json":
+                return "application/json";
+            default:
+                return "application/octet-stream";
         }
     }
 

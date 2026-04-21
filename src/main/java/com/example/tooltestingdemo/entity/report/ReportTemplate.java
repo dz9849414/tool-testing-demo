@@ -33,6 +33,12 @@ public class ReportTemplate {
     /** 模板结构（JSON格式存储） */
     private String templateStructure;
     
+    /** 章节结构（JSON格式存储） */
+    private String chapterStructure;
+    
+    /** 模板内容（用于前端展示） */
+    private String content;
+    
     /** 模板样式配置 */
     private String styleConfig;
     
@@ -78,6 +84,5 @@ public class ReportTemplate {
     private LocalDateTime updateTime;
     
     /** 是否删除 */
-    @TableLogic
     private Integer isDeleted;
 }

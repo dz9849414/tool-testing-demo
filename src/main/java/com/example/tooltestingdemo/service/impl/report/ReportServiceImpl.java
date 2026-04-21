@@ -18,6 +18,16 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.FileOutputStream;
+
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
 
 /**
  * 报告服务实现类
@@ -69,7 +79,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         report.setIsDeleted(1);
         report.setUpdateTime(LocalDateTime.now());
         
-        return reportMapper.updateById(report) > 0;
+        return reportMapper.deleteById(report) > 0;
     }
 
     @Override
@@ -147,6 +157,268 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         
         // 构建导出文件路径
         return "/exports/reports/" + id + "." + format.toLowerCase();
+    }
+    
+    @Override
+    public File exportReportFile(Long id, String format, String pageRange) {
+        Report report = reportMapper.selectById(id);
+        if (report == null || report.getIsDeleted() == 1) {
+            return null;
+        }
+        
+        try {
+            // 创建导出目录
+            File exportDir = new File("exports/reports");
+            if (!exportDir.exists()) {
+                exportDir.mkdirs();
+            }
+            
+            // 生成文件名
+            String filename = "report_" + id + "_" + System.currentTimeMillis() + "." + format.toLowerCase();
+            File exportFile = new File(exportDir, filename);
+            
+            // 根据格式生成文件
+            switch (format.toLowerCase()) {
+                case "pdf":
+                    generatePdfReport(report, exportFile, pageRange);
+                    break;
+                case "docx":
+                    generateWordReport(report, exportFile, pageRange);
+                    break;
+                case "xlsx":
+                    generateExcelReport(report, exportFile, pageRange);
+                    break;
+                case "html":
+                    generateHtmlReport(report, exportFile, pageRange);
+                    break;
+                case "json":
+                    generateJsonReport(report, exportFile, pageRange);
+                    break;
+                default:
+                    throw new IllegalArgumentException("不支持的导出格式：" + format);
+            }
+            
+            // 更新导出统计
+            report.setExportCount(report.getExportCount() + 1);
+            report.setLastExportTime(LocalDateTime.now());
+            reportMapper.updateById(report);
+            
+            return exportFile;
+            
+        } catch (Exception e) {
+            throw new RuntimeException("导出报告文件失败：" + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 生成PDF报告
+     */
+    private void generatePdfReport(Report report, File exportFile, String pageRange) throws Exception {
+        // 使用Apache PDFBox生成真正的PDF文件
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage(PDRectangle.A4);
+            document.addPage(page);
+            
+            PDPageContentStream contentStream = new PDPageContentStream(document, page);
+            
+            // 设置字体
+            PDFont font = PDType1Font.HELVETICA_BOLD;
+            PDFont normalFont = PDType1Font.HELVETICA;
+            
+            // 设置起始位置
+            float startY = page.getMediaBox().getHeight() - 50;
+            float currentY = startY;
+            float margin = 50;
+            float lineHeight = 15;
+            
+            // 添加标题
+            contentStream.beginText();
+            contentStream.setFont(font, 20);
+            contentStream.newLineAtOffset(margin, currentY);
+            contentStream.showText(report.getName());
+            contentStream.endText();
+            currentY -= lineHeight * 2;
+            
+            // 添加生成时间
+            contentStream.beginText();
+            contentStream.setFont(normalFont, 12);
+            contentStream.newLineAtOffset(margin, currentY);
+            contentStream.showText("生成时间：" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            contentStream.endText();
+            currentY -= lineHeight * 1.5;
+            
+            // 添加分隔线
+            contentStream.moveTo(margin, currentY);
+            contentStream.lineTo(page.getMediaBox().getWidth() - margin, currentY);
+            contentStream.stroke();
+            currentY -= lineHeight;
+            
+            // 添加报告描述
+            if (report.getDescription() != null && !report.getDescription().trim().isEmpty()) {
+                contentStream.beginText();
+                contentStream.setFont(normalFont, 12);
+                contentStream.newLineAtOffset(margin, currentY);
+                contentStream.showText("报告描述：" + report.getDescription());
+                contentStream.endText();
+                currentY -= lineHeight * 1.5;
+            }
+            
+            // 添加报告内容
+            String content = buildReportContent(report, pageRange);
+            if (content != null && !content.trim().isEmpty()) {
+                contentStream.beginText();
+                contentStream.setFont(font, 14);
+                contentStream.newLineAtOffset(margin, currentY);
+                contentStream.showText("报告内容：");
+                contentStream.endText();
+                currentY -= lineHeight;
+                
+                // 处理内容，确保适合PDF显示
+                String formattedContent = content.replace("\n", "\n\n");
+                
+                // 简单的文本换行处理
+                String[] lines = formattedContent.split("\n");
+                for (String line : lines) {
+                    if (currentY < 50) {
+                        // 如果页面空间不足，创建新页面
+                        contentStream.close();
+                        page = new PDPage(PDRectangle.A4);
+                        document.addPage(page);
+                        contentStream = new PDPageContentStream(document, page);
+                        currentY = page.getMediaBox().getHeight() - 50;
+                    }
+                    
+                    contentStream.beginText();
+                    contentStream.setFont(normalFont, 11);
+                    contentStream.newLineAtOffset(margin, currentY);
+                    contentStream.showText(line);
+                    contentStream.endText();
+                    currentY -= lineHeight;
+                }
+            } else {
+                contentStream.beginText();
+                contentStream.setFont(normalFont, 12);
+                contentStream.setNonStrokingColor(128, 128, 128); // 灰色
+                contentStream.newLineAtOffset(margin, currentY);
+                contentStream.showText("报告内容为空");
+                contentStream.endText();
+                currentY -= lineHeight;
+            }
+            
+            // 添加页脚
+            if (currentY < 100) {
+                contentStream.close();
+                page = new PDPage(PDRectangle.A4);
+                document.addPage(page);
+                contentStream = new PDPageContentStream(document, page);
+                currentY = page.getMediaBox().getHeight() - 50;
+            }
+            
+            contentStream.moveTo(margin, currentY);
+            contentStream.lineTo(page.getMediaBox().getWidth() - margin, currentY);
+            contentStream.stroke();
+            currentY -= lineHeight;
+            
+            contentStream.beginText();
+            contentStream.setFont(normalFont, 10);
+            contentStream.newLineAtOffset(margin, currentY);
+            contentStream.showText("报告ID：" + report.getId() + " | 生成系统：工具测试平台");
+            contentStream.endText();
+            
+            contentStream.close();
+            
+            // 保存文档
+            document.save(exportFile);
+        }
+    }
+    
+    /**
+     * 生成Word报告
+     */
+    private void generateWordReport(Report report, File exportFile, String pageRange) throws Exception {
+        String content = buildReportContent(report, pageRange);
+        
+        // 这里应该使用Word生成库，这里用简单的文本文件模拟
+        try (FileWriter writer = new FileWriter(exportFile)) {
+            writer.write("Word Report - " + report.getName() + "\n\n");
+            writer.write("生成时间：" + LocalDateTime.now() + "\n\n");
+            writer.write("报告内容：\n");
+            writer.write(content);
+        }
+    }
+    
+    /**
+     * 生成Excel报告
+     */
+    private void generateExcelReport(Report report, File exportFile, String pageRange) throws Exception {
+        String content = buildReportContent(report, pageRange);
+        
+        // 这里应该使用Excel生成库，这里用简单的文本文件模拟
+        try (FileWriter writer = new FileWriter(exportFile)) {
+            writer.write("Excel Report - " + report.getName() + "\n\n");
+            writer.write("生成时间：" + LocalDateTime.now() + "\n\n");
+            writer.write("报告内容：\n");
+            writer.write(content);
+        }
+    }
+    
+    /**
+     * 生成HTML报告
+     */
+    private void generateHtmlReport(Report report, File exportFile, String pageRange) throws Exception {
+        String content = buildReportContent(report, pageRange);
+        
+        try (FileWriter writer = new FileWriter(exportFile)) {
+            writer.write("<!DOCTYPE html>\n");
+            writer.write("<html>\n");
+            writer.write("<head>\n");
+            writer.write("<meta charset=\"UTF-8\">\n");
+            writer.write("<title>" + report.getName() + "</title>\n");
+            writer.write("<style>\n");
+            writer.write("body { font-family: Arial, sans-serif; margin: 20px; }\n");
+            writer.write("h1 { color: #333; }\n");
+            writer.write("p { line-height: 1.6; }\n");
+            writer.write("</style>\n");
+            writer.write("</head>\n");
+            writer.write("<body>\n");
+            writer.write("<h1>" + report.getName() + "</h1>\n");
+            writer.write("<p><strong>生成时间：</strong>" + LocalDateTime.now() + "</p>\n");
+            writer.write("<div>" + content.replace("\n", "<br>") + "</div>\n");
+            writer.write("</body>\n");
+            writer.write("</html>\n");
+        }
+    }
+    
+    /**
+     * 生成JSON报告
+     */
+    private void generateJsonReport(Report report, File exportFile, String pageRange) throws Exception {
+        String content = buildReportContent(report, pageRange);
+        
+        try (FileWriter writer = new FileWriter(exportFile)) {
+            writer.write("{\n");
+            writer.write("  \"reportId\": " + report.getId() + ",\n");
+            writer.write("  \"name\": \"" + report.getName() + "\",\n");
+            writer.write("  \"description\": \"" + report.getDescription() + "\",\n");
+            writer.write("  \"generateTime\": \"" + LocalDateTime.now() + "\",\n");
+            writer.write("  \"content\": \"" + content.replace("\"", "\\\"") + "\"\n");
+            writer.write("}\n");
+        }
+    }
+    
+    /**
+     * 构建报告内容
+     */
+    private String buildReportContent(Report report, String pageRange) {
+        // 根据页面范围过滤内容
+        String content = report.getContent();
+        if (content == null) {
+            return "报告内容为空";
+        }
+        
+        // 这里可以实现更复杂的内容过滤逻辑
+        // 目前简单返回所有内容
+        return content;
     }
 
     @Override

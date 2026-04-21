@@ -28,22 +28,55 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     private final IReportTemplateService reportTemplateService;
 
     @Override
-    public ReportDTO getTemplateUsageReport(String timeRange, String startDate, String endDate, String templateType) {
-        log.info("获取模板使用频率报告，时间范围：{}，模板类型：{}", timeRange, templateType);
+    public ReportDTO getTemplateUsageReport(String timeRange, String startDate, String endDate, String templateType, String dataSource) {
+        log.info("获取模板使用频率报告，时间范围：{}，模板类型：{}，数据源：{}", timeRange, templateType, dataSource);
         
         // 计算时间范围
         LocalDate[] dateRange = calculateDateRange(timeRange, startDate, endDate);
         
-        // 从数据库获取实际统计数据
-        List<Map<String, Object>> usageStats = templateStatisticsMapper.getTemplateUsageStats(
-            dateRange[0].atStartOfDay(), dateRange[1].atTime(23, 59, 59));
+        // 根据数据源选择不同的统计方法
+        List<Map<String, Object>> usageStats;
+        switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
+            case "BATCH":
+                usageStats = templateStatisticsMapper.getBatchJobStats(
+                    dateRange[0].atStartOfDay(), dateRange[1].atTime(23, 59, 59));
+                break;
+            case "UNIFIED":
+                usageStats = templateStatisticsMapper.getUnifiedExecutionStats(
+                    dateRange[0].atStartOfDay(), dateRange[1].atTime(23, 59, 59));
+                break;
+            case "JOB_LOG":
+            default:
+                usageStats = templateStatisticsMapper.getTemplateUsageStats(
+                    dateRange[0].atStartOfDay(), dateRange[1].atTime(23, 59, 59));
+                break;
+        }
         
         ReportDTO report = new ReportDTO();
         report.setId(System.currentTimeMillis());
-        report.setName("模板使用频率报告 - " + getTimeRangeDisplay(timeRange));
-        report.setDescription("基于模板任务执行日志生成的统计报告");
+        
+        // 根据数据源设置不同的报告名称和描述
+        String dataSourceDisplay = getDataSourceDisplayName(dataSource);
+        report.setName("模板使用频率报告 - " + dataSourceDisplay + " - " + getTimeRangeDisplay(timeRange));
+        report.setDescription("基于" + dataSourceDisplay + "生成的模板使用统计报告");
         report.setReportType("TEMPLATE_USAGE_STATISTICS");
-        report.setContent(convertToJson(buildUsageReportData(usageStats, dateRange)));
+        
+        // 根据数据源选择不同的数据处理方法
+        Map<String, Object> reportData;
+        switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
+            case "BATCH":
+                reportData = buildBatchUsageReportData(usageStats, dateRange);
+                break;
+            case "UNIFIED":
+                reportData = buildUnifiedUsageReportData(usageStats, dateRange);
+                break;
+            case "JOB_LOG":
+            default:
+                reportData = buildJobLogUsageReportData(usageStats, dateRange);
+                break;
+        }
+        
+        report.setContent(convertToJson(reportData));
         report.setGenerateType("MANUAL");
         report.setStatus("PUBLISHED");
         report.setCreateTime(LocalDateTime.now());
@@ -53,8 +86,8 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     }
 
     @Override
-    public ReportDTO getTemplateEfficiencyReport(String startDate, String endDate, String templateId) {
-        log.info("获取模板执行效率报告，时间范围：{} 至 {}，模板ID：{}", startDate, endDate, templateId);
+    public ReportDTO getTemplateEfficiencyReport(String startDate, String endDate, String templateId, String dataSource) {
+        log.info("获取模板执行效率报告，时间范围：{} 至 {}，模板ID：{}，数据源：{}", startDate, endDate, templateId, dataSource);
         
         // 处理时间参数为空的情况
         LocalDateTime startTime;
@@ -74,16 +107,29 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
             endTime = LocalDate.parse(endDate).atTime(23, 59, 59);
         }
         
-        // 从数据库获取实际效率统计数据
+        // 根据数据源选择不同的统计方法
         List<Map<String, Object>> efficiencyStats;
-        
-        if (templateId != null && !templateId.trim().isEmpty()) {
-            // 如果指定了模板ID，只统计该模板的效率数据
-            efficiencyStats = templateStatisticsMapper.getTemplateEfficiencyStatsByTemplateId(
-                startTime, endTime, Long.valueOf(templateId));
-        } else {
-            // 如果没有指定模板ID，统计所有模板的效率数据
-            efficiencyStats = templateStatisticsMapper.getTemplateEfficiencyStats(startTime, endTime);
+        switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
+            case "BATCH":
+                efficiencyStats = templateStatisticsMapper.getBatchJobStats(startTime, endTime);
+                break;
+            case "UNIFIED":
+                if (templateId != null && !templateId.trim().isEmpty()) {
+                    efficiencyStats = templateStatisticsMapper.getUnifiedExecutionStatsByTemplateId(
+                        startTime, endTime, Long.valueOf(templateId));
+                } else {
+                    efficiencyStats = templateStatisticsMapper.getUnifiedExecutionStats(startTime, endTime);
+                }
+                break;
+            case "JOB_LOG":
+            default:
+                if (templateId != null && !templateId.trim().isEmpty()) {
+                    efficiencyStats = templateStatisticsMapper.getTemplateEfficiencyStatsByTemplateId(
+                        startTime, endTime, Long.valueOf(templateId));
+                } else {
+                    efficiencyStats = templateStatisticsMapper.getTemplateEfficiencyStats(startTime, endTime);
+                }
+                break;
         }
         
         // 构建报告数据
@@ -360,6 +406,110 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
         return data;
     }
 
+    private Map<String, Object> buildBatchUsageReportData(List<Map<String, Object>> usageStats, LocalDate[] dateRange) {
+        // 构建批处理作业的统计报告数据
+        Map<String, Object> reportData = new HashMap<>();
+        
+        int totalBatchJobs = 0;
+        int totalBatchSuccess = 0;
+        
+        List<Map<String, Object>> batchStats = new ArrayList<>();
+        
+        for (Map<String, Object> stat : usageStats) {
+            String date = safeGetString(stat, "date");
+            BigDecimal batchCount = safeGetBigDecimal(stat, "batch_count");
+            BigDecimal successCount = safeGetBigDecimal(stat, "success_count");
+            BigDecimal successRate = safeGetBigDecimal(stat, "success_rate");
+            
+            Map<String, Object> batchStat = new HashMap<>();
+            batchStat.put("date", date);
+            batchStat.put("batchCount", batchCount != null ? batchCount.longValue() : 0);
+            batchStat.put("successCount", successCount != null ? successCount.longValue() : 0);
+            batchStat.put("failureCount", batchCount != null && successCount != null ? 
+                batchCount.subtract(successCount).longValue() : 0);
+            batchStat.put("successRate", successRate != null ? successRate.doubleValue() : 0);
+            
+            batchStats.add(batchStat);
+            totalBatchJobs += batchCount != null ? batchCount.longValue() : 0;
+            totalBatchSuccess += successCount != null ? successCount.longValue() : 0;
+        }
+        
+        reportData.put("batchStats", batchStats);
+        reportData.put("totalBatchJobs", totalBatchJobs);
+        reportData.put("totalBatchSuccess", totalBatchSuccess);
+        reportData.put("avgBatchSuccessRate", totalBatchJobs > 0 ? (double) totalBatchSuccess / totalBatchJobs * 100 : 0);
+        reportData.put("startTime", dateRange[0].format(DateTimeFormatter.ISO_DATE));
+        reportData.put("endTime", dateRange[1].format(DateTimeFormatter.ISO_DATE));
+        reportData.put("generateTime", LocalDate.now().format(DateTimeFormatter.ISO_DATE));
+        
+        return reportData;
+    }
+
+    private Map<String, Object> buildUnifiedUsageReportData(List<Map<String, Object>> usageStats, LocalDate[] dateRange) {
+        // 构建统一执行平台的统计报告数据
+        Map<String, Object> reportData = new HashMap<>();
+        
+        int totalExecutions = 0;
+        int totalExecutionSuccess = 0;
+        long totalExecutionDuration = 0;
+        
+        List<Map<String, Object>> executionStats = new ArrayList<>();
+        
+        for (Map<String, Object> stat : usageStats) {
+            String executeType = safeGetString(stat, "execute_type");
+            BigDecimal totalCount = safeGetBigDecimal(stat, "total_count");
+            BigDecimal successCount = safeGetBigDecimal(stat, "success_count");
+            BigDecimal avgDuration = safeGetBigDecimal(stat, "avg_duration");
+            
+            Map<String, Object> executionStat = new HashMap<>();
+            executionStat.put("executeType", executeType);
+            executionStat.put("executeTypeName", "MANUAL".equals(executeType) ? "手动执行" : "定时任务");
+            executionStat.put("totalCount", totalCount != null ? totalCount.longValue() : 0);
+            executionStat.put("successCount", successCount != null ? successCount.longValue() : 0);
+            executionStat.put("failureCount", totalCount != null && successCount != null ? 
+                totalCount.subtract(successCount).longValue() : 0);
+            executionStat.put("successRate", calculateSuccessRate(totalCount, successCount));
+            executionStat.put("avgExecuteTime", avgDuration != null ? avgDuration.longValue() : 0);
+            
+            executionStats.add(executionStat);
+            totalExecutions += totalCount != null ? totalCount.longValue() : 0;
+            totalExecutionSuccess += successCount != null ? successCount.longValue() : 0;
+            totalExecutionDuration += avgDuration != null ? avgDuration.doubleValue() * (totalCount != null ? totalCount.longValue() : 0) : 0;
+        }
+        
+        reportData.put("executionStats", executionStats);
+        reportData.put("totalExecutions", totalExecutions);
+        reportData.put("totalExecutionSuccess", totalExecutionSuccess);
+        reportData.put("avgExecutionSuccessRate", totalExecutions > 0 ? (double) totalExecutionSuccess / totalExecutions * 100 : 0);
+        reportData.put("avgExecutionTime", totalExecutions > 0 ? totalExecutionDuration / totalExecutions : 0);
+        reportData.put("startTime", dateRange[0].format(DateTimeFormatter.ISO_DATE));
+        reportData.put("endTime", dateRange[1].format(DateTimeFormatter.ISO_DATE));
+        reportData.put("generateTime", LocalDate.now().format(DateTimeFormatter.ISO_DATE));
+        
+        return reportData;
+    }
+
+    private Map<String, Object> buildJobLogUsageReportData(List<Map<String, Object>> usageStats, LocalDate[] dateRange) {
+        // 构建作业日志的统计报告数据
+        return buildUsageReportData(usageStats, dateRange);
+    }
+
+    private String getDataSourceDisplayName(String dataSource) {
+        if (dataSource == null) {
+            return "作业日志";
+        }
+        
+        switch (dataSource.toUpperCase()) {
+            case "BATCH":
+                return "批处理作业";
+            case "UNIFIED":
+                return "统一执行平台";
+            case "JOB_LOG":
+            default:
+                return "作业日志";
+        }
+    }
+
     private Map<String, Object> generateEfficiencyBarChart(String startDate, String endDate) {
         Map<String, Object> data = new HashMap<>();
         data.put("labels", Arrays.asList("平均执行时间", "最大执行时间", "最小执行时间"));
@@ -515,5 +665,701 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
         }
         
         return result;
+    }
+
+    // ====================== 安全数据获取工具方法 ======================
+
+    /**
+     * 安全获取字符串值
+     */
+    private String safeGetString(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        return value != null ? value.toString() : null;
+    }
+
+    /**
+     * 安全获取BigDecimal值
+     */
+    private BigDecimal safeGetBigDecimal(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value == null) return null;
+        if (value instanceof BigDecimal) return (BigDecimal) value;
+        if (value instanceof Number) return BigDecimal.valueOf(((Number) value).doubleValue());
+        try {
+            return new BigDecimal(value.toString());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * 计算成功率
+     */
+    private double calculateSuccessRate(BigDecimal totalCount, BigDecimal successCount) {
+        if (totalCount == null || successCount == null || totalCount.compareTo(BigDecimal.ZERO) <= 0) {
+            return 0;
+        }
+        return successCount.divide(totalCount, 4, BigDecimal.ROUND_HALF_UP)
+                          .multiply(new BigDecimal("100"))
+                          .doubleValue();
+    }
+
+    // ====================== 每2小时响应时间统计方法 ======================
+
+    @Override
+    public ReportDTO getHourlyResponseTimeReport(String startDate, String endDate, String dataSource) {
+        try {
+            // 参数验证
+            if (startDate == null || endDate == null) {
+                throw new IllegalArgumentException("开始日期和结束日期不能为空");
+            }
+            
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+            
+            if (start.isAfter(end)) {
+                throw new IllegalArgumentException("开始日期不能晚于结束日期");
+            }
+            
+            LocalDateTime startTime = start.atStartOfDay();
+            LocalDateTime endTime = end.atTime(23, 59, 59);
+            
+            // 根据数据源获取统计信息
+            List<Map<String, Object>> hourlyStats;
+            switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
+                case "BATCH":
+                    hourlyStats = templateStatisticsMapper.getBatchHourlyResponseTimeStats(startTime, endTime);
+                    break;
+                case "UNIFIED":
+                    hourlyStats = templateStatisticsMapper.getUnifiedHourlyResponseTimeStats(startTime, endTime);
+                    break;
+                case "JOB_LOG":
+                default:
+                    hourlyStats = templateStatisticsMapper.getHourlyResponseTimeStats(startTime, endTime);
+                    break;
+            }
+            
+            // 构建报告数据
+            Map<String, Object> reportData = buildHourlyResponseTimeData(hourlyStats, dataSource, start, end);
+            
+            // 构建报告DTO
+            ReportDTO report = new ReportDTO();
+            report.setId(System.currentTimeMillis());
+            report.setName("每2小时平均响应时间报告 - " + getDataSourceDisplayName(dataSource) + " - " + startDate + " 至 " + endDate);
+            report.setDescription("基于" + getDataSourceDisplayName(dataSource) + "生成的每2小时平均响应时间统计报告");
+            report.setContent(convertToJson(reportData));
+            report.setCreateTime(LocalDateTime.now());
+            
+            return report;
+        } catch (Exception e) {
+            log.error("获取每2小时平均响应时间报告失败", e);
+            throw new RuntimeException("获取每2小时平均响应时间报告失败：" + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 构建每2小时响应时间数据
+     */
+    private Map<String, Object> buildHourlyResponseTimeData(List<Map<String, Object>> hourlyStats, String dataSource, LocalDate startDate, LocalDate endDate) {
+        Map<String, Object> reportData = new HashMap<>();
+        
+        List<Map<String, Object>> timeSlots = new ArrayList<>();
+        double totalAvgDuration = 0;
+        double maxDuration = 0;
+        double minDuration = Double.MAX_VALUE;
+        int totalExecutions = 0;
+        
+        for (Map<String, Object> stat : hourlyStats) {
+            String timeSlot = safeGetString(stat, "time_slot");
+            BigDecimal executionCount = safeGetBigDecimal(stat, "execution_count");
+            BigDecimal avgDuration = safeGetBigDecimal(stat, "avg_duration");
+            BigDecimal maxDurationStat = safeGetBigDecimal(stat, "max_duration");
+            BigDecimal minDurationStat = safeGetBigDecimal(stat, "min_duration");
+            
+            Map<String, Object> timeSlotData = new HashMap<>();
+            timeSlotData.put("timeSlot", timeSlot);
+            timeSlotData.put("hourGroup", safeGetString(stat, "hour_group"));
+            timeSlotData.put("executionCount", executionCount != null ? executionCount.longValue() : 0);
+            timeSlotData.put("avgDuration", avgDuration != null ? avgDuration.doubleValue() : 0);
+            timeSlotData.put("maxDuration", maxDurationStat != null ? maxDurationStat.doubleValue() : 0);
+            timeSlotData.put("minDuration", minDurationStat != null ? minDurationStat.doubleValue() : 0);
+            
+            // 对于UNIFIED数据源，添加执行类型信息
+            if ("UNIFIED".equalsIgnoreCase(dataSource)) {
+                String executeType = safeGetString(stat, "execute_type");
+                timeSlotData.put("executeType", executeType);
+                timeSlotData.put("executeTypeName", "MANUAL".equals(executeType) ? "手动执行" : "定时任务");
+            }
+            
+            timeSlots.add(timeSlotData);
+            
+            // 统计总体信息
+            if (avgDuration != null) {
+                totalAvgDuration += avgDuration.doubleValue() * (executionCount != null ? executionCount.longValue() : 0);
+                maxDuration = Math.max(maxDuration, maxDurationStat != null ? maxDurationStat.doubleValue() : 0);
+                minDuration = Math.min(minDuration, minDurationStat != null ? minDurationStat.doubleValue() : Double.MAX_VALUE);
+                totalExecutions += executionCount != null ? executionCount.longValue() : 0;
+            }
+        }
+        
+        reportData.put("timeSlots", timeSlots);
+        reportData.put("totalExecutions", totalExecutions);
+        reportData.put("overallAvgDuration", totalExecutions > 0 ? totalAvgDuration / totalExecutions : 0);
+        reportData.put("maxDuration", maxDuration);
+        reportData.put("minDuration", minDuration == Double.MAX_VALUE ? 0 : minDuration);
+        reportData.put("dataSource", dataSource);
+        reportData.put("dataSourceName", getDataSourceDisplayName(dataSource));
+        reportData.put("startDate", startDate.format(DateTimeFormatter.ISO_DATE));
+        reportData.put("endDate", endDate.format(DateTimeFormatter.ISO_DATE));
+        reportData.put("generateTime", LocalDate.now().format(DateTimeFormatter.ISO_DATE));
+        
+        return reportData;
+    }
+
+    // ====================== 周一到周日执行量统计方法 ======================
+
+    @Override
+    public ReportDTO getWeeklyExecutionReport(String startDate, String endDate, String dataSource) {
+        try {
+            // 参数验证
+            if (startDate == null || endDate == null) {
+                throw new IllegalArgumentException("开始日期和结束日期不能为空");
+            }
+            
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+            
+            if (start.isAfter(end)) {
+                throw new IllegalArgumentException("开始日期不能晚于结束日期");
+            }
+            
+            LocalDateTime startTime = start.atStartOfDay();
+            LocalDateTime endTime = end.atTime(23, 59, 59);
+            
+            // 根据数据源获取统计信息
+            List<Map<String, Object>> weeklyStats;
+            switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
+                case "UNIFIED":
+                    weeklyStats = templateStatisticsMapper.getUnifiedWeeklyExecutionStats(startTime, endTime);
+                    break;
+                case "JOB_LOG":
+                default:
+                    weeklyStats = templateStatisticsMapper.getWeeklyExecutionStats(startTime, endTime);
+                    break;
+            }
+            
+            // 构建报告数据
+            Map<String, Object> reportData = buildWeeklyExecutionData(weeklyStats, dataSource, start, end);
+            
+            // 构建报告DTO
+            ReportDTO report = new ReportDTO();
+            report.setId(System.currentTimeMillis());
+            report.setName("周一到周日执行量统计报告 - " + getDataSourceDisplayName(dataSource) + " - " + startDate + " 至 " + endDate);
+            report.setDescription("基于" + getDataSourceDisplayName(dataSource) + "生成的周一到周日执行量统计报告");
+            report.setContent(convertToJson(reportData));
+            report.setCreateTime(LocalDateTime.now());
+            
+            return report;
+        } catch (Exception e) {
+            log.error("获取周一到周日执行量统计报告失败", e);
+            throw new RuntimeException("获取周一到周日执行量统计报告失败：" + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 构建周一到周日执行量统计数据
+     */
+    private Map<String, Object> buildWeeklyExecutionData(List<Map<String, Object>> weeklyStats, String dataSource, LocalDate startDate, LocalDate endDate) {
+        Map<String, Object> reportData = new HashMap<>();
+        
+        // 初始化周一到周日的数据结构
+        Map<String, Object> weekDays = new LinkedHashMap<>();
+        weekDays.put("Monday", createDayData("Monday", "星期一", 2));
+        weekDays.put("Tuesday", createDayData("Tuesday", "星期二", 3));
+        weekDays.put("Wednesday", createDayData("Wednesday", "星期三", 4));
+        weekDays.put("Thursday", createDayData("Thursday", "星期四", 5));
+        weekDays.put("Friday", createDayData("Friday", "星期五", 6));
+        weekDays.put("Saturday", createDayData("Saturday", "星期六", 7));
+        weekDays.put("Sunday", createDayData("Sunday", "星期日", 1));
+        
+        int totalExecutions = 0;
+        
+        // 填充实际统计数据
+        for (Map<String, Object> stat : weeklyStats) {
+            String dayName = safeGetString(stat, "day_name");
+            BigDecimal executionCount = safeGetBigDecimal(stat, "execution_count");
+            
+            if (dayName != null && weekDays.containsKey(dayName)) {
+                Map<String, Object> dayData = (Map<String, Object>) weekDays.get(dayName);
+                dayData.put("executionCount", executionCount != null ? executionCount.longValue() : 0);
+                
+                // 对于UNIFIED数据源，添加执行类型信息
+                if ("UNIFIED".equalsIgnoreCase(dataSource)) {
+                    String executeType = safeGetString(stat, "execute_type");
+                    dayData.put("executeType", executeType);
+                    dayData.put("executeTypeName", "MANUAL".equals(executeType) ? "手动执行" : "定时任务");
+                }
+                
+                totalExecutions += executionCount != null ? executionCount.longValue() : 0;
+            }
+        }
+        
+        // 转换为按星期顺序排列的列表
+        List<Map<String, Object>> weekData = new ArrayList<>();
+        weekData.add((Map<String, Object>) weekDays.get("Monday"));
+        weekData.add((Map<String, Object>) weekDays.get("Tuesday"));
+        weekData.add((Map<String, Object>) weekDays.get("Wednesday"));
+        weekData.add((Map<String, Object>) weekDays.get("Thursday"));
+        weekData.add((Map<String, Object>) weekDays.get("Friday"));
+        weekData.add((Map<String, Object>) weekDays.get("Saturday"));
+        weekData.add((Map<String, Object>) weekDays.get("Sunday"));
+        
+        reportData.put("weekData", weekData);
+        reportData.put("totalExecutions", totalExecutions);
+        reportData.put("avgDailyExecutions", totalExecutions / 7.0);
+        reportData.put("dataSource", dataSource);
+        reportData.put("dataSourceName", getDataSourceDisplayName(dataSource));
+        reportData.put("startDate", startDate.format(DateTimeFormatter.ISO_DATE));
+        reportData.put("endDate", endDate.format(DateTimeFormatter.ISO_DATE));
+        reportData.put("generateTime", LocalDate.now().format(DateTimeFormatter.ISO_DATE));
+        
+        return reportData;
+    }
+
+    /**
+     * 创建每日数据模板
+     */
+    private Map<String, Object> createDayData(String dayName, String dayNameCn, int dayOfWeek) {
+        Map<String, Object> dayData = new HashMap<>();
+        dayData.put("dayName", dayName);
+        dayData.put("dayNameCn", dayNameCn);
+        dayData.put("dayOfWeek", dayOfWeek);
+        dayData.put("executionCount", 0);
+        return dayData;
+    }
+
+    // ====================== 成功率分析方法 ======================
+
+    @Override
+    public ReportDTO getSuccessRateReport(String startDate, String endDate, String dataSource) {
+        try {
+            // 参数验证
+            if (startDate == null || endDate == null) {
+                throw new IllegalArgumentException("开始日期和结束日期不能为空");
+            }
+            
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+            
+            if (start.isAfter(end)) {
+                throw new IllegalArgumentException("开始日期不能晚于结束日期");
+            }
+            
+            LocalDateTime startTime = start.atStartOfDay();
+            LocalDateTime endTime = end.atTime(23, 59, 59);
+            
+            // 根据数据源获取统计信息
+            Map<String, Object> successRateStats;
+            switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
+                case "BATCH":
+                    successRateStats = templateStatisticsMapper.getBatchSuccessRateStats(startTime, endTime);
+                    break;
+                case "UNIFIED":
+                    successRateStats = templateStatisticsMapper.getUnifiedSuccessRateStats(startTime, endTime);
+                    break;
+                case "JOB_LOG":
+                default:
+                    successRateStats = templateStatisticsMapper.getSuccessRateStats(startTime, endTime);
+                    break;
+            }
+            
+            // 构建报告数据
+            Map<String, Object> reportData = buildSuccessRateData(successRateStats, dataSource, start, end);
+            
+            // 构建报告DTO
+            ReportDTO report = new ReportDTO();
+            report.setId(System.currentTimeMillis());
+            report.setName("成功率分析报告 - " + getDataSourceDisplayName(dataSource) + " - " + startDate + " 至 " + endDate);
+            report.setDescription("基于" + getDataSourceDisplayName(dataSource) + "生成的成功失败占比分析报告");
+            report.setContent(convertToJson(reportData));
+            report.setCreateTime(LocalDateTime.now());
+            
+            return report;
+        } catch (Exception e) {
+            log.error("获取成功率分析报告失败", e);
+            throw new RuntimeException("获取成功率分析报告失败：" + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 构建成功率分析数据
+     */
+    private Map<String, Object> buildSuccessRateData(Map<String, Object> successRateStats, String dataSource, LocalDate startDate, LocalDate endDate) {
+        Map<String, Object> reportData = new HashMap<>();
+        
+        // 获取统计数据
+        BigDecimal totalCount = safeGetBigDecimal(successRateStats, "total_count");
+        BigDecimal successCount = safeGetBigDecimal(successRateStats, "success_count");
+        BigDecimal failureCount = safeGetBigDecimal(successRateStats, "failure_count");
+        BigDecimal successRate = safeGetBigDecimal(successRateStats, "success_rate");
+        
+        long total = totalCount != null ? totalCount.longValue() : 0;
+        long success = successCount != null ? successCount.longValue() : 0;
+        long failure = failureCount != null ? failureCount.longValue() : 0;
+        double rate = successRate != null ? successRate.doubleValue() : 0;
+        
+        // 构建成功率占比数据（用于饼图）
+        List<Map<String, Object>> rateData = new ArrayList<>();
+        
+        Map<String, Object> successData = new HashMap<>();
+        successData.put("name", "成功");
+        successData.put("value", success);
+        successData.put("percentage", total > 0 ? (double) success / total * 100 : 0);
+        successData.put("color", "#52c41a"); // 绿色
+        rateData.add(successData);
+        
+        Map<String, Object> failureData = new HashMap<>();
+        failureData.put("name", "失败");
+        failureData.put("value", failure);
+        failureData.put("percentage", total > 0 ? (double) failure / total * 100 : 0);
+        failureData.put("color", "#ff4d4f"); // 红色
+        rateData.add(failureData);
+        
+        // 构建统计摘要
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("totalCount", total);
+        summary.put("successCount", success);
+        summary.put("failureCount", failure);
+        summary.put("successRate", rate);
+        summary.put("failureRate", total > 0 ? 100 - rate : 0);
+        
+        reportData.put("rateData", rateData);
+        reportData.put("summary", summary);
+        reportData.put("dataSource", dataSource);
+        reportData.put("dataSourceName", getDataSourceDisplayName(dataSource));
+        reportData.put("startDate", startDate.format(DateTimeFormatter.ISO_DATE));
+        reportData.put("endDate", endDate.format(DateTimeFormatter.ISO_DATE));
+        reportData.put("generateTime", LocalDate.now().format(DateTimeFormatter.ISO_DATE));
+        
+        return reportData;
+    }
+
+    // ====================== 协议类型分布统计方法 ======================
+
+    @Override
+    public ReportDTO getProtocolDistributionReport(String startDate, String endDate, String reportType) {
+        try {
+            // 参数验证
+            if (startDate == null || endDate == null) {
+                throw new IllegalArgumentException("开始日期和结束日期不能为空");
+            }
+            
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+            
+            if (start.isAfter(end)) {
+                throw new IllegalArgumentException("开始日期不能晚于结束日期");
+            }
+            
+            LocalDateTime startTime = start.atStartOfDay();
+            LocalDateTime endTime = end.atTime(23, 59, 59);
+            
+            // 根据报告类型获取统计信息
+            Map<String, Object> reportData;
+            switch (reportType != null ? reportType.toUpperCase() : "CATEGORY") {
+                case "DETAIL":
+                    List<Map<String, Object>> detailStats = templateStatisticsMapper.getProtocolDetailStats(startTime, endTime);
+                    reportData = buildProtocolDetailData(detailStats, start, end);
+                    break;
+                case "TEST_TYPE":
+                    List<Map<String, Object>> testTypeStats = templateStatisticsMapper.getProtocolTestTypeStats(startTime, endTime);
+                    reportData = buildProtocolTestTypeData(testTypeStats, start, end);
+                    break;
+                case "CATEGORY":
+                default:
+                    List<Map<String, Object>> categoryStats = templateStatisticsMapper.getProtocolCategoryStats(startTime, endTime);
+                    reportData = buildProtocolCategoryData(categoryStats, start, end);
+                    break;
+            }
+            
+            // 构建报告DTO
+            ReportDTO report = new ReportDTO();
+            report.setId(System.currentTimeMillis());
+            report.setName("协议类型分布统计报告 - " + getReportTypeDisplayName(reportType) + " - " + startDate + " 至 " + endDate);
+            report.setDescription("基于协议测试记录生成的" + getReportTypeDisplayName(reportType) + "分布统计报告");
+            report.setContent(convertToJson(reportData));
+            report.setCreateTime(LocalDateTime.now());
+            
+            return report;
+        } catch (Exception e) {
+            log.error("获取协议类型分布统计报告失败", e);
+            throw new RuntimeException("获取协议类型分布统计报告失败：" + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 构建协议分类分布数据
+     */
+    private Map<String, Object> buildProtocolCategoryData(List<Map<String, Object>> categoryStats, LocalDate startDate, LocalDate endDate) {
+        Map<String, Object> reportData = new HashMap<>();
+        
+        List<Map<String, Object>> categoryData = new ArrayList<>();
+        int totalUsageCount = 0;
+        int totalSuccessCount = 0;
+        
+        for (Map<String, Object> stat : categoryStats) {
+            String category = safeGetString(stat, "category");
+            BigDecimal usageCount = safeGetBigDecimal(stat, "usage_count");
+            BigDecimal successCount = safeGetBigDecimal(stat, "success_count");
+            
+            Map<String, Object> categoryInfo = new HashMap<>();
+            categoryInfo.put("category", category);
+            categoryInfo.put("categoryName", getProtocolCategoryDisplayName(category));
+            categoryInfo.put("usageCount", usageCount != null ? usageCount.longValue() : 0);
+            categoryInfo.put("successCount", successCount != null ? successCount.longValue() : 0);
+            categoryInfo.put("successRate", usageCount != null && successCount != null && usageCount.compareTo(BigDecimal.ZERO) > 0 ? 
+                successCount.divide(usageCount, 4, BigDecimal.ROUND_HALF_UP).multiply(new BigDecimal("100")).doubleValue() : 0);
+            categoryInfo.put("failureCount", usageCount != null && successCount != null ? 
+                usageCount.subtract(successCount).longValue() : 0);
+            
+            categoryData.add(categoryInfo);
+            totalUsageCount += usageCount != null ? usageCount.longValue() : 0;
+            totalSuccessCount += successCount != null ? successCount.longValue() : 0;
+        }
+        
+        reportData.put("categoryData", categoryData);
+        reportData.put("totalUsageCount", totalUsageCount);
+        reportData.put("totalSuccessCount", totalSuccessCount);
+        reportData.put("overallSuccessRate", totalUsageCount > 0 ? (double) totalSuccessCount / totalUsageCount * 100 : 0);
+        reportData.put("reportType", "CATEGORY");
+        reportData.put("reportTypeName", "按协议分类");
+        reportData.put("startDate", startDate.format(DateTimeFormatter.ISO_DATE));
+        reportData.put("endDate", endDate.format(DateTimeFormatter.ISO_DATE));
+        reportData.put("generateTime", LocalDate.now().format(DateTimeFormatter.ISO_DATE));
+        
+        return reportData;
+    }
+
+    /**
+     * 构建协议详情分布数据
+     */
+    private Map<String, Object> buildProtocolDetailData(List<Map<String, Object>> detailStats, LocalDate startDate, LocalDate endDate) {
+        Map<String, Object> reportData = new HashMap<>();
+        
+        List<Map<String, Object>> protocolData = new ArrayList<>();
+        int totalUsageCount = 0;
+        int totalSuccessCount = 0;
+        
+        for (Map<String, Object> stat : detailStats) {
+            String protocolCode = safeGetString(stat, "protocol_code");
+            String protocolName = safeGetString(stat, "protocol_name");
+            String category = safeGetString(stat, "category");
+            BigDecimal usageCount = safeGetBigDecimal(stat, "usage_count");
+            BigDecimal successCount = safeGetBigDecimal(stat, "success_count");
+            
+            Map<String, Object> protocolInfo = new HashMap<>();
+            protocolInfo.put("protocolCode", protocolCode);
+            protocolInfo.put("protocolName", protocolName);
+            protocolInfo.put("category", category);
+            protocolInfo.put("categoryName", getProtocolCategoryDisplayName(category));
+            protocolInfo.put("usageCount", usageCount != null ? usageCount.longValue() : 0);
+            protocolInfo.put("successCount", successCount != null ? successCount.longValue() : 0);
+            protocolInfo.put("successRate", usageCount != null && successCount != null && usageCount.compareTo(BigDecimal.ZERO) > 0 ? 
+                successCount.divide(usageCount, 4, BigDecimal.ROUND_HALF_UP).multiply(new BigDecimal("100")).doubleValue() : 0);
+            protocolInfo.put("failureCount", usageCount != null && successCount != null ? 
+                usageCount.subtract(successCount).longValue() : 0);
+            
+            protocolData.add(protocolInfo);
+            totalUsageCount += usageCount != null ? usageCount.longValue() : 0;
+            totalSuccessCount += successCount != null ? successCount.longValue() : 0;
+        }
+        
+        reportData.put("protocolData", protocolData);
+        reportData.put("totalUsageCount", totalUsageCount);
+        reportData.put("totalSuccessCount", totalSuccessCount);
+        reportData.put("overallSuccessRate", totalUsageCount > 0 ? (double) totalSuccessCount / totalUsageCount * 100 : 0);
+        reportData.put("reportType", "DETAIL");
+        reportData.put("reportTypeName", "按具体协议");
+        reportData.put("startDate", startDate.format(DateTimeFormatter.ISO_DATE));
+        reportData.put("endDate", endDate.format(DateTimeFormatter.ISO_DATE));
+        reportData.put("generateTime", LocalDate.now().format(DateTimeFormatter.ISO_DATE));
+        
+        return reportData;
+    }
+
+    /**
+     * 构建协议测试类型分布数据
+     */
+    private Map<String, Object> buildProtocolTestTypeData(List<Map<String, Object>> testTypeStats, LocalDate startDate, LocalDate endDate) {
+        Map<String, Object> reportData = new HashMap<>();
+        
+        List<Map<String, Object>> testTypeData = new ArrayList<>();
+        int totalTestCount = 0;
+        int totalSuccessCount = 0;
+        
+        for (Map<String, Object> stat : testTypeStats) {
+            String testType = safeGetString(stat, "test_type");
+            BigDecimal testCount = safeGetBigDecimal(stat, "test_count");
+            BigDecimal successCount = safeGetBigDecimal(stat, "success_count");
+            
+            Map<String, Object> testTypeInfo = new HashMap<>();
+            testTypeInfo.put("testType", testType);
+            testTypeInfo.put("testTypeName", getTestTypeDisplayName(testType));
+            testTypeInfo.put("testCount", testCount != null ? testCount.longValue() : 0);
+            testTypeInfo.put("successCount", successCount != null ? successCount.longValue() : 0);
+            testTypeInfo.put("successRate", testCount != null && testCount.compareTo(BigDecimal.ZERO) > 0 ? 
+                successCount.divide(testCount, 4, BigDecimal.ROUND_HALF_UP).multiply(new BigDecimal("100")).doubleValue() : 0);
+            
+            testTypeData.add(testTypeInfo);
+            totalTestCount += testCount != null ? testCount.longValue() : 0;
+            totalSuccessCount += successCount != null ? successCount.longValue() : 0;
+        }
+        
+        reportData.put("testTypeData", testTypeData);
+        reportData.put("totalTestCount", totalTestCount);
+        reportData.put("totalSuccessCount", totalSuccessCount);
+        reportData.put("overallSuccessRate", totalTestCount > 0 ? (double) totalSuccessCount / totalTestCount * 100 : 0);
+        reportData.put("reportType", "TEST_TYPE");
+        reportData.put("reportTypeName", "按测试类型");
+        reportData.put("startDate", startDate.format(DateTimeFormatter.ISO_DATE));
+        reportData.put("endDate", endDate.format(DateTimeFormatter.ISO_DATE));
+        reportData.put("generateTime", LocalDate.now().format(DateTimeFormatter.ISO_DATE));
+        
+        return reportData;
+    }
+
+    /**
+     * 获取报告类型显示名称
+     */
+    private String getReportTypeDisplayName(String reportType) {
+        if (reportType == null) return "按协议分类";
+        switch (reportType.toUpperCase()) {
+            case "DETAIL": return "按具体协议";
+            case "TEST_TYPE": return "按测试类型";
+            case "CATEGORY":
+            default: return "按协议分类";
+        }
+    }
+
+    /**
+     * 获取协议名称显示名称（直接返回协议名称）
+     */
+    private String getProtocolCategoryDisplayName(String category) {
+        if (category == null) return "未知协议";
+        return category;
+    }
+
+    /**
+     * 获取测试类型显示名称
+     */
+    private String getTestTypeDisplayName(String testType) {
+        if (testType == null) return "未知测试";
+        switch (testType.toUpperCase()) {
+            case "CONNECT": return "连接测试";
+            case "TRANSFER": return "数据传输";
+            case "COMPREHENSIVE": return "综合测试";
+            default: return testType;
+        }
+    }
+
+    @Override
+    public ReportDTO getTopFailureReasonsReport(String startDate, String endDate, String dataSource) {
+        try {
+            // 参数验证
+            if (startDate == null || endDate == null) {
+                throw new IllegalArgumentException("开始日期和结束日期不能为空");
+            }
+            
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+            
+            if (start.isAfter(end)) {
+                throw new IllegalArgumentException("开始日期不能晚于结束日期");
+            }
+            
+            LocalDateTime startTime = start.atStartOfDay();
+            LocalDateTime endTime = end.atTime(23, 59, 59);
+            
+            // 根据数据源获取前5的失败原因统计
+            List<Map<String, Object>> failureReasons;
+            switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
+                case "BATCH":
+                    failureReasons = templateStatisticsMapper.getBatchTopFailureReasons(startTime, endTime);
+                    break;
+                case "UNIFIED":
+                case "JOB_LOG":
+                default:
+                    failureReasons = templateStatisticsMapper.getTopFailureReasons(startTime, endTime);
+                    break;
+            }
+            
+            // 构建报告数据
+            Map<String, Object> reportData = buildFailureReasonsData(failureReasons, start, end);
+            
+            // 构建报告DTO
+            ReportDTO report = new ReportDTO();
+            report.setId(System.currentTimeMillis());
+            report.setName("前5失败原因分析报告 - " + getDataSourceDisplayName(dataSource) + " - " + startDate + " 至 " + endDate);
+            report.setDescription("基于" + getDataSourceDisplayName(dataSource) + "生成的前5失败原因统计分析报告");
+            report.setContent(convertToJson(reportData));
+            report.setCreateTime(LocalDateTime.now());
+            
+            return report;
+        } catch (Exception e) {
+            log.error("获取前5失败原因分析报告失败", e);
+            throw new RuntimeException("获取前5失败原因分析报告失败：" + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 构建失败原因分析数据
+     */
+    private Map<String, Object> buildFailureReasonsData(List<Map<String, Object>> failureReasons, 
+                                                        LocalDate startDate, LocalDate endDate) {
+        Map<String, Object> reportData = new HashMap<>();
+        
+        List<Map<String, Object>> failureData = new ArrayList<>();
+        int totalFailureCount = 0;
+        
+        for (Map<String, Object> reason : failureReasons) {
+            String failureReason = safeGetString(reason, "failure_reason");
+            BigDecimal failureCount = safeGetBigDecimal(reason, "failure_count");
+            String errorCode = safeGetString(reason, "error_code");
+            BigDecimal protocolId = safeGetBigDecimal(reason, "protocol_id");
+            String protocolName = safeGetString(reason, "protocol_name");
+            
+            Map<String, Object> failureInfo = new HashMap<>();
+            failureInfo.put("failureReason", failureReason);
+            failureInfo.put("failureCount", failureCount != null ? failureCount.longValue() : 0);
+            failureInfo.put("errorCode", errorCode);
+            failureInfo.put("protocolId", protocolId != null ? protocolId.longValue() : null);
+            failureInfo.put("protocolName", protocolName);
+            failureInfo.put("percentage", 0); // 将在后续计算
+            
+            failureData.add(failureInfo);
+            totalFailureCount += failureCount != null ? failureCount.longValue() : 0;
+        }
+        
+        // 计算每个失败原因的占比
+        for (Map<String, Object> failureInfo : failureData) {
+            long count = (Long) failureInfo.get("failureCount");
+            if (totalFailureCount > 0) {
+                double percentage = (double) count / totalFailureCount * 100;
+                failureInfo.put("percentage", Math.round(percentage * 100.0) / 100.0);
+            }
+        }
+        
+        // 构建统计摘要
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("totalFailureCount", totalFailureCount);
+        summary.put("topFailureCount", failureReasons.size());
+        summary.put("startDate", startDate.format(DateTimeFormatter.ISO_DATE));
+        summary.put("endDate", endDate.format(DateTimeFormatter.ISO_DATE));
+        
+        reportData.put("failureData", failureData);
+        reportData.put("summary", summary);
+        reportData.put("generateTime", LocalDate.now().format(DateTimeFormatter.ISO_DATE));
+        
+        return reportData;
     }
 }
