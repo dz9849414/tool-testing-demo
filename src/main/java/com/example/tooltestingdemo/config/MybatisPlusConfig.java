@@ -1,6 +1,7 @@
 package com.example.tooltestingdemo.config;
 
 import com.baomidou.mybatisplus.annotation.DbType;
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.config.GlobalConfig;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
@@ -50,13 +51,19 @@ public class MybatisPlusConfig {
     }
 
     /**
-     * 配置SqlSessionFactory，注入全局配置
+     * 配置SqlSessionFactory，注入全局配置和分页插件
      */
     @Bean
-    public SqlSessionFactory sqlSessionFactory(DataSource dataSource, GlobalConfig globalConfig) throws Exception {
+    public SqlSessionFactory sqlSessionFactory(DataSource dataSource, GlobalConfig globalConfig, MybatisPlusInterceptor mybatisPlusInterceptor) throws Exception {
         MybatisSqlSessionFactoryBean sessionFactory = new MybatisSqlSessionFactoryBean();
         sessionFactory.setDataSource(dataSource);
         sessionFactory.setGlobalConfig(globalConfig);
+        
+        // 配置MyBatis配置，添加分页插件
+        MybatisConfiguration configuration = new MybatisConfiguration();
+        configuration.addInterceptor(mybatisPlusInterceptor);
+        sessionFactory.setConfiguration(configuration);
+        
         return sessionFactory.getObject();
     }
 
