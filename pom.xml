@@ -112,6 +112,12 @@
             <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
         
+        <!-- Jackson XML 支持 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-xml</artifactId>
+        </dependency>
+        
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
