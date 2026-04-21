@@ -13,6 +13,8 @@ CREATE TABLE `report_template` (
     `template_type` VARCHAR(50) COMMENT '模板类型：STATISTICAL/ANALYTICAL/ARCHIVAL',
     `applicable_scene` VARCHAR(200) COMMENT '适用场景',
     `template_structure` JSON COMMENT '模板结构（章节、图表位置等）',
+    `chapter_structure` JSON COMMENT '章节结构配置',
+    `content` TEXT COMMENT '模板内容（用于前端展示）',
     `style_config` JSON COMMENT '样式配置',
     `is_system_template` TINYINT DEFAULT 0 COMMENT '是否系统预设模板',
     `is_public` TINYINT DEFAULT 0 COMMENT '是否公开模板',
