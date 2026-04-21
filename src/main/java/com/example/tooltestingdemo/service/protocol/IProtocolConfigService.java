@@ -15,7 +15,7 @@ import com.example.tooltestingdemo.entity.protocol.ProtocolConfig;
 public interface IProtocolConfigService extends IService<ProtocolConfig> {
 
     /**
-     * 新增协议配置。
+     * 新增协议配置（含URL/认证/参数模板）
      */
     ProtocolConfig createProtocolConfig(ProtocolConfigCreateDTO dto);
 }

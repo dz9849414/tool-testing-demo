@@ -8,7 +8,6 @@ import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.example.tooltestingdemo.entity.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
 import lombok.experimental.Accessors;
 
 import java.io.Serial;
@@ -20,7 +19,7 @@ import java.io.Serial;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
-@TableName("protocol_config")
+@TableName(value = "protocol_config", autoResultMap = true)
 public class ProtocolConfig extends BaseEntity {
     @Serial
     private static final long serialVersionUID = 1L;
@@ -42,19 +41,10 @@ public class ProtocolConfig extends BaseEntity {
     private String configName;
 
     /**
-     * 访问URL（支持多个，JSON格式存储）
+     * URL配置（支持多个，JSON格式存储）
      */
-    private String url;
-
-    /**
-     * 端口号（1-65535）
-     */
-    private Integer port;
-
-    /**
-     * 认证方式：NONE-无认证, BASIC-基础认证, TOKEN-Token认证, OAUTH2-OAuth2, CERT-证书认证
-     */
-    private String authType;
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private String urlConfig;
 
     /**
      * 认证配置（JSON格式，加密存储）
@@ -83,6 +73,11 @@ public class ProtocolConfig extends BaseEntity {
     private Integer retryInterval;
 
     /**
+     * 重试触发条件：1-链接超时，2-响应超时，3-响应错误码
+     */
+    private String retryCondition;
+
+    /**
      * 数据格式：JSON/XML/FORM/TEXT/BINARY
      */
     private String dataFormat;
@@ -104,36 +99,8 @@ public class ProtocolConfig extends BaseEntity {
      */
     private Integer status;
 
-    // 枚举类定义
-    @Getter
-    public enum AuthType {
-        NONE("无认证"),
-        BASIC("基础认证"),
-        TOKEN("Token认证"),
-        OAUTH2("OAuth2"),
-        CERT("证书认证");
-
-        private final String description;
-
-        AuthType(String description) {
-            this.description = description;
-        }
-
-    }
-
-    @Getter
-    public enum DataFormat {
-        JSON("JSON"),
-        XML("XML"),
-        FORM("Form Data"),
-        TEXT("Text"),
-        BINARY("Binary");
-
-        private final String description;
-
-        DataFormat(String description) {
-            this.description = description;
-        }
-
-    }
+    /**
+     * 协议参数配置描述
+     */
+    private Integer description;
 }
