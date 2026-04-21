@@ -20,7 +20,8 @@ public class ProtocolTypeCreateDTO {
 
     private String systemType;
 
-    private String status;
+    @NotNull(message = "协议状态不能为空")
+    private Integer status;
 
     private String description;
 }
