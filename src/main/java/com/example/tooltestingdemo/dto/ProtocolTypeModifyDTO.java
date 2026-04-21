@@ -20,7 +20,7 @@ public class ProtocolTypeModifyDTO {
 
     private String systemType;
 
-    private String status;
+    private Integer status;
 
     private String description;
 

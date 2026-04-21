@@ -9,13 +9,4 @@ import lombok.Data;
 @Data
 public class ProtocolParameterConfigCreateDTO {
 
-    private Long protocolId;
-
-    private String parameterName;
-
-    private String parameterValue;
-
-    private Integer isSensitive;
-
-    private String encryptedValue;
 }

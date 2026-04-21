@@ -87,9 +87,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         entity.setProtocolCategory(normalizeText(dto.getProtocolCategory()));
         entity.setSystemType(normalizeText(dto.getSystemType()));
         entity.setDescription(normalizeText(dto.getDescription()));
-        entity.setStatus(resolveStatus(dto.getStatus(), ProtocolType.Status.PENDING.name()));
-        entity.setCreateId(getCurrentOperatorId());
-        entity.setUpdateId(getCurrentOperatorId());
+        entity.setStatus(resolveStatus(dto.getStatus(), 0));
 
         save(entity);
         log.info("协议类型创建成功: id={}, code={}, name={}", entity.getId(), entity.getProtocolCode(), entity.getProtocolName());
@@ -107,9 +105,9 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     public ProtocolTypeStatusChangeVO updateProtocolTypeStatus(ProtocolTypeStatusUpdateDTO dto) {
         Long id = dto.getId();
         ProtocolType existing = getExistingProtocolType(id);
-        String targetStatus = resolveStatus(dto.getStatus(), null);
+        Integer targetStatus = resolveStatus(dto.getStatus(), null);
         RelationStats relationStats = getRelationStats(id);
-        boolean requireConfirm = ProtocolType.Status.DISABLED.name().equals(targetStatus)
+        boolean requireConfirm = Integer.valueOf(0).equals(targetStatus)
                 && relationStats.hasRelatedData()
                 && !Boolean.TRUE.equals(dto.getConfirm());
         if (requireConfirm) {
@@ -125,8 +123,6 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         ProtocolType updateEntity = new ProtocolType();
         updateEntity.setId(id);
         updateEntity.setStatus(targetStatus);
-        updateEntity.setUpdateId(getCurrentOperatorId());
-        updateEntity.setUpdateTime(LocalDateTime.now());
         if (protocolTypeMapper.updateById(updateEntity) <= 0) {
             throw new RuntimeException("状态更新失败");
         }
@@ -271,8 +267,6 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         updateEntity.setStatus(resolveStatus(dto.getStatus(), existing.getStatus()));
         updateEntity.setDescription(resolveNullableUpdateValue(dto.getDescription(), existing.getDescription()));
         updateEntity.setVersion(dto.getVersion() == null ? existing.getVersion() : dto.getVersion());
-        updateEntity.setUpdateId(getCurrentOperatorId());
-        updateEntity.setUpdateTime(LocalDateTime.now());
 
         if (protocolTypeMapper.updateById(updateEntity) <= 0) {
             throw new RuntimeException("协议类型编辑失败");
@@ -600,11 +594,18 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         return protocolTypeMapper.selectList(buildQueryWrapper(queryDTO));
     }
 
-    private String parseStatus(String statusText) {
+    private Integer parseStatus(String statusText) {
         if (StringUtils.isBlank(statusText)) {
-            return ProtocolType.Status.PENDING.name();
+            return 1;
         }
-        return resolveStatus(statusText, null);
+        String normalized = normalizeKey(statusText);
+        if (Arrays.asList("1", "启用", "ENABLED", "TRUE").contains(normalized)) {
+            return 1;
+        }
+        if (Arrays.asList("0", "禁用", "DISABLED", "FALSE").contains(normalized)) {
+            return 0;
+        }
+        throw new RuntimeException("状态不合法，仅支持 0/1、启用/禁用、ENABLED/DISABLED");
     }
 
     private String buildDisableConfirmMessage(RelationStats relationStats) {
@@ -616,8 +617,8 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     }
 
     private ProtocolTypeStatusChangeVO buildStatusChangeVO(ProtocolType protocolType,
-                                                           String currentStatus,
-                                                           String targetStatus,
+                                                           Integer currentStatus,
+                                                           Integer targetStatus,
                                                            boolean statusChanged,
                                                            boolean requiresConfirm,
                                                            String message,
@@ -625,8 +626,8 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         ProtocolTypeStatusChangeVO result = new ProtocolTypeStatusChangeVO();
         result.setId(protocolType.getId());
         result.setProtocolName(protocolType.getProtocolName());
-        result.setCurrentStatus(currentStatus);
-        result.setTargetStatus(targetStatus);
+        result.setCurrentStatus(resolveStatus(currentStatus, null));
+        result.setTargetStatus(resolveStatus(targetStatus, null));
         result.setStatusChanged(statusChanged);
         result.setRequiresConfirm(requiresConfirm);
         result.setMessage(message);
@@ -651,7 +652,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
             if (StringUtils.isNotBlank(protocolType.getSystemType())) {
                 lambdaQuery.eq(ProtocolType::getSystemType, protocolType.getSystemType());
             }
-            if (StringUtils.isNotBlank(protocolType.getStatus())) {
+            if (protocolType.getStatus() != null) {
                 lambdaQuery.eq(ProtocolType::getStatus, resolveStatus(protocolType.getStatus(), null));
             }
         }
@@ -676,7 +677,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         exportVO.setProtocolName(protocolType.getProtocolName());
         exportVO.setProtocolCategory(defaultString(protocolType.getProtocolCategory()));
         exportVO.setSystemType(defaultString(protocolType.getSystemType()));
-        exportVO.setStatus(defaultString(protocolType.getStatus()));
+        exportVO.setStatus(protocolType.getStatus() == null ? "" : String.valueOf(protocolType.getStatus()));
         exportVO.setCreateUserName(resolveCreateUserName(protocolType.getCreateId()));
         exportVO.setCreateTime(LocalDateUtil.formatDateTime(protocolType.getCreateTime()));
         exportVO.setDescription(defaultString(protocolType.getDescription()));
@@ -837,24 +838,17 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         return StringUtils.trimToNull(value);
     }
 
-    private String resolveStatus(String status, String defaultValue) {
-        if (StringUtils.isBlank(status)) {
+    private Integer resolveStatus(Integer status, Integer defaultValue) {
+        if (status == null) {
             if (defaultValue == null) {
                 throw new RuntimeException("状态不能为空");
             }
             return defaultValue;
         }
-        String normalized = normalizeKey(status);
-        if (Arrays.asList("PENDING", "待启用").contains(normalized)) {
-            return ProtocolType.Status.PENDING.name();
+        if (status == 0 || status == 1) {
+            return status;
         }
-        if (Arrays.asList("ENABLED", "1", "启用", "TRUE").contains(normalized)) {
-            return ProtocolType.Status.ENABLED.name();
-        }
-        if (Arrays.asList("DISABLED", "0", "禁用", "FALSE").contains(normalized)) {
-            return ProtocolType.Status.DISABLED.name();
-        }
-        throw new RuntimeException("状态不合法，仅支持 PENDING/ENABLED/DISABLED");
+        throw new RuntimeException("状态不合法，仅支持 0（禁用）或 1（启用）");
     }
 
     private ProtocolTypeDeleteResultVO.UndeletableItem buildUndeletableItem(Long id, String protocolName,
@@ -898,7 +892,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         private String protocolCategory;
         private String systemType;
         private String statusText;
-        private String status;
+        private Integer status;
         private String description;
 
     }

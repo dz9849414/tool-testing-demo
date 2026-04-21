@@ -11,6 +11,6 @@ import com.example.tooltestingdemo.entity.protocol.ProtocolConfig;
  * @author wanggang
  * @since 2026-04-13
  */
-public interface ProtocolParameterConfigMapper extends BaseMapper<ProtocolConfig> {
+public interface ProtocolConfigMapper extends BaseMapper<ProtocolConfig> {
 
 }

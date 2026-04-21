@@ -19,5 +19,5 @@ public class ProtocolTypeQueryDTO extends PageQuery {
 
     private String systemType;
 
-    private String status;
+    private Integer status;
 }

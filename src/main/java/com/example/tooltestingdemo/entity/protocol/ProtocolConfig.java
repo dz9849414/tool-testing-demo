@@ -8,7 +8,10 @@ import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.example.tooltestingdemo.entity.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.experimental.Accessors;
+
+import java.io.Serial;
 
 /**
  * 协议参数配置表实体类
@@ -19,6 +22,7 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @TableName("protocol_config")
 public class ProtocolConfig extends BaseEntity {
+    @Serial
     private static final long serialVersionUID = 1L;
 
     /**
@@ -96,11 +100,12 @@ public class ProtocolConfig extends BaseEntity {
     private String additionalParams;
 
     /**
-     * 状态：ENABLED-启用, DISABLED-禁用
+     * 状态：0-禁用，1-启用
      */
-    private String status;
+    private Integer status;
 
     // 枚举类定义
+    @Getter
     public enum AuthType {
         NONE("无认证"),
         BASIC("基础认证"),
@@ -114,11 +119,9 @@ public class ProtocolConfig extends BaseEntity {
             this.description = description;
         }
 
-        public String getDescription() {
-            return description;
-        }
     }
 
+    @Getter
     public enum DataFormat {
         JSON("JSON"),
         XML("XML"),
@@ -132,8 +135,5 @@ public class ProtocolConfig extends BaseEntity {
             this.description = description;
         }
 
-        public String getDescription() {
-            return description;
-        }
     }
 }

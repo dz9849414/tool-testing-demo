@@ -7,7 +7,6 @@ import com.baomidou.mybatisplus.annotation.Version;
 import com.example.tooltestingdemo.entity.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
 import lombok.experimental.Accessors;
 
 import java.io.Serial;
@@ -56,28 +55,13 @@ public class ProtocolType extends BaseEntity {
     private String description;
 
     /**
-     * 状态：PENDING-待启用, ENABLED-已启用, DISABLED-已禁用
+     * 状态：0-禁用，1-启用
      */
-    private String status;
+    private Integer status;
 
     /**
      * 版本号（乐观锁）
      */
     @Version
     private Integer version;
-
-    // 枚举类定义
-    @Getter
-    public enum Status {
-        PENDING("待启用"),
-        ENABLED("已启用"),
-        DISABLED("已禁用");
-
-        private final String description;
-
-        Status(String description) {
-            this.description = description;
-        }
-
-    }
 }

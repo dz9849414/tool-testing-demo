@@ -6,9 +6,9 @@ CREATE TABLE `protocol_type`
     `protocol_code`     varchar(50)  NOT NULL COMMENT '协议编码（唯一标识）',
     `protocol_name`     varchar(100) NOT NULL COMMENT '协议名称',
     `protocol_category` varchar(50)  NOT NULL COMMENT '协议分类（CAD/ERP/PLM/数据交换/接口协议）',
-    `system_type`       varchar(20)  NOT NULL COMMENT '适用系统类型（CAD/ERP/PLM等）',
+    `system_type`       varchar(50)  NOT NULL COMMENT '适用系统类型（CAD/ERP/PLM等）',
     `description`       varchar(500)          DEFAULT NULL COMMENT '协议描述',
-    `status`            varchar(20)  NOT NULL DEFAULT 'PENDING' COMMENT '状态：PENDING-待启用, ENABLED-已启用, DISABLED-已禁用',
+    `status`            tinyint(1)  NOT NULL DEFAULT 0 COMMENT '状态：0-禁用，1-启用',
     `version`           int(11) NOT NULL DEFAULT 1 COMMENT '版本号（乐观锁）',
 
     -- 必须字段

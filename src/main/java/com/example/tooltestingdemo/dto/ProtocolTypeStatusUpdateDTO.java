@@ -15,10 +15,10 @@ public class ProtocolTypeStatusUpdateDTO {
     private Long id;
 
     /**
-     * 状态：PENDING/ENABLED/DISABLED
+     * 状态：0-禁用，1-启用
      */
     @NotNull(message = "状态不能为空")
-    private String status;
+    private Integer status;
 
     /**
      * 禁用时二次确认
