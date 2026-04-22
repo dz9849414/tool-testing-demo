@@ -74,7 +74,8 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
     }
 
     private Long getUserId() {
-            return securityService.getCurrentUserId();
+        Long currentUserId = securityService.getCurrentUserId();
+        return currentUserId == null ? 1L : currentUserId;
     }
 
     private String getUsername() {

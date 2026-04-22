@@ -8,6 +8,7 @@ import com.example.tooltestingdemo.service.protocol.IProtocolTypeService;
 import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
 import com.example.tooltestingdemo.vo.ProtocolTypeImportResultVO;
 import com.example.tooltestingdemo.vo.ProtocolTypeStatusChangeVO;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ import java.io.IOException;
 @RestController
 @RequestMapping("/api/protocol/protocolType")
 @RequiredArgsConstructor
+@Tag(name = "协议类型管理")
 public class ProtocolTypeController {
 
     private final IProtocolTypeService protocolTypeService;

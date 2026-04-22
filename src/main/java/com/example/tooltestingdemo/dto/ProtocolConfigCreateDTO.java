@@ -1,5 +1,6 @@
 package com.example.tooltestingdemo.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -11,12 +12,17 @@ import java.util.List;
  * 协议配置新增请求体：仅包含协议配置主数据、多 URL 与多认证（结构化入参，落库时序列化为 JSON）。
  */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Schema(name = "ProtocolConfigCreateDTO", description = "协议配置新增请求体（不含参数模板）")
 public class ProtocolConfigCreateDTO {
 
-    @NotNull(message = "protocolId不能为空")
+    @NotNull(message = "协议类型ID不能为空")
     @Schema(description = "关联协议类型ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long protocolId;
+
+    @NotNull(message = "协议类型名称不能为空")
+    @Schema(description = "关联协议类型名称", example = "name", requiredMode = Schema.RequiredMode.REQUIRED)
+    private String protocolName;
 
     @NotBlank(message = "configName不能为空")
     @Schema(description = "配置名称", example = "ERP对接-生产环境", requiredMode = Schema.RequiredMode.REQUIRED)

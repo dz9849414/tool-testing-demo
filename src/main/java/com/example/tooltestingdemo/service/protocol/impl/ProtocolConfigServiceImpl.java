@@ -43,6 +43,7 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
 
         ProtocolConfig entity = new ProtocolConfig()
                 .setProtocolId(dto.getProtocolId())
+                .setProtocolName(dto.getProtocolName())
                 .setConfigName(dto.getConfigName())
                 .setTimeoutConnect(defaultInt(dto.getTimeoutConnect(), 5000))
                 .setTimeoutRead(defaultInt(dto.getTimeoutRead(), 30000))
@@ -95,6 +96,7 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         ProtocolConfig updateEntity = new ProtocolConfig();
         updateEntity.setId(existing.getId());
         updateEntity.setProtocolId(dto.getProtocolId() == null ? existing.getProtocolId() : dto.getProtocolId());
+        updateEntity.setProtocolName(dto.getConfigName() == null ? existing.getConfigName() : dto.getConfigName());
         updateEntity.setConfigName(resolveNullableText(dto.getConfigName(), existing.getConfigName()));
         updateEntity.setTimeoutConnect(dto.getTimeoutConnect() == null ? existing.getTimeoutConnect() : dto.getTimeoutConnect());
         updateEntity.setTimeoutRead(dto.getTimeoutRead() == null ? existing.getTimeoutRead() : dto.getTimeoutRead());
@@ -272,6 +274,7 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         ProtocolConfigVO vo = new ProtocolConfigVO();
         vo.setId(entity.getId());
         vo.setProtocolId(entity.getProtocolId());
+        vo.setProtocolName(entity.getProtocolName());
         vo.setConfigName(entity.getConfigName());
         vo.setTimeoutConnect(entity.getTimeoutConnect());
         vo.setTimeoutRead(entity.getTimeoutRead());
@@ -321,10 +324,7 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
     }
 
     private Long getCurrentOperatorId() {
-        String currentUserId = securityService.getCurrentUserId();
-        if (StringUtils.isNumeric(currentUserId)) {
-            return Long.valueOf(currentUserId);
-        }
-        return 1L;
+        Long currentUserId = securityService.getCurrentUserId();
+        return currentUserId == null ? 1L : currentUserId;
     }
 }
