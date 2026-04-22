@@ -60,16 +60,18 @@ public class BaseEntity implements Serializable {
      * 逻辑删除标记：0-未删除，1-已删除
      */
     @TableLogic(value = "0", delval = "1")
-    @TableField(fill = FieldFill.INSERT)
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private Integer isDeleted;
 
     /**
      * 删除人ID
      */
+    @TableField(fill = FieldFill.UPDATE)
     private Long deletedBy;
 
     /**
      * 删除时间
      */
+    @TableField(fill = FieldFill.UPDATE)
     private LocalDateTime deletedTime;
 }

@@ -1,6 +1,7 @@
 package com.example.tooltestingdemo.service.protocol.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.ProtocolTypeCreateDTO;
@@ -290,7 +291,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
             throw new RuntimeException(message);
         }
 
-        doLogicalDelete(existing);
+        doLogicalDelete(existing.getId());
     }
 
     @Override
@@ -322,7 +323,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
                 continue;
             }
 
-            doLogicalDelete(existing);
+            doLogicalDelete(existing.getId());
             deletedIds.add(existing.getId());
         }
 
@@ -795,19 +796,21 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         return String.format("请先解除关联 %d 个项目 / %d 个模板", relatedProjectCount, relatedTemplateCount);
     }
 
-    private void doLogicalDelete(ProtocolType existing) {
+    private void doLogicalDelete(Long id) {
         Long operatorId = getCurrentOperatorId();
-        ProtocolType deleteEntity = new ProtocolType();
-        deleteEntity.setId(existing.getId());
-        deleteEntity.setDeletedBy(operatorId);
-        deleteEntity.setDeletedTime(LocalDateTime.now());
-        deleteEntity.setUpdateId(operatorId);
+        LocalDateTime now = LocalDateTime.now();
 
-        if (protocolTypeMapper.updateById(deleteEntity) <= 0) {
+        LambdaUpdateWrapper<ProtocolType> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(ProtocolType::getId, id)
+                .eq(ProtocolType::getIsDeleted, 0)
+                .set(ProtocolType::getIsDeleted, 1)
+                .set(ProtocolType::getDeletedBy, operatorId)
+                .set(ProtocolType::getDeletedTime, now)
+                .set(ProtocolType::getUpdateTime, now);
+
+        if (protocolTypeMapper.update(null, updateWrapper) <= 0) {
             throw new RuntimeException("协议类型删除失败！");
         }
-        protocolTypeMapper.deleteById(deleteEntity.getId());
-        log.info("删除协议类型成功: id={}, name={}, operatorId={}", existing.getId(), existing.getProtocolName(), operatorId);
     }
 
     private Long getCurrentOperatorId() {
