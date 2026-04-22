@@ -244,14 +244,14 @@ public class TemplateStatisticsController {
     @GetMapping("/failure-reasons")
     @Operation(summary = "获取前5的失败原因统计报告")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:statistics:view')")
-    public Result<com.example.tooltestingdemo.dto.report.StatisticsReportDTO> getTopFailureReasonsReport(
+    public Result<Object> getTopFailureReasonsReport(
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") String startDate,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") String endDate,
             @RequestParam(required = false, defaultValue = "JOB_LOG") String dataSource) {
         try {
-            StatisticsReportDTO report = templateStatisticsService.getTopFailureReasonsReport(
+            List<Map<String, Object>> data = templateStatisticsService.getTopFailureReasonsReportSimple(
                 startDate, endDate, dataSource);
-            return Result.success("前5失败原因分析报告获取成功", report);
+            return Result.success("前5失败原因分析报告获取成功", data);
         } catch (Exception e) {
             return Result.error("获取前5失败原因分析报告失败：" + e.getMessage());
         }

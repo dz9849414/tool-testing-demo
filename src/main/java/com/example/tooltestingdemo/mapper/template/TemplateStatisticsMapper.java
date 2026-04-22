@@ -404,18 +404,22 @@ public interface TemplateStatisticsMapper {
      * 获取前5的失败原因统计
      */
     @Select("SELECT " +
-            "error_message as failure_reason, " +
-            "COUNT(*) as failure_count, " +
-            "error_code as error_code, " +
-            "protocol_id, " +
-            "(SELECT protocol_name FROM pdm_tool_protocol_type WHERE id = ptr.protocol_id) as protocol_name " +
-            "FROM pdm_tool_protocol_test_record ptr " +
-            "WHERE ptr.create_time BETWEEN #{startTime} AND #{endTime} " +
-            "AND ptr.is_deleted = 0 " +
-            "AND ptr.error_code != '200' " +
-            "AND error_message IS NOT NULL " +
-            "AND error_message != '' " +
-            "GROUP BY error_message, error_code, protocol_id " +
+            "CASE " +
+            "WHEN JSON_EXTRACT(execute_result, '$.message') IS NOT NULL THEN JSON_UNQUOTE(JSON_EXTRACT(execute_result, '$.message')) " +
+            "ELSE '未知错误' " +
+            "END as failure_reason, " +
+            "COUNT(*) AS failure_count, " +
+            "CASE " +
+            "WHEN JSON_EXTRACT(execute_result, '$.statusCode') IS NOT NULL THEN JSON_UNQUOTE(JSON_EXTRACT(execute_result, '$.statusCode')) " +
+            "ELSE '0' " +
+            "END as error_code " +
+            "FROM pdm_tool_template_execute_log " +
+            "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
+            "AND is_deleted = 0 " +
+            "AND success = 0 " +
+            "AND execute_result IS NOT NULL " +
+            "AND JSON_EXTRACT(execute_result, '$.message') IS NOT NULL " +
+            "GROUP BY error_code, failure_reason " +
             "ORDER BY failure_count DESC " +
             "LIMIT 5")
     List<Map<String, Object>> getTopFailureReasons(@Param("startTime") LocalDateTime startTime,

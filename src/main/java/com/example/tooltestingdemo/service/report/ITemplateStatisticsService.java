@@ -112,4 +112,14 @@ public interface ITemplateStatisticsService {
      * @return 前5的失败原因统计报告
      */
     StatisticsReportDTO getTopFailureReasonsReport(String startDate, String endDate, String dataSource);
+
+    /**
+     * 获取前5的失败原因统计报告（简化格式）
+     * 
+     * @param startDate 开始日期
+     * @param endDate 结束日期
+     * @param dataSource 数据源：JOB_LOG（定时任务）/UNIFIED（手动+定时）/BATCH（批量任务）
+     * @return 前5的失败原因统计报告（简化格式：List<Map<String, Object>>）
+     */
+    List<Map<String, Object>> getTopFailureReasonsReportSimple(String startDate, String endDate, String dataSource);
 }

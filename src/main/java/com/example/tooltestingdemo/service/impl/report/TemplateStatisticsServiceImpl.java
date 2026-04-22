@@ -1340,6 +1340,57 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     }
 
     @Override
+    public List<Map<String, Object>> getTopFailureReasonsReportSimple(String startDate, String endDate, String dataSource) {
+        try {
+            // 参数验证
+            if (startDate == null || endDate == null) {
+                throw new IllegalArgumentException("开始日期和结束日期不能为空");
+            }
+            
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+            
+            if (start.isAfter(end)) {
+                throw new IllegalArgumentException("开始日期不能晚于结束日期");
+            }
+            
+            LocalDateTime startTime = start.atStartOfDay();
+            LocalDateTime endTime = end.atTime(23, 59, 59);
+            
+            // 根据数据源获取前5的失败原因统计
+            List<Map<String, Object>> failureReasons;
+            switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
+                case "BATCH":
+                    failureReasons = templateStatisticsMapper.getBatchTopFailureReasons(startTime, endTime);
+                    break;
+                case "UNIFIED":
+                case "JOB_LOG":
+                default:
+                    failureReasons = templateStatisticsMapper.getTopFailureReasons(startTime, endTime);
+                    break;
+            }
+            
+            // 构建简化格式的数据
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (Map<String, Object> reason : failureReasons) {
+                String failureReason = safeGetString(reason, "failure_reason");
+                BigDecimal failureCount = safeGetBigDecimal(reason, "failure_count");
+                
+                Map<String, Object> item = new HashMap<>();
+                item.put("name", failureReason);
+                item.put("value", failureCount != null ? failureCount.longValue() : 0);
+                
+                result.add(item);
+            }
+            
+            return result;
+        } catch (Exception e) {
+            log.error("获取前5失败原因分析报告（简化格式）失败", e);
+            throw new RuntimeException("获取前5失败原因分析报告（简化格式）失败：" + e.getMessage(), e);
+        }
+    }
+
+    @Override
     public StatisticsReportDTO getTopFailureReasonsReport(String startDate, String endDate, String dataSource) {
         try {
             // 参数验证
@@ -1403,20 +1454,23 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
         List<Map<String, Object>> failureData = new ArrayList<>();
         int totalFailureCount = 0;
         
+        // 计算总失败次数
+        for (Map<String, Object> reason : failureReasons) {
+            BigDecimal failureCount = safeGetBigDecimal(reason, "failure_count");
+            totalFailureCount += failureCount != null ? failureCount.longValue() : 0;
+        }
+        
         for (Map<String, Object> reason : failureReasons) {
             String failureReason = safeGetString(reason, "failure_reason");
             BigDecimal failureCount = safeGetBigDecimal(reason, "failure_count");
             String errorCode = safeGetString(reason, "error_code");
-            BigDecimal protocolId = safeGetBigDecimal(reason, "protocol_id");
-            String protocolName = safeGetString(reason, "protocol_name");
             
             Map<String, Object> failureInfo = new HashMap<>();
             failureInfo.put("failureReason", failureReason);
             failureInfo.put("failureCount", failureCount != null ? failureCount.longValue() : 0);
             failureInfo.put("errorCode", errorCode);
-            failureInfo.put("protocolId", protocolId != null ? protocolId.longValue() : null);
-            failureInfo.put("protocolName", protocolName);
-            failureInfo.put("percentage", 0); // 将在后续计算
+            failureInfo.put("percentage", totalFailureCount > 0 ? 
+                (double) (failureCount != null ? failureCount.longValue() : 0) / totalFailureCount * 100 : 0);
             
             failureData.add(failureInfo);
             totalFailureCount += failureCount != null ? failureCount.longValue() : 0;
