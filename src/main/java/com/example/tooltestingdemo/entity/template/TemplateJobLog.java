@@ -15,6 +15,9 @@ public class TemplateJobLog {
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
+    @TableField(value = "execute_at")
+    private LocalDateTime executeAt;
+
     /**
      * 任务ID
      */
