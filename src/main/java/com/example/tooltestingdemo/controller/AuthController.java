@@ -66,7 +66,8 @@ public class AuthController {
             response.put("code", 401);
             response.put("message", "用户不存在: " + loginDTO.getUsername());
             response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            response.put("success", false);
+            return ResponseEntity.ok(response);
         }
         
         // 检查用户是否被禁用
@@ -80,7 +81,8 @@ public class AuthController {
             response.put("code", 401);
             response.put("message", "用户已被禁用: " + loginDTO.getUsername());
             response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            response.put("success", false);
+            return ResponseEntity.ok(response);
         }
         
         try {
@@ -137,7 +139,8 @@ public class AuthController {
             response.put("code", 401);
             response.put("message", "用户名或密码错误");
             response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            response.put("success", false);
+            return ResponseEntity.ok(response);
         }
     }
     
