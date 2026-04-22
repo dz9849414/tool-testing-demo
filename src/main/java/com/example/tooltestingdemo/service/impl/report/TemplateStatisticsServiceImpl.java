@@ -1102,36 +1102,14 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     @Override
     public StatisticsReportDTO getProtocolDistributionReport(String startDate, String endDate, String reportType) {
         try {
-            // 参数验证
-            if (startDate == null || endDate == null) {
-                throw new IllegalArgumentException("开始日期和结束日期不能为空");
-            }
-            
-            LocalDate start = LocalDate.parse(startDate);
-            LocalDate end = LocalDate.parse(endDate);
-            
-            if (start.isAfter(end)) {
-                throw new IllegalArgumentException("开始日期不能晚于结束日期");
-            }
-            
-            LocalDateTime startTime = start.atStartOfDay();
-            LocalDateTime endTime = end.atTime(23, 59, 59);
-            
             // 根据报告类型获取统计信息
             Map<String, Object> reportData;
             switch (reportType != null ? reportType.toUpperCase() : "CATEGORY") {
-                case "DETAIL":
-                    List<Map<String, Object>> detailStats = templateStatisticsMapper.getProtocolDetailStats(startTime, endTime);
-                    reportData = buildProtocolDetailData(detailStats, start, end);
-                    break;
-                case "TEST_TYPE":
-                    List<Map<String, Object>> testTypeStats = templateStatisticsMapper.getProtocolTestTypeStats(startTime, endTime);
-                    reportData = buildProtocolTestTypeData(testTypeStats, start, end);
-                    break;
                 case "CATEGORY":
                 default:
-                    List<Map<String, Object>> categoryStats = templateStatisticsMapper.getProtocolCategoryStats(startTime, endTime);
-                    reportData = buildProtocolCategoryData(categoryStats, start, end);
+                    // 只需要查询pdm_tool_protocol_type表的protocol_name分组统计
+                    List<Map<String, Object>> categoryStats = templateStatisticsMapper.getProtocolCategoryStats(null, null);
+                    reportData = buildProtocolCategoryData(categoryStats);
                     break;
             }
             
@@ -1158,41 +1136,29 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     /**
      * 构建协议分类分布数据
      */
-    private Map<String, Object> buildProtocolCategoryData(List<Map<String, Object>> categoryStats, LocalDate startDate, LocalDate endDate) {
+    private Map<String, Object> buildProtocolCategoryData(List<Map<String, Object>> categoryStats) {
         Map<String, Object> reportData = new HashMap<>();
         
         List<Map<String, Object>> categoryData = new ArrayList<>();
-        int totalUsageCount = 0;
-        int totalSuccessCount = 0;
+        int totalProtocolCount = 0;
         
         for (Map<String, Object> stat : categoryStats) {
             String category = safeGetString(stat, "category");
-            BigDecimal usageCount = safeGetBigDecimal(stat, "usage_count");
-            BigDecimal successCount = safeGetBigDecimal(stat, "success_count");
+            BigDecimal protocolCount = safeGetBigDecimal(stat, "protocol_count");
             
             Map<String, Object> categoryInfo = new HashMap<>();
             categoryInfo.put("category", category);
-            categoryInfo.put("categoryName", getProtocolCategoryDisplayName(category));
-            categoryInfo.put("usageCount", usageCount != null ? usageCount.longValue() : 0);
-            categoryInfo.put("successCount", successCount != null ? successCount.longValue() : 0);
-            categoryInfo.put("successRate", usageCount != null && successCount != null && usageCount.compareTo(BigDecimal.ZERO) > 0 ? 
-                successCount.divide(usageCount, 4, BigDecimal.ROUND_HALF_UP).multiply(new BigDecimal("100")).doubleValue() : 0);
-            categoryInfo.put("failureCount", usageCount != null && successCount != null ? 
-                usageCount.subtract(successCount).longValue() : 0);
+            categoryInfo.put("categoryName", category); // 直接使用protocol_name作为显示名称
+            categoryInfo.put("protocolCount", protocolCount != null ? protocolCount.longValue() : 0);
             
             categoryData.add(categoryInfo);
-            totalUsageCount += usageCount != null ? usageCount.longValue() : 0;
-            totalSuccessCount += successCount != null ? successCount.longValue() : 0;
+            totalProtocolCount += protocolCount != null ? protocolCount.longValue() : 0;
         }
         
         reportData.put("categoryData", categoryData);
-        reportData.put("totalUsageCount", totalUsageCount);
-        reportData.put("totalSuccessCount", totalSuccessCount);
-        reportData.put("overallSuccessRate", totalUsageCount > 0 ? (double) totalSuccessCount / totalUsageCount * 100 : 0);
+        reportData.put("totalProtocolCount", totalProtocolCount);
         reportData.put("reportType", "CATEGORY");
         reportData.put("reportTypeName", "按协议分类");
-        reportData.put("startDate", startDate.format(DateTimeFormatter.ISO_DATE));
-        reportData.put("endDate", endDate.format(DateTimeFormatter.ISO_DATE));
         reportData.put("generateTime", LocalDate.now().format(DateTimeFormatter.ISO_DATE));
         
         return reportData;

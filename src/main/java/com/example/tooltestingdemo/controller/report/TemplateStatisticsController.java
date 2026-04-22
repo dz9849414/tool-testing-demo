@@ -198,20 +198,18 @@ public class TemplateStatisticsController {
     @Operation(summary = "获取协议类型分布统计报告")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:view')")
     public Result<com.example.tooltestingdemo.dto.report.StatisticsReportDTO> getProtocolDistributionReport(
-            @RequestParam String startDate,
-            @RequestParam String endDate,
             @RequestParam(defaultValue = "CATEGORY") String reportType) {
         try {
             // 参数校验
             if (reportType != null && !reportType.trim().isEmpty()) {
                 String validReportType = reportType.toUpperCase();
-                if (!validReportType.equals("CATEGORY") && !validReportType.equals("DETAIL") && !validReportType.equals("TEST_TYPE")) {
-                    return Result.error("报告类型参数不正确，请使用CATEGORY/DETAIL/TEST_TYPE");
+                if (!validReportType.equals("CATEGORY")) {
+                    return Result.error("报告类型参数不正确，请使用CATEGORY");
                 }
             }
 
             StatisticsReportDTO report = templateStatisticsService.getProtocolDistributionReport(
-                startDate, endDate, reportType);
+                null, null, reportType);
             return Result.success("协议类型分布统计报告获取成功", report);
         } catch (Exception e) {
             return Result.error("获取协议类型分布统计报告失败：" + e.getMessage());
