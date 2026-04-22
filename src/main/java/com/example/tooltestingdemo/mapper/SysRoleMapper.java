@@ -55,6 +55,6 @@ public interface SysRoleMapper extends BaseMapper<SysRole> {
     /**
      * 根据角色状态查找角色列表
      */
-    @Select("SELECT * FROM sys_role WHERE status = #{status}")
+    @Select("SELECT * FROM pdm_tool_sys_role WHERE status = #{status}")
     List<SysRole> selectByStatus(@Param("status") Integer status);
 }

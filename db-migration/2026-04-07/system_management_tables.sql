@@ -4,6 +4,7 @@
 -- ===========================================
 
 -- 用户表
+DROP TABLE IF EXISTS `pdm_tool_sys_user`;
 CREATE TABLE `pdm_tool_sys_user` (
     `id` BIGINT NOT NULL COMMENT '用户ID',
     `username` VARCHAR(64) NOT NULL COMMENT '用户名',
@@ -34,6 +35,7 @@ CREATE TABLE `pdm_tool_sys_user` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
 -- 角色表
+DROP TABLE IF EXISTS `pdm_tool_sys_role`;
 CREATE TABLE `pdm_tool_sys_role` (
     `id` VARCHAR(50) NOT NULL COMMENT '角色ID',
     `name` VARCHAR(64) NOT NULL COMMENT '角色名称',
@@ -51,6 +53,7 @@ CREATE TABLE `pdm_tool_sys_role` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色表';
 
 -- 权限表
+DROP TABLE IF EXISTS `pdm_tool_sys_permission`;
 CREATE TABLE `pdm_tool_sys_permission` (
     `id` VARCHAR(50) NOT NULL COMMENT '权限ID',
     `name` VARCHAR(64) NOT NULL COMMENT '权限名称',
@@ -71,6 +74,7 @@ CREATE TABLE `pdm_tool_sys_permission` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限表';
 
 -- 用户角色关联表
+DROP TABLE IF EXISTS `pdm_tool_sys_user_role`;
 CREATE TABLE `pdm_tool_sys_user_role` (
     `id` VARCHAR(50) NOT NULL COMMENT '关联ID',
     `user_id` VARCHAR(50) NOT NULL COMMENT '用户ID',
@@ -84,6 +88,7 @@ CREATE TABLE `pdm_tool_sys_user_role` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户角色关联表';
 
 -- 角色权限关联表
+DROP TABLE IF EXISTS `pdm_tool_sys_role_permission`;
 CREATE TABLE `pdm_tool_sys_role_permission` (
     `id` VARCHAR(50) NOT NULL COMMENT '关联ID',
     `role_id` VARCHAR(50) NOT NULL COMMENT '角色ID',
@@ -97,6 +102,7 @@ CREATE TABLE `pdm_tool_sys_role_permission` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色权限关联表';
 
 -- 组织表
+DROP TABLE IF EXISTS `pdm_tool_sys_organization`;
 CREATE TABLE `pdm_tool_sys_organization` (
     `id` VARCHAR(50) NOT NULL COMMENT '组织ID',
     `name` VARCHAR(128) NOT NULL COMMENT '组织名称',
@@ -113,6 +119,7 @@ CREATE TABLE `pdm_tool_sys_organization` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='组织表';
 
 -- 用户组织关联表
+DROP TABLE IF EXISTS `pdm_tool_sys_user_organization`;
 CREATE TABLE `pdm_tool_sys_user_organization` (
     `id` VARCHAR(50) NOT NULL COMMENT '关联ID',
     `user_id` VARCHAR(50) NOT NULL COMMENT '用户ID',
@@ -126,6 +133,7 @@ CREATE TABLE `pdm_tool_sys_user_organization` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户组织关联表';
 
 -- 操作日志表
+DROP TABLE IF EXISTS `pdm_tool_sys_operation_log`;
 CREATE TABLE `pdm_tool_sys_operation_log` (
     `id` VARCHAR(50) NOT NULL COMMENT '日志ID',
     `user_id` VARCHAR(50) COMMENT '操作用户ID',
@@ -151,6 +159,7 @@ CREATE TABLE `pdm_tool_sys_operation_log` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作日志表';
 
 -- 系统配置表
+DROP TABLE IF EXISTS `pdm_tool_sys_config`;
 CREATE TABLE `pdm_tool_sys_config` (
     `id` VARCHAR(50) NOT NULL COMMENT '配置ID',
     `config_key` VARCHAR(128) NOT NULL COMMENT '配置键',
@@ -171,6 +180,7 @@ CREATE TABLE `pdm_tool_sys_config` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统配置表';
 
 -- 字典表
+DROP TABLE IF EXISTS `pdm_tool_sys_dict`;
 CREATE TABLE `pdm_tool_sys_dict` (
     `id` VARCHAR(50) NOT NULL COMMENT '字典ID',
     `dict_type` VARCHAR(64) NOT NULL COMMENT '字典类型',
@@ -188,6 +198,7 @@ CREATE TABLE `pdm_tool_sys_dict` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='字典表';
 
 -- 登录日志表
+DROP TABLE IF EXISTS `pdm_tool_sys_login_log`;
 CREATE TABLE `pdm_tool_sys_login_log` (
     `id` VARCHAR(50) NOT NULL COMMENT '日志ID',
     `user_id` VARCHAR(50) COMMENT '用户ID',
