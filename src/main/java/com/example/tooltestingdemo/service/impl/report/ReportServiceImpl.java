@@ -10,6 +10,8 @@ import com.example.tooltestingdemo.mapper.report.ReportMapper;
 import com.example.tooltestingdemo.mapper.template.TemplateJobLogMapper;
 import com.example.tooltestingdemo.service.report.IReportService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +23,8 @@ import java.util.stream.Collectors;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -28,10 +32,12 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
+// Standard14Fonts is not public, use PDType1Font directly
 
 /**
  * 报告服务实现类
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> implements IReportService {
@@ -213,123 +219,265 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     /**
      * 生成PDF报告
      */
+
+    /**
+     * 生成 PDF 报告（支持中文，不乱码）
+     */
     private void generatePdfReport(Report report, File exportFile, String pageRange) throws Exception {
-        // 使用Apache PDFBox生成真正的PDF文件
         try (PDDocument document = new PDDocument()) {
-            PDPage page = new PDPage(PDRectangle.A4);
+            PDPage page = new PDPage();
             document.addPage(page);
-            
-            PDPageContentStream contentStream = new PDPageContentStream(document, page);
-            
-            // 设置字体
-            PDFont font = PDType1Font.HELVETICA_BOLD;
-            PDFont normalFont = PDType1Font.HELVETICA;
-            
-            // 设置起始位置
-            float startY = page.getMediaBox().getHeight() - 50;
-            float currentY = startY;
-            float margin = 50;
-            float lineHeight = 15;
-            
-            // 添加标题
-            contentStream.beginText();
-            contentStream.setFont(font, 20);
-            contentStream.newLineAtOffset(margin, currentY);
-            contentStream.showText(report.getName());
-            contentStream.endText();
-            currentY -= lineHeight * 2;
-            
-            // 添加生成时间
-            contentStream.beginText();
-            contentStream.setFont(normalFont, 12);
-            contentStream.newLineAtOffset(margin, currentY);
-            contentStream.showText("生成时间：" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-            contentStream.endText();
-            currentY -= lineHeight * 1.5;
-            
-            // 添加分隔线
-            contentStream.moveTo(margin, currentY);
-            contentStream.lineTo(page.getMediaBox().getWidth() - margin, currentY);
-            contentStream.stroke();
-            currentY -= lineHeight;
-            
-            // 添加报告描述
-            if (report.getDescription() != null && !report.getDescription().trim().isEmpty()) {
+
+            try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+                // ========= 关键：加载支持中文的字体 =========
+                PDType0Font font = PDType0Font.load(document, getClass().getResourceAsStream("/fonts/simhei.ttf"));
+
+                // 开始写内容
                 contentStream.beginText();
-                contentStream.setFont(normalFont, 12);
-                contentStream.newLineAtOffset(margin, currentY);
-                contentStream.showText("报告描述：" + report.getDescription());
-                contentStream.endText();
-                currentY -= lineHeight * 1.5;
-            }
-            
-            // 添加报告内容
-            String content = buildReportContent(report, pageRange);
-            if (content != null && !content.trim().isEmpty()) {
-                contentStream.beginText();
-                contentStream.setFont(font, 14);
-                contentStream.newLineAtOffset(margin, currentY);
-                contentStream.showText("报告内容：");
-                contentStream.endText();
-                currentY -= lineHeight;
+                contentStream.setFont(font, 12); // 必须用支持中文的字体
+                contentStream.newLineAtOffset(50, 750);
+
+                // 你的报告内容（这里可以写任意中文！）使用Report对象的内容
+                contentStream.showText("报告名称：" + report.getName());
+                contentStream.newLineAtOffset(0, -20);
+                contentStream.showText("生成时间：" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                contentStream.newLineAtOffset(0, -20);
+                contentStream.showText("数据范围：" + pageRange);
+                contentStream.newLineAtOffset(0, -20);
                 
-                // 处理内容，确保适合PDF显示
-                String formattedContent = content.replace("\n", "\n\n");
-                
-                // 简单的文本换行处理
-                String[] lines = formattedContent.split("\n");
-                for (String line : lines) {
-                    if (currentY < 50) {
-                        // 如果页面空间不足，创建新页面
-                        contentStream.close();
-                        page = new PDPage(PDRectangle.A4);
-                        document.addPage(page);
-                        contentStream = new PDPageContentStream(document, page);
-                        currentY = page.getMediaBox().getHeight() - 50;
-                    }
-                    
-                    contentStream.beginText();
-                    contentStream.setFont(normalFont, 11);
-                    contentStream.newLineAtOffset(margin, currentY);
-                    contentStream.showText(line);
-                    contentStream.endText();
-                    currentY -= lineHeight;
+                if (report.getDescription() != null && !report.getDescription().trim().isEmpty()) {
+                    contentStream.showText("报告描述：" + report.getDescription());
+                    contentStream.newLineAtOffset(0, -20);
                 }
-            } else {
-                contentStream.beginText();
-                contentStream.setFont(normalFont, 12);
-                contentStream.setNonStrokingColor(128, 128, 128); // 灰色
-                contentStream.newLineAtOffset(margin, currentY);
-                contentStream.showText("报告内容为空");
+                
+                if (report.getReportType() != null) {
+                    contentStream.showText("报告类型：" + report.getReportType());
+                    contentStream.newLineAtOffset(0, -20);
+                }
+                
+                if (report.getStatus() != null) {
+                    contentStream.showText("报告状态：" + report.getStatus());
+                    contentStream.newLineAtOffset(0, -20);
+                }
+                
+                contentStream.showText("报告ID：" + report.getId());
+                contentStream.newLineAtOffset(0, -20);
+                
+                // 分隔线
                 contentStream.endText();
-                currentY -= lineHeight;
+                contentStream.moveTo(50, 600);
+                contentStream.lineTo(562, 600);
+                contentStream.stroke();
+                
+                // 报告内容
+                contentStream.beginText();
+                contentStream.setFont(font, 12);
+                contentStream.newLineAtOffset(50, 580);
+                contentStream.showText("报告内容：");
+                contentStream.newLineAtOffset(0, -20);
+                
+                String reportContent = buildReportContent(report, pageRange);
+                if (reportContent != null && !reportContent.trim().isEmpty()) {
+                    String[] lines = wrapText(reportContent, 80);
+                    int y = 560;
+                    for (String line : lines) {
+                        if (y < 50) break;  // 页面底部限制
+                        contentStream.newLineAtOffset(0, -15);
+                        contentStream.showText(line);
+                        y -= 15;
+                    }
+                } else {
+                    contentStream.newLineAtOffset(0, -15);
+                    contentStream.showText("报告内容为空");
+                }
+
+                contentStream.endText();
             }
-            
-            // 添加页脚
-            if (currentY < 100) {
-                contentStream.close();
-                page = new PDPage(PDRectangle.A4);
-                document.addPage(page);
-                contentStream = new PDPageContentStream(document, page);
-                currentY = page.getMediaBox().getHeight() - 50;
-            }
-            
-            contentStream.moveTo(margin, currentY);
-            contentStream.lineTo(page.getMediaBox().getWidth() - margin, currentY);
-            contentStream.stroke();
-            currentY -= lineHeight;
-            
-            contentStream.beginText();
-            contentStream.setFont(normalFont, 10);
-            contentStream.newLineAtOffset(margin, currentY);
-            contentStream.showText("报告ID：" + report.getId() + " | 生成系统：工具测试平台");
-            contentStream.endText();
-            
-            contentStream.close();
-            
-            // 保存文档
-            document.save(exportFile);
+
+            // 输出文件
+            document.save(new FileOutputStream(exportFile));
         }
+    }
+
+    /**
+     * 构建简单的PDF页面内容（使用ASCII字符）
+     */
+    private String buildSimplePdfPageContent(Report report, String pageRange) {
+        StringBuilder content = new StringBuilder();
+        
+        // 开始文本对象
+        content.append("BT\n");
+        content.append("/F1 24 Tf\n");  // 设置字体和大小
+        content.append("50 750 Td\n");  // 设置文本位置
+        content.append("(").append(escapeAscii(report.getName())).append(") Tj\n");  // 显示文本
+        content.append("ET\n");  // 结束文本对象
+        
+        // 生成时间
+        content.append("BT\n");
+        content.append("/F1 12 Tf\n");
+        content.append("50 720 Td\n");
+        content.append("(").append(escapeAscii("Generate Time: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))).append(") Tj\n");
+        content.append("ET\n");
+        
+        // 报告描述（英文显示）
+        if (report.getDescription() != null && !report.getDescription().trim().isEmpty()) {
+            content.append("BT\n");
+            content.append("/F1 12 Tf\n");
+            content.append("50 700 Td\n");
+            content.append("(").append(escapeAscii("Description: " + report.getDescription())).append(") Tj\n");
+            content.append("ET\n");
+        }
+        
+        // 报告类型
+        if (report.getReportType() != null) {
+            content.append("BT\n");
+            content.append("/F1 12 Tf\n");
+            content.append("50 680 Td\n");
+            content.append("(").append(escapeAscii("Type: " + report.getReportType())).append(") Tj\n");
+            content.append("ET\n");
+        }
+        
+        // 报告状态
+        if (report.getStatus() != null) {
+            content.append("BT\n");
+            content.append("/F1 12 Tf\n");
+            content.append("50 660 Td\n");
+            content.append("(").append(escapeAscii("Status: " + report.getStatus())).append(") Tj\n");
+            content.append("ET\n");
+        }
+        
+        // 分隔线
+        content.append("50 640 m\n");
+        content.append("562 640 l\n");
+        content.append("S\n");
+        
+        // 报告内容标题
+        content.append("BT\n");
+        content.append("/F1 14 Tf\n");
+        content.append("50 620 Td\n");
+        content.append("(").append(escapeAscii("Report Content:")).append(") Tj\n");
+        content.append("ET\n");
+        
+        // 报告内容
+        String reportContent = buildReportContent(report, pageRange);
+        if (reportContent != null && !reportContent.trim().isEmpty()) {
+            String[] lines = wrapText(reportContent, 80);
+            int y = 600;
+            for (String line : lines) {
+                if (y < 50) break;  // 页面底部限制
+                content.append("BT\n");
+                content.append("/F1 10 Tf\n");
+                content.append("50 ").append(y).append(" Td\n");
+                content.append("(").append(escapeAscii(line)).append(") Tj\n");
+                content.append("ET\n");
+                y -= 15;
+            }
+        } else {
+            content.append("BT\n");
+            content.append("/F1 12 Tf\n");
+            content.append("50 600 Td\n");
+            content.append("(").append(escapeAscii("No content available")).append(") Tj\n");
+            content.append("ET\n");
+        }
+        
+        // 页脚
+        content.append("BT\n");
+        content.append("/F1 10 Tf\n");
+        content.append("50 30 Td\n");
+        content.append("(").append(escapeAscii("Report ID: " + report.getId() + " | Generated by Tool Testing Platform")).append(") Tj\n");
+        content.append("ET\n");
+        
+        return content.toString();
+    }
+    
+    /**
+     * 转义ASCII字符串中的特殊字符
+     */
+    private String escapeAscii(String text) {
+        if (text == null) return "";
+        // 只保留ASCII字符，过滤掉非ASCII字符
+        return text.replaceAll("[^\\x00-\\x7F]", "?")
+                  .replace("\\", "\\\\")
+                  .replace("(", "\\(")
+                  .replace(")", "\\)");
+    }
+    
+    /**
+     * 将字符串转换为UTF-16BE十六进制编码
+     */
+    private String stringToHex(String text) {
+        if (text == null) return "";
+        try {
+            byte[] bytes = text.getBytes("UTF-16BE");
+            StringBuilder hex = new StringBuilder();
+            for (byte b : bytes) {
+                hex.append(String.format("%02X", b));
+            }
+            return hex.toString();
+        } catch (Exception e) {
+            // 如果转换失败，返回空字符串
+            return "";
+        }
+    }
+    
+    /**
+     * 转义PDF字符串中的特殊字符
+     */
+    private String escapePdfString(String text) {
+        if (text == null) return "";
+        return text.replace("\\", "\\\\")
+                  .replace("(", "\\(")
+                  .replace(")", "\\)");
+    }
+    
+    /**
+     * 构建HTML报告（备用方案）
+     */
+    private String buildHtmlReport(Report report, String pageRange) {
+        StringBuilder html = new StringBuilder();
+        html.append("<!DOCTYPE html>\n");
+        html.append("<html>\n");
+        html.append("<head>\n");
+        html.append("<meta charset=\"UTF-8\">\n");
+        html.append("<title>").append(report.getName()).append("</title>\n");
+        html.append("<style>\n");
+        html.append("body { font-family: Arial, sans-serif; margin: 20px; }\n");
+        html.append("h1 { color: #333; }\n");
+        html.append(".separator { border-top: 1px solid #ccc; margin: 20px 0; }\n");
+        html.append("</style>\n");
+        html.append("</head>\n");
+        html.append("<body>\n");
+        html.append("<h1>").append(report.getName()).append("</h1>\n");
+        html.append("<p><strong>生成时间：</strong>").append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))).append("</p>\n");
+        
+        if (report.getDescription() != null) {
+            html.append("<p><strong>报告描述：</strong>").append(report.getDescription()).append("</p>\n");
+        }
+        
+        if (report.getReportType() != null) {
+            html.append("<p><strong>报告类型：</strong>").append(report.getReportType()).append("</p>\n");
+        }
+        
+        if (report.getStatus() != null) {
+            html.append("<p><strong>报告状态：</strong>").append(report.getStatus()).append("</p>\n");
+        }
+        
+        html.append("<div class=\"separator\"></div>\n");
+        html.append("<h2>报告内容</h2>\n");
+        
+        String content = buildReportContent(report, pageRange);
+        if (content != null && !content.trim().isEmpty()) {
+            html.append("<pre>").append(content).append("</pre>\n");
+        } else {
+            html.append("<p>报告内容为空</p>\n");
+        }
+        
+        html.append("<div class=\"separator\"></div>\n");
+        html.append("<p><small>报告ID：").append(report.getId()).append(" | 生成系统：工具测试平台</small></p>\n");
+        html.append("</body>\n");
+        html.append("</html>\n");
+        
+        return html.toString();
     }
     
     /**
@@ -419,6 +567,127 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         // 这里可以实现更复杂的内容过滤逻辑
         // 目前简单返回所有内容
         return content;
+    }
+    
+    /**
+     * 文本换行处理
+     */
+    private String[] wrapText(String text, int maxLineLength) {
+        if (text == null || text.trim().isEmpty()) {
+            return new String[]{"报告内容为空"};
+        }
+        
+        // 简单的换行逻辑
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        StringBuilder currentLine = new StringBuilder();
+        
+        for (String word : text.split("\\s+")) {
+            if (currentLine.length() + word.length() + 1 > maxLineLength) {
+                if (!currentLine.isEmpty()) {
+                    lines.add(currentLine.toString());
+                    currentLine = new StringBuilder();
+                }
+                // 处理超长单词
+                if (word.length() > maxLineLength) {
+                    for (int i = 0; i < word.length(); i += maxLineLength) {
+                        int end = Math.min(i + maxLineLength, word.length());
+                        lines.add(word.substring(i, end));
+                    }
+                } else {
+                    currentLine.append(word);
+                }
+            } else {
+                if (currentLine.length() > 0) {
+                    currentLine.append(" ");
+                }
+                currentLine.append(word);
+            }
+        }
+        
+        if (currentLine.length() > 0) {
+            lines.add(currentLine.toString());
+        }
+        
+        return lines.toArray(new String[0]);
+    }
+    
+    /**
+     * 将内容添加到PDF文档（支持多页）
+     */
+    private void addContentToDocument(PDDocument document, String content, int startY) throws Exception {
+        String[] lines = wrapText(content, 80);
+        int currentY = startY;
+        PDPage currentPage = document.getPage(document.getNumberOfPages() - 1);
+        
+        // 处理第一页的内容
+        try (PDPageContentStream contentStream = new PDPageContentStream(document, currentPage, PDPageContentStream.AppendMode.APPEND, true)) {
+            contentStream.beginText();
+            contentStream.setFont(PDType1Font.HELVETICA, 10);
+            contentStream.newLineAtOffset(50, currentY);
+            
+            for (int i = 0; i < lines.length; i++) {
+                String line = lines[i];
+                
+                if (currentY < 50) {
+                    // 当前页面空间不足，结束当前页面
+                    contentStream.endText();
+                    
+                    // 创建新页面
+                    PDPage newPage = new PDPage();
+                    document.addPage(newPage);
+                    currentY = 750;
+                    
+                    // 在新页面继续添加剩余内容
+                    addContentToNewPage(document, newPage, lines, i, currentY);
+                    break;
+                } else {
+                    contentStream.showText(line);
+                    contentStream.newLineAtOffset(0, -15);
+                    currentY -= 15;
+                }
+            }
+            
+            if (currentY >= 50) {
+                contentStream.endText();
+            }
+        }
+    }
+    
+    /**
+     * 在新页面添加内容
+     */
+    private void addContentToNewPage(PDDocument document, PDPage page, String[] lines, int startIndex, int startY) throws Exception {
+        int currentY = startY;
+        
+        try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+            contentStream.beginText();
+            contentStream.setFont(PDType1Font.HELVETICA, 10);
+            contentStream.newLineAtOffset(50, currentY);
+            
+            for (int i = startIndex; i < lines.length; i++) {
+                String line = lines[i];
+                
+                if (currentY < 50) {
+                    // 当前页面空间不足，递归处理
+                    contentStream.endText();
+                    
+                    PDPage newPage = new PDPage();
+                    document.addPage(newPage);
+                    currentY = 750;
+                    
+                    addContentToNewPage(document, newPage, lines, i, currentY);
+                    break;
+                } else {
+                    contentStream.showText(line);
+                    contentStream.newLineAtOffset(0, -15);
+                    currentY -= 15;
+                }
+            }
+            
+            if (currentY >= 50) {
+                contentStream.endText();
+            }
+        }
     }
 
     @Override
