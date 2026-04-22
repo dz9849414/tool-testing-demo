@@ -30,7 +30,7 @@ public class MybatisPlusConfig {
     }
 
     @Bean
-    public GlobalConfig globalConfig(MetaObjectHandler metaObjectHandler) {
+    public GlobalConfig globalConfig(MetaObjectHandler myMetaObjectHandler) {
         GlobalConfig globalConfig = new GlobalConfig();
         GlobalConfig.DbConfig dbConfig = new GlobalConfig.DbConfig();
         dbConfig.setLogicDeleteField("isDeleted");
