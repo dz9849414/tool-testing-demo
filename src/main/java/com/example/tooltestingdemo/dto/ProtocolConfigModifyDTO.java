@@ -22,6 +22,8 @@ public class ProtocolConfigModifyDTO {
 
     private Long protocolId;
 
+    private String protocolName;
+
     private String configName;
 
     @Valid
