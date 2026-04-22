@@ -5,6 +5,7 @@ import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.dto.ProtocolConfigCreateDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigModifyDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigQueryDTO;
+import com.example.tooltestingdemo.dto.ProtocolConfigStatusUpdateDTO;
 import com.example.tooltestingdemo.entity.protocol.ProtocolConfig;
 import com.example.tooltestingdemo.service.protocol.IProtocolConfigService;
 import com.example.tooltestingdemo.vo.ProtocolConfigVO;
@@ -67,6 +68,16 @@ public class ProtocolConfigController {
     public Result<ProtocolConfigVO> modify(@RequestBody @Valid ProtocolConfigModifyDTO dto) {
         ProtocolConfigVO updated = protocolConfigService.modifyProtocolConfig(dto);
         return Result.success("编辑成功", updated);
+    }
+
+    /**
+     * 编辑协议配置状态
+     */
+    @PostMapping("/status")
+    @Operation(summary = "编辑协议配置状态", description = "按ID更新协议配置状态，0-禁用，1-启用")
+    public Result<ProtocolConfigVO> updateProtocolConfigStatus(@RequestBody @Valid ProtocolConfigStatusUpdateDTO dto) {
+        ProtocolConfigVO updated = protocolConfigService.updateProtocolConfigStatus(dto);
+        return Result.success("状态更新成功", updated);
     }
 
     /**
