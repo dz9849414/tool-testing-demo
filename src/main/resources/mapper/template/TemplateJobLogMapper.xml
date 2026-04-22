@@ -3,23 +3,23 @@
 <mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateJobLogMapper">
 
     <select id="selectRecentByJobId" resultType="com.example.tooltestingdemo.entity.template.TemplateJobLog">
-        SELECT * FROM template_job_log
+        SELECT * FROM pdm_tool_template_job_log
         WHERE job_id = #{jobId}
-        ORDER BY create_time DESC
+        ORDER BY execute_at DESC
         LIMIT #{limit}
     </select>
 
     <select id="selectLastLogsByJobIds" resultType="com.example.tooltestingdemo.entity.template.TemplateJobLog">
         SELECT t.*
-        FROM template_job_log t
+        FROM pdm_tool_template_job_log t
         INNER JOIN (
-        SELECT job_id, MAX(id) AS max_id
-        FROM template_job_log
-        WHERE job_id IN
-        <foreach collection="jobIds" item="id" open="(" separator="," close=")">
-            #{id}
-        </foreach>
-        GROUP BY job_id
+            SELECT job_id, MAX(id) AS max_id
+            FROM pdm_tool_template_job_log
+            WHERE job_id IN
+            <foreach collection="jobIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+            GROUP BY job_id
         ) tmp
         ON t.id = tmp.max_id
     </select>

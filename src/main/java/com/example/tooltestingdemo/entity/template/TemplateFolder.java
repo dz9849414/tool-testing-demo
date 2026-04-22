@@ -58,6 +58,7 @@ public class TemplateFolder {
     private LocalDateTime deletedTime;
 
     @TableField(value = "is_deleted")
+    @TableLogic(value = "0", delval = "1")
     private Integer isDeleted;
 
     @TableField(value = "update_id", fill = FieldFill.UPDATE)

@@ -140,6 +140,7 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
             vo.setCronExpression(job.getCronExpression());
             vo.setStatus(job.getStatus());
             vo.setDescription(job.getDescription());
+            vo.setCreateName(job.getCreateName());
             vo.setLastExecuteTime(job.getLastExecuteTime());
             vo.setCreateTime(job.getCreateTime());
 
@@ -224,10 +225,7 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteJob(Long id) {
         jobScheduler.cancelJob(id);
-        TemplateJob job = new TemplateJob();
-        job.setId(id);
-        job.setIsDeleted(1);
-        boolean result = updateById(job);
+        boolean result = removeById(id);
         if (result) {
             jobItemMapper.deleteByJobId(id);
         }
@@ -422,7 +420,7 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
         if (success != null) {
             wrapper.eq(TemplateJobLog::getSuccess, success);
         }
-        wrapper.orderByDesc(TemplateJobLog::getCreateTime);
+        wrapper.orderByDesc(TemplateJobLog::getExecuteAt);
 
         IPage<TemplateJobLog> entityPage = jobLogMapper.selectPage(page, wrapper);
         List<TemplateJobLogVO> voList = new java.util.ArrayList<>();
@@ -435,7 +433,7 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
             vo.setSuccess(logEntity.getSuccess());
             vo.setDurationMs(logEntity.getDurationMs());
             vo.setErrorMsg(logEntity.getErrorMsg());
-            vo.setCreateTime(logEntity.getCreateTime());
+            vo.setCreateTime(logEntity.getExecuteAt());
 
             // 解析 executeResult
             List<TemplateJobLogItemVO> results = new ArrayList<>();

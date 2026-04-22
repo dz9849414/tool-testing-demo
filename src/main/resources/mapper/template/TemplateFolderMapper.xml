@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateFolderMapper">
 
-    <!-- 
+    <!--
         文件位置：src/main/resources/mapper/template/TemplateFolderMapper.xml
         命名空间：com.example.tooltestingdemo.mapper.template.TemplateFolderMapper
     -->
@@ -31,5 +31,4 @@
         team_id, visibility, status,
         create_time, update_time, deleted_time
     </sql>
-
 </mapper>

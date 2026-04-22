@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateFormDataMapper">
 
-    <!-- 
+    <!--
         文件位置：src/main/resources/mapper/template/TemplateFormDataMapper.xml
         命名空间：com.example.tooltestingdemo.mapper.template.TemplateFormDataMapper
     -->
@@ -29,15 +29,15 @@
 
     <!-- 根据模板ID查询FormData列表 -->
     <select id="selectByTemplateId" resultMap="BaseResultMap">
-        SELECT * FROM template_form_data 
-        WHERE template_id = #{templateId} 
-        AND is_enabled = 1 
+        SELECT * FROM pdm_tool_template_form_data
+        WHERE template_id = #{templateId}
+        AND is_enabled = 1
         ORDER BY sort_order ASC
     </select>
 
     <!-- 批量插入FormData参数 -->
     <insert id="batchInsert">
-        INSERT INTO template_form_data (
+        INSERT INTO pdm_tool_template_form_data (
             template_id, field_name, field_type, field_value, file_path,
             file_name, content_type, description, is_required, is_enabled,
             is_variable, variable_name, sort_order
@@ -52,3 +52,4 @@
     </insert>
 
 </mapper>
+

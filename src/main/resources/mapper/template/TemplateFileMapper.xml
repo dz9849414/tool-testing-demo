@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateFileMapper">
 
-    <!-- 
+    <!--
         文件位置：src/main/resources/mapper/template/TemplateFileMapper.xml
         命名空间：com.example.tooltestingdemo.mapper.template.TemplateFileMapper
     -->
@@ -34,24 +34,24 @@
 
     <!-- 根据模板ID查询文件列表 -->
     <select id="selectByTemplateId" resultMap="BaseResultMap">
-        SELECT * FROM template_file 
-        WHERE template_id = #{templateId} 
-        AND is_deleted = 0 
+        SELECT * FROM pdm_tool_template_file
+        WHERE template_id = #{templateId}
+        AND is_deleted = 0
         ORDER BY sort_order ASC, create_time DESC
     </select>
 
     <!-- 根据模板ID和文件类别查询 -->
     <select id="selectByTemplateIdAndCategory" resultMap="BaseResultMap">
-        SELECT * FROM template_file 
-        WHERE template_id = #{templateId} 
+        SELECT * FROM pdm_tool_template_file
+        WHERE template_id = #{templateId}
         AND file_category = #{fileCategory}
-        AND is_deleted = 0 
+        AND is_deleted = 0
         ORDER BY sort_order ASC, create_time DESC
     </select>
 
     <!-- 批量插入文件 -->
     <insert id="batchInsert">
-        INSERT INTO template_file (
+        INSERT INTO pdm_tool_template_file (
             template_id, file_name, file_original_name, file_path, file_url,
             file_size, file_type, file_extension, file_category, file_description,
             sort_order, create_id, create_name, create_time, is_deleted
@@ -64,5 +64,4 @@
             )
         </foreach>
     </insert>
-
 </mapper>

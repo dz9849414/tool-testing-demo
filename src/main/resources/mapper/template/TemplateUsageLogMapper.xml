@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateUsageLogMapper">
 
-    <!-- 
+    <!--
         文件位置：src/main/resources/mapper/template/TemplateUsageLogMapper.xml
         命名空间：com.example.tooltestingdemo.mapper.template.TemplateUsageLogMapper
     -->
@@ -27,24 +27,25 @@
 
     <!-- 根据模板ID查询使用记录 -->
     <select id="selectByTemplateId" resultMap="BaseResultMap">
-        SELECT * FROM template_usage_log 
-        WHERE template_id = #{templateId} 
-        ORDER BY create_time DESC 
+        SELECT * FROM pdm_tool_template_usage_log
+        WHERE template_id = #{templateId}
+        ORDER BY create_time DESC
         LIMIT #{limit}
     </select>
 
     <!-- 查询用户的使用记录 -->
     <select id="selectByUserId" resultMap="BaseResultMap">
-        SELECT * FROM template_usage_log 
-        WHERE create_id = #{userId} 
-        ORDER BY create_time DESC 
+        SELECT * FROM pdm_tool_template_usage_log
+        WHERE create_id = #{userId}
+        ORDER BY create_time DESC
         LIMIT #{limit}
     </select>
 
     <!-- 统计模板使用次数 -->
     <select id="countByTemplateId" resultType="int">
-        SELECT COUNT(*) FROM template_usage_log 
+        SELECT COUNT(*) FROM pdm_tool_template_usage_log
         WHERE template_id = #{templateId}
     </select>
 
 </mapper>
+

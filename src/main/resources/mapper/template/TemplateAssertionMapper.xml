@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateAssertionMapper">
 
-    <!-- 
+    <!--
         文件位置：src/main/resources/mapper/template/TemplateAssertionMapper.xml
         命名空间：com.example.tooltestingdemo.mapper.template.TemplateAssertionMapper
     -->
@@ -28,15 +28,15 @@
 
     <!-- 根据模板ID查询断言列表 -->
     <select id="selectByTemplateId" resultMap="BaseResultMap">
-        SELECT * FROM template_assertion 
-        WHERE template_id = #{templateId} 
-        AND is_enabled = 1 
+        SELECT * FROM pdm_tool_template_assertion
+        WHERE template_id = #{templateId}
+        AND is_enabled = 1
         ORDER BY sort_order ASC
     </select>
 
     <!-- 批量插入断言 -->
     <insert id="batchInsert">
-        INSERT INTO template_assertion (
+        INSERT INTO pdm_tool_template_assertion (
             template_id, assert_name, assert_type, extract_path, expected_value,
             operator, data_type, error_message, is_enabled, assert_group,
             logic_type, sort_order
@@ -51,3 +51,4 @@
     </insert>
 
 </mapper>
+

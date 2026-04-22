@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * 模板分类/文件夹 VO（返回给前端）
- * 
+ *
  * 文件位置：src/main/java/com/example/tooltestingdemo/vo/TemplateFolderVO.java
  */
 @Data

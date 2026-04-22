@@ -68,6 +68,7 @@ public final class TemplateConstants {
     // ==================== 参数类型 ====================
     public static final String PARAM_TYPE_QUERY = "QUERY";
     public static final String PARAM_TYPE_PATH = "PATH";
+    public static final String PARAM_TYPE_BODY = "BODY";
 
     // ==================== 数据类型 ====================
     public static final String DATA_TYPE_STRING = "STRING";

@@ -10,8 +10,11 @@ import com.example.tooltestingdemo.vo.TraceChainDetailVO;
 import com.example.tooltestingdemo.vo.TraceRuntimeLogVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
 
 /**
  * 模板执行统一日志 Controller。
@@ -36,9 +39,12 @@ public class TemplateExecuteLogController {
             @RequestParam(required = false) Long jobId,
             @RequestParam(required = false) String executeType,
             @RequestParam(required = false) Integer success,
-            @RequestParam(required = false) String keyword) {
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {
         Page<TemplateExecuteLog> page = new Page<>(current, size);
-        return Result.success(executeLogService.pageLogs(page, templateId, jobId, executeType, success, keyword));
+        return Result.success(executeLogService.pageLogs(
+                page, templateId, jobId, executeType, success, keyword, startTime, endTime));
     }
 
     /**

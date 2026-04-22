@@ -21,6 +21,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,7 +38,7 @@ import java.util.stream.Stream;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateMapper, InterfaceTemplate> 
+public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateMapper, InterfaceTemplate>
         implements InterfaceTemplateService {
 
     private final TemplateHeaderMapper headerMapper;
@@ -66,14 +67,14 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
             InterfaceTemplate oldTemplate = new InterfaceTemplate();
             BeanUtils.copyProperties(template, oldTemplate);
             InterfaceTemplateVO oldVO = getTemplateDetail(id);
-            
+
             BeanUtils.copyProperties(dto, template, "id", "version", "status", "createTime");
             String newVersion = VersionGenerator.incrementMinorVersion(template.getVersion());
             template.setVersion(newVersion);
             updateById(template);
             deleteRelatedData(id);
             saveRelatedData(id, dto);
-            
+
             InterfaceTemplateVO newVO = getTemplateDetail(id);
             saveHistory(oldTemplate, oldVO, newVO, "UPDATE", "更新模板，版本号：" + newVersion);
             log.info("更新模板成功: id={}, version={}", id, newVersion);
@@ -91,16 +92,16 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     }
 
     @Override
-    public IPage<InterfaceTemplateVO> pageTemplates(Page<InterfaceTemplate> page, Long folderId, 
+    public IPage<InterfaceTemplateVO> pageTemplates(Page<InterfaceTemplate> page, Long folderId,
                                                      String keyword, String protocolType, Integer status) {
         IPage<InterfaceTemplate> entityPage = baseMapper.selectTemplatePage(page, folderId, keyword, protocolType, status);
-        
+
         Page<InterfaceTemplateVO> voPage = new Page<>(entityPage.getCurrent(), entityPage.getSize(), entityPage.getTotal());
         voPage.setPages(entityPage.getPages());
         voPage.setRecords(entityPage.getRecords().stream()
             .map(this::enrichTemplateVO)
             .collect(Collectors.toList()));
-        
+
         return voPage;
     }
 
@@ -109,7 +110,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     public InterfaceTemplateVO copyTemplate(Long id, String newName) {
         InterfaceTemplate source = Optional.ofNullable(getById(id))
             .orElseThrow(() -> new TemplateValidationException(TemplateValidationException.ErrorType.NOT_FOUND, "模板不存在"));
-        
+
         InterfaceTemplate copy = new InterfaceTemplate();
         BeanUtils.copyProperties(source, copy, "id", "version", "status", "createTime", "updateTime", "useCount");
         copy.setName(newName);
@@ -117,11 +118,11 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         copy.setStatus(TemplateEnums.TemplateStatus.DRAFT.getCode());
         copy.setUseCount(0);
         save(copy);
-        
+
         copyRelatedData(id, copy.getId());
         InterfaceTemplateVO newVO = getTemplateDetail(copy.getId());
         saveHistory(copy, null, newVO, "COPY", "复制自模板[ID=" + id + "]");
-        
+
         log.info("复制模板成功: newId={}, sourceId={}", copy.getId(), id);
         return newVO;
     }
@@ -146,11 +147,17 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteTemplate(Long id) {
-        return updateTemplate(id, t -> {
+        return Optional.ofNullable(getById(id)).map(t -> {
+            InterfaceTemplateVO oldVO = getTemplateDetail(id);
             t.setStatus(TemplateEnums.TemplateStatus.DISABLED.getCode());
-            t.setIsDeleted(1);
-            t.setDeletedTime(LocalDateTime.now());
-        }, "DELETE", "删除模板");
+            if (!updateById(t)) {
+                return false;
+            }
+
+            InterfaceTemplateVO newVO = getTemplateDetail(id);
+            saveHistory(t, oldVO, newVO, "DELETE", "删除模板");
+            return removeById(id);
+        }).orElse(false);
     }
 
     @Override
@@ -158,7 +165,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     public Map<String, List<Long>> batchDeleteTemplates(Long[] ids) {
         Map<Boolean, List<Long>> result = Stream.of(ids)
             .collect(Collectors.partitioningBy(this::deleteTemplate));
-        
+
         Map<String, List<Long>> map = new HashMap<>();
         map.put("success", result.get(true));
         map.put("fail", result.get(false));
@@ -185,21 +192,21 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     public InterfaceTemplateVO submitForReview(Long id, InterfaceTemplateDTO dto) {
         InterfaceTemplate existing = Optional.ofNullable(getById(id))
             .orElseThrow(() -> new TemplateValidationException(TemplateValidationException.ErrorType.NOT_FOUND, "模板不存在"));
-        
+
         Optional.ofNullable(TemplateEnums.TemplateStatus.getByCode(existing.getStatus()))
             .filter(TemplateEnums.TemplateStatus::isSubmittable)
             .orElseThrow(() -> new TemplateValidationException(TemplateValidationException.ErrorType.OPERATION_NOT_ALLOWED, "当前状态不可提交审核"));
-        
+
         templateValidator.validateRequired(dto, id);
-        
+
         InterfaceTemplateVO oldVO = getTemplateDetail(id);
-        
+
         doSaveTemplate(id, dto, TemplateEnums.TemplateStatus.PENDING_REVIEW.getCode(),
-            VersionGenerator.incrementMajorVersion(existing.getVersion()), "提交审核");
-        
+            VersionGenerator.incrementMinorVersion(existing.getVersion()), "提交审核");
+
         InterfaceTemplateVO newVO = getTemplateDetail(id);
         saveHistory(existing, oldVO, newVO, "PUBLISH", "提交审核，版本号：" + existing.getVersion());
-        
+
         return newVO;
     }
 
@@ -212,7 +219,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     @Override
     public boolean rejectTemplate(Long id, String reason) {
         return checkAndUpdateStatus(id, TemplateEnums.TemplateStatus.PENDING_REVIEW.getCode(),
-            TemplateEnums.TemplateStatus.REJECTED.getCode(), "只有待审核状态的模板可以驳回", "REJECT", 
+            TemplateEnums.TemplateStatus.REJECTED.getCode(), "只有待审核状态的模板可以驳回", "REJECT",
             "审核驳回，原因：" + Optional.ofNullable(reason).orElse("无"));
     }
 
@@ -234,26 +241,26 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         if (isUpdate && existing == null) {
             throw new TemplateValidationException(TemplateValidationException.ErrorType.NOT_FOUND, "模板不存在");
         }
-        
+
         templateValidator.validateDraft(dto, id);
-        
-        String newVersion = isUpdate 
+
+        String newVersion = isUpdate
             ? VersionGenerator.incrementMinorVersion(existing.getVersion())
             : VersionGenerator.generateInitialVersion();
-        
+
         InterfaceTemplateVO oldVO = null;
         if (isUpdate) {
             Optional.ofNullable(TemplateEnums.TemplateStatus.getByCode(existing.getStatus()))
                 .filter(TemplateEnums.TemplateStatus::isEditable)
                 .orElseThrow(() -> new TemplateValidationException(TemplateValidationException.ErrorType.OPERATION_NOT_ALLOWED, "当前状态不可编辑"));
-            
+
             oldVO = getTemplateDetail(id);
             deleteRelatedData(id);
         }
-        
-        Long templateId = doSaveTemplate(id, dto, TemplateEnums.TemplateStatus.DRAFT.getCode(), newVersion, 
+
+        Long templateId = doSaveTemplate(id, dto, TemplateEnums.TemplateStatus.DRAFT.getCode(), newVersion,
             isUpdate ? "更新草稿" : "创建草稿");
-        
+
         InterfaceTemplateVO newVO = getTemplateDetail(templateId);
         if (isUpdate) {
             saveHistory(existing, oldVO, newVO, "UPDATE", "更新草稿，版本号：" + existing.getVersion());
@@ -261,17 +268,20 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
             InterfaceTemplate newTemplate = getById(templateId);
             saveHistory(newTemplate, null, newVO, "CREATE", "创建草稿，版本号：" + newVersion);
         }
-        
+
         return newVO;
     }
 
     private Long doSaveTemplate(Long id, InterfaceTemplateDTO dto, Integer status, String version, String desc) {
         InterfaceTemplate template = new InterfaceTemplate();
         BeanUtils.copyProperties(dto, template);
+        if (!StringUtils.hasText(template.getBodyContent()) && StringUtils.hasText(dto.getBody())) {
+            template.setBodyContent(dto.getBody());
+        }
         template.setId(id);
         template.setStatus(status);
         template.setVersion(version);
-        
+
         if (id == null) {
             template.setIsLatest(1);
             template.setUseCount(0);
@@ -280,10 +290,10 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
                 template.setCreateName("管理员");
             }
         }
-        
+
         saveOrUpdate(template);
         saveRelatedData(template.getId(), dto);
-        
+
         log.info("{}成功: id={}, version={}", desc, template.getId(), version);
         return template.getId();
     }
@@ -292,7 +302,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         return updateTemplate(id, t -> t.setStatus(status), opType, desc);
     }
 
-    private boolean checkAndUpdateStatus(Long id, Integer requiredStatus, Integer newStatus, 
+    private boolean checkAndUpdateStatus(Long id, Integer requiredStatus, Integer newStatus,
                                           String errorMsg, String opType, String desc) {
         return Optional.ofNullable(getById(id)).map(t -> {
             if (!requiredStatus.equals(t.getStatus())) {
@@ -330,19 +340,19 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     // ========== 关联数据操作 ==========
 
     private void saveRelatedData(Long templateId, InterfaceTemplateDTO dto) {
-        insertBatch(dto.getHeaders(), TemplateConverter::toHeaderEntityList, 
+        insertBatch(dto.getHeaders(), TemplateConverter::toHeaderEntityList,
             h -> h.setTemplateId(templateId), headerMapper::batchInsert);
-        insertBatch(dto.getParameters(), TemplateConverter::toParameterEntityList, 
+        insertBatch(dto.getParameters(), TemplateConverter::toParameterEntityList,
             p -> p.setTemplateId(templateId), parameterMapper::batchInsert);
-        insertBatch(dto.getFormDataList(), TemplateConverter::toFormDataEntityList, 
+        insertBatch(dto.getFormDataList(), TemplateConverter::toFormDataEntityList,
             f -> f.setTemplateId(templateId), formDataMapper::batchInsert);
-        insertBatch(dto.getAssertions(), TemplateConverter::toAssertionEntityList, 
+        insertBatch(dto.getAssertions(), TemplateConverter::toAssertionEntityList,
             a -> a.setTemplateId(templateId), assertionMapper::batchInsert);
-        insertBatch(dto.getPreProcessors(), TemplateConverter::toPreProcessorEntityList, 
+        insertBatch(dto.getPreProcessors(), TemplateConverter::toPreProcessorEntityList,
             p -> p.setTemplateId(templateId), preProcessorMapper::batchInsert);
-        insertBatch(dto.getPostProcessors(), TemplateConverter::toPostProcessorEntityList, 
+        insertBatch(dto.getPostProcessors(), TemplateConverter::toPostProcessorEntityList,
             p -> p.setTemplateId(templateId), postProcessorMapper::batchInsert);
-        insertBatch(dto.getVariables(), TemplateConverter::toVariableEntityList, 
+        insertBatch(dto.getVariables(), TemplateConverter::toVariableEntityList,
             v -> v.setTemplateId(templateId), variableMapper::batchInsert);
     }
 
@@ -363,7 +373,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         vo.setPreProcessors(TemplateConverter.toPreProcessorVOList(preProcessorMapper.selectByTemplateId(tid)));
         vo.setPostProcessors(TemplateConverter.toPostProcessorVOList(postProcessorMapper.selectByTemplateId(tid)));
         vo.setVariables(TemplateConverter.toVariableVOList(variableMapper.selectByTemplateId(tid)));
-        
+
         List<TemplateFile> files = fileMapper.selectByTemplateId(tid);
         vo.setFiles(TemplateConverter.toFileVOList(files));
         vo.setFileCount(files.size());
@@ -372,21 +382,21 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     }
 
     private void copyRelatedData(Long sourceId, Long targetId) {
-        copyEntities(headerMapper.selectByTemplateId(sourceId), targetId, 
+        copyEntities(headerMapper.selectByTemplateId(sourceId), targetId,
             h -> { h.setId(null); h.setTemplateId(targetId); }, headerMapper::batchInsert);
-        copyEntities(parameterMapper.selectByTemplateId(sourceId), targetId, 
+        copyEntities(parameterMapper.selectByTemplateId(sourceId), targetId,
             p -> { p.setId(null); p.setTemplateId(targetId); }, parameterMapper::batchInsert);
-        copyEntities(formDataMapper.selectByTemplateId(sourceId), targetId, 
+        copyEntities(formDataMapper.selectByTemplateId(sourceId), targetId,
             f -> { f.setId(null); f.setTemplateId(targetId); }, formDataMapper::batchInsert);
-        copyEntities(assertionMapper.selectByTemplateId(sourceId), targetId, 
+        copyEntities(assertionMapper.selectByTemplateId(sourceId), targetId,
             a -> { a.setId(null); a.setTemplateId(targetId); }, assertionMapper::batchInsert);
-        copyEntities(preProcessorMapper.selectByTemplateId(sourceId), targetId, 
+        copyEntities(preProcessorMapper.selectByTemplateId(sourceId), targetId,
             p -> { p.setId(null); p.setTemplateId(targetId); }, preProcessorMapper::batchInsert);
-        copyEntities(postProcessorMapper.selectByTemplateId(sourceId), targetId, 
+        copyEntities(postProcessorMapper.selectByTemplateId(sourceId), targetId,
             p -> { p.setId(null); p.setTemplateId(targetId); }, postProcessorMapper::batchInsert);
-        copyEntities(variableMapper.selectByTemplateId(sourceId), targetId, 
+        copyEntities(variableMapper.selectByTemplateId(sourceId), targetId,
             v -> { v.setId(null); v.setTemplateId(targetId); }, variableMapper::batchInsert);
-        
+
         copyFiles(sourceId, targetId);
     }
 
@@ -399,14 +409,14 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     private void copyFiles(Long sourceId, Long targetId) {
         List<TemplateFile> files = fileMapper.selectByTemplateId(sourceId);
         if (CollectionUtils.isEmpty(files)) return;
-        
+
         files.forEach(file -> {
             try {
                 Path sourcePath = Paths.get(file.getFilePath());
                 String newName = UUID.randomUUID().toString().replace("-", "") + "." + file.getFileExtension();
                 Path targetPath = sourcePath.getParent().resolve(newName);
                 Files.copy(sourcePath, targetPath);
-                
+
                 file.setId(null);
                 file.setTemplateId(targetId);
                 file.setFileName(newName);
@@ -426,7 +436,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         preProcessorMapper.deleteByTemplateId(templateId);
         postProcessorMapper.deleteByTemplateId(templateId);
         variableMapper.deleteByTemplateId(templateId);
-        
+
         deleteFiles(templateId);
     }
 
@@ -451,7 +461,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         h.setCanRollback(1);
         h.setCreateId(Optional.ofNullable(template.getCreateId()).orElse(1L));
         h.setCreateName(Optional.ofNullable(template.getCreateName()).orElse("管理员"));
-        
+
         // 保存变更前快照
         if (oldVO != null) {
             h.setTemplateSnapshot(JSON.toJSONString(oldVO));
@@ -462,7 +472,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
             // 创建/复制操作：保存新数据快照
             h.setTemplateSnapshot(JSON.toJSONString(newVO));
         }
-        
+
         historyMapper.insert(h);
     }
 
@@ -472,7 +482,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
             JSONObject newJson = JSON.parseObject(JSON.toJSONString(newVO));
             JSONObject before = new JSONObject();
             JSONObject after = new JSONObject();
-            
+
             for (String key : oldJson.keySet()) {
                 Object oldVal = oldJson.get(key);
                 Object newVal = newJson.get(key);
@@ -481,7 +491,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
                     after.put(key, newVal);
                 }
             }
-            
+
             JSONObject diff = new JSONObject();
             diff.put("before", before);
             diff.put("after", after);

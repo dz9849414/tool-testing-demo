@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.tooltestingdemo.mapper.template.InterfaceTemplateMapper">
 
-    <!-- 
+    <!--
         文件位置：src/main/resources/mapper/template/InterfaceTemplateMapper.xml
         命名空间：com.example.tooltestingdemo.mapper.template.InterfaceTemplateMapper
     -->
@@ -34,6 +34,8 @@
         <result column="version_remark" property="versionRemark"/>
         <result column="is_latest" property="isLatest"/>
         <result column="ref_template_id" property="refTemplateId"/>
+        <result column="create_id" property="createId"/>
+        <result column="create_name" property="createName"/>
 
         <result column="team_id" property="teamId"/>
         <result column="visibility" property="visibility"/>
@@ -61,7 +63,7 @@
         id, folder_id, name, description, protocol_id, protocol_type, method, base_url, path, full_url,
         auth_type, auth_config, content_type, charset, body_type, body_content, body_raw_type,
         connect_timeout, read_timeout, retry_count, retry_interval, version, version_remark,
-        is_latest, ref_template_id, team_id, visibility, tags,
+        is_latest, ref_template_id, create_id, create_name, team_id, visibility, tags,
         pdm_system_type, pdm_module, business_scene, status, use_count, last_use_time,
         ext_field1, ext_field2, ext_field3, ext_field4, ext_field5, ext_num1, ext_num2,
         create_time, update_time, deleted_time
@@ -71,13 +73,13 @@
     <select id="selectTemplatePage" resultMap="BaseResultMap">
         SELECT
             <include refid="Base_Column_List"/>
-        FROM interface_template
+        FROM pdm_tool_interface_template
         WHERE (is_deleted = 0 or is_deleted IS NULL)
         <if test="folderId != null and folderId !='' ">
             AND folder_id = #{folderId}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (name LIKE CONCAT('%', #{keyword}, '%') 
+            AND (name LIKE CONCAT('%', #{keyword}, '%')
                 OR description LIKE CONCAT('%', #{keyword}, '%')
                 OR tags LIKE CONCAT('%', #{keyword}, '%'))
 
@@ -95,7 +97,7 @@
     <select id="selectVersionsByRefId" resultMap="BaseResultMap">
         SELECT
             <include refid="Base_Column_List"/>
-        FROM interface_template
+        FROM pdm_tool_interface_template
         WHERE ref_template_id = #{refTemplateId}
         AND (is_deleted = 0 OR is_deleted IS NULL)
         ORDER BY version DESC
@@ -105,7 +107,7 @@
     <select id="selectTemplateDetailById" resultMap="BaseResultMap">
         SELECT
             <include refid="Base_Column_List"/>
-        FROM interface_template
+        FROM pdm_tool_interface_template
         WHERE id = #{id}
         AND (is_deleted = 0 OR is_deleted IS NULL)
     </select>
@@ -114,7 +116,7 @@
     <select id="selectByNameAndMethod" resultMap="BaseResultMap">
         SELECT
             <include refid="Base_Column_List"/>
-        FROM interface_template
+        FROM pdm_tool_interface_template
         WHERE name = #{name}
         AND method = #{method}
         AND (is_deleted = 0 OR is_deleted IS NULL)
@@ -125,10 +127,9 @@
     <select id="selectByName" resultMap="BaseResultMap">
         SELECT
             <include refid="Base_Column_List"/>
-        FROM interface_template
+        FROM pdm_tool_interface_template
         WHERE name = #{name}
         AND (is_deleted = 0 OR is_deleted IS NULL)
         LIMIT 1
     </select>
-
 </mapper>

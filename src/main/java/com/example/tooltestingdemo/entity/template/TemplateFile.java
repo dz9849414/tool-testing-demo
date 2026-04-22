@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 /**
  * 模板文件附件实体类
- * 
+ *
  * 存储模板关联的文件（请求文件、响应文件、附件等）
  */
 @Data
@@ -87,6 +87,7 @@ public class TemplateFile {
      * 是否删除
      */
     @TableField(value = "is_deleted")
+    @TableLogic(value = "0", delval = "1")
     private Integer isDeleted;
 
     /**

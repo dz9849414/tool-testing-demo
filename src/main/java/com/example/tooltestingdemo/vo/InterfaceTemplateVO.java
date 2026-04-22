@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * 接口模板 VO（返回给前端）
- * 
+ *
  * 文件位置：src/main/java/com/example/tooltestingdemo/vo/InterfaceTemplateVO.java
  */
 @Data
@@ -98,6 +98,8 @@ public class InterfaceTemplateVO {
      * 请求体内容
      */
     private String bodyContent;
+
+    private String body;
 
     /**
      * RAW类型

@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.tooltestingdemo.mapper.template.TemplatePostProcessorMapper">
 
-    <!-- 
+    <!--
         文件位置：src/main/resources/mapper/template/TemplatePostProcessorMapper.xml
         命名空间：com.example.tooltestingdemo.mapper.template.TemplatePostProcessorMapper
     -->
@@ -30,15 +30,15 @@
 
     <!-- 根据模板ID查询后置处理器列表 -->
     <select id="selectByTemplateId" resultMap="BaseResultMap">
-        SELECT * FROM template_post_processor 
-        WHERE template_id = #{templateId} 
-        AND is_enabled = 1 
+        SELECT * FROM pdm_tool_template_post_processor
+        WHERE template_id = #{templateId}
+        AND is_enabled = 1
         ORDER BY sort_order ASC
     </select>
 
     <!-- 批量插入后置处理器 -->
     <insert id="batchInsert">
-        INSERT INTO template_post_processor (
+        INSERT INTO pdm_tool_template_post_processor (
             template_id, processor_name, processor_type, extract_type, extract_expression,
             extract_match_no, target_variable, variable_scope, default_value, config,
             script_content, description, is_enabled, sort_order
@@ -53,3 +53,4 @@
     </insert>
 
 </mapper>
+

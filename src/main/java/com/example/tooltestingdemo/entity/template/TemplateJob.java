@@ -61,10 +61,17 @@ public class TemplateJob {
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
+    @TableField(value = "update_id", fill = FieldFill.UPDATE)
+    private Long updateId;
+
+    @TableField(value = "update_name", fill = FieldFill.UPDATE)
+    private String updateName;
+
     @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 
     @TableField(value = "is_deleted")
+    @TableLogic(value = "0", delval = "1")
     private Integer isDeleted;
 
     /**
