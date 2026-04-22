@@ -1,5 +1,6 @@
 package com.example.tooltestingdemo.service.impl.report;
 
+import com.alibaba.fastjson2.JSONArray;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.common.PageResult;
@@ -9,6 +10,7 @@ import com.example.tooltestingdemo.entity.template.TemplateJobLog;
 import com.example.tooltestingdemo.mapper.report.ReportMapper;
 import com.example.tooltestingdemo.mapper.template.TemplateJobLogMapper;
 import com.example.tooltestingdemo.service.report.IReportService;
+import com.example.tooltestingdemo.service.report.ITemplateStatisticsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
@@ -44,6 +46,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
 
     private final ReportMapper reportMapper;
     private final TemplateJobLogMapper templateJobLogMapper;
+    private final ITemplateStatisticsService templateStatisticsService;
 
     @Override
     public Long createReport(ReportDTO reportDTO) {
@@ -120,16 +123,91 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
 
     @Override
     public Long autoGenerateReport(String reportType, String dataSourceIds) {
-        // 实现自动生成报告的逻辑
-        ReportDTO reportDTO = new ReportDTO();
-        reportDTO.setName("自动生成报告 - " + LocalDateTime.now());
-        reportDTO.setDescription("基于数据源自动生成的报告");
-        reportDTO.setReportType(reportType);
-        reportDTO.setGenerateType("AUTO");
-        reportDTO.setDataSourceIds(dataSourceIds);
-        reportDTO.setStatus("DRAFT");
-        
-        return createReport(reportDTO);
+        try {
+            // 根据reportType从pdm_tool_template_execute_log表获取最近的测试数据
+            Object statisticsData = getRecentTestDataFromExecuteLog(reportType, dataSourceIds);
+            
+            // 构建报告DTO
+            ReportDTO reportDTO = new ReportDTO();
+            reportDTO.setName("自动生成报告 - " + reportType + " - " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            reportDTO.setDescription("基于最近测试数据自动生成的" + reportType + "报告");
+            reportDTO.setReportType(reportType);
+            reportDTO.setGenerateType("AUTO");
+            reportDTO.setDataSourceIds(dataSourceIds);
+            reportDTO.setStatus("DRAFT");
+            
+            // 将统计数据转换为JSON字符串
+            if (statisticsData != null) {
+                if (statisticsData instanceof StatisticsReportDTO) {
+                    StatisticsReportDTO statsReport = (StatisticsReportDTO) statisticsData;
+                    reportDTO.setContent(statsReport.getContent() != null ? 
+                        statsReport.getContent().toString() : "{}");
+                } else if (statisticsData instanceof List) {
+                    // 简化格式的数据
+                    reportDTO.setContent(new JSONArray((List) statisticsData).toString());
+                } else {
+                    reportDTO.setContent("{}");
+                }
+            } else {
+                reportDTO.setContent("{}");
+            }
+            
+            return createReport(reportDTO);
+            
+        } catch (Exception e) {
+            log.error("自动生成报告失败", e);
+            throw new RuntimeException("自动生成报告失败：" + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 从pdm_tool_template_execute_log表获取最近的测试数据
+     * 
+     * @param reportType 报告类型
+     * @param dataSourceIds 数据源ID
+     * @return 统计数据
+     */
+    private Object getRecentTestDataFromExecuteLog(String reportType, String dataSourceIds) {
+        try {
+            // 获取最近7天的数据
+            LocalDateTime endTime = LocalDateTime.now();
+            LocalDateTime startTime = endTime.minusDays(7);
+            
+            // 根据reportType调用不同的统计方法
+            switch (reportType.toUpperCase()) {
+                case "PROTOCOL_DISTRIBUTION":
+                    return templateStatisticsService.getProtocolDistributionReport(
+                        startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                        endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 
+                        "CATEGORY");
+                case "RESPONSE_TIME":
+                    return templateStatisticsService.getHourlyResponseTimeReportSimple(
+                        startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                        endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 
+                        "UNIFIED");
+                case "FAILURE_REASONS":
+                    return templateStatisticsService.getTopFailureReasonsReportSimple(
+                        startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                        endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 
+                        "UNIFIED");
+                case "WEEKLY_EXECUTION":
+                    return templateStatisticsService.getWeeklyExecutionReport(
+                        startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                        endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 
+                        "UNIFIED");
+                case "SUCCESS_RATE":
+                    return templateStatisticsService.getSuccessRateReport(
+                        startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                        endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 
+                        "UNIFIED");
+                default:
+                    // 默认返回空数据
+                    return null;
+            }
+        } catch (Exception e) {
+            log.error("获取最近测试数据失败", e);
+            return null;
+        }
     }
 
     @Override
