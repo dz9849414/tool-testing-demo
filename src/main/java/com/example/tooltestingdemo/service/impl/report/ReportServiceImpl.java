@@ -707,44 +707,95 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             writer.write("}\n");
         }
     }
-    
-    /**
-     * 构建报告内容（明文、人眼可读格式）
-     */
+
     private String buildReportContent(Report report, String pageRange) {
         StringBuilder readableContent = new StringBuilder();
-        
-        // 1. 报告基本信息
+
+        // 1. 报告基本信息（全部中文，一行一句话）
         readableContent.append("=== 报告基本信息 ===\n");
         readableContent.append("报告名称：").append(report.getName() != null ? report.getName() : "未命名").append("\n");
         readableContent.append("报告描述：").append(report.getDescription() != null ? report.getDescription() : "无描述").append("\n");
         readableContent.append("报告类型：").append(getReadableReportType(report.getReportType())).append("\n");
         readableContent.append("报告状态：").append(getReadableReportStatus(report.getStatus())).append("\n");
         readableContent.append("生成方式：").append(getReadableGenerateType(report.getGenerateType())).append("\n");
-        readableContent.append("创建时间：").append(report.getCreateTime() != null ? 
-            report.getCreateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "未知").append("\n");
+        readableContent.append("创建时间：").append(report.getCreateTime() != null ?
+                report.getCreateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "未知").append("\n");
         readableContent.append("导出次数：").append(report.getExportCount() != null ? report.getExportCount() : 0).append("\n");
         readableContent.append("\n");
-        
-        // 2. 报告内容（JSON解析为易读格式）
+
+        // 2. 报告统计内容（全部中文）
         String content = report.getContent();
-        if (content != null && !content.trim().isEmpty()) {
-            readableContent.append("=== 报告统计内容 ===\n");
-            try {
-                // 尝试解析JSON内容
-                Object jsonContent = parseJsonContent(content);
-                readableContent.append(formatJsonToReadable(jsonContent));
-            } catch (Exception e) {
-                // 如果JSON解析失败，显示原始内容
-                readableContent.append("原始JSON内容：\n");
-                readableContent.append(content);
-            }
-        } else {
-            readableContent.append("=== 报告统计内容 ===\n");
+        readableContent.append("=== 报告统计内容 ===\n");
+
+        if (content == null || content.trim().isEmpty()) {
             readableContent.append("报告内容为空\n");
+            return readableContent.toString();
         }
-        
+
+        try {
+            Object jsonObj = parseJsonContent(content);
+            if (jsonObj instanceof com.alibaba.fastjson2.JSONObject) {
+                com.alibaba.fastjson2.JSONObject json = (com.alibaba.fastjson2.JSONObject) jsonObj;
+                appendFlatJson(json, readableContent, "");
+            } else if (jsonObj instanceof com.alibaba.fastjson2.JSONArray) {
+                com.alibaba.fastjson2.JSONArray array = (com.alibaba.fastjson2.JSONArray) jsonObj;
+                for (int i = 0; i < array.size(); i++) {
+                    Object item = array.get(i);
+                    if (item instanceof com.alibaba.fastjson2.JSONObject) {
+                        readableContent.append("--- 第").append(i + 1).append("条统计数据 ---\n");
+                        appendFlatJson((com.alibaba.fastjson2.JSONObject) item, readableContent, "");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            readableContent.append(content).append("\n");
+        }
+
         return readableContent.toString();
+    }
+
+    // ===================== 核心：JSON 字段名 自动 转 中文 =====================
+    private void appendFlatJson(com.alibaba.fastjson2.JSONObject json, StringBuilder sb, String prefix) {
+        for (String key : json.keySet()) {
+            Object val = json.get(key);
+            String fullKey = prefix.isEmpty() ? key : prefix + "." + key;
+
+            if (val instanceof com.alibaba.fastjson2.JSONObject) {
+                appendFlatJson((com.alibaba.fastjson2.JSONObject) val, sb, fullKey);
+            } else if (val instanceof com.alibaba.fastjson2.JSONArray) {
+                com.alibaba.fastjson2.JSONArray array = (com.alibaba.fastjson2.JSONArray) val;
+                for (int i = 0; i < array.size(); i++) {
+                    Object item = array.get(i);
+                    if (item instanceof com.alibaba.fastjson2.JSONObject) {
+                        appendFlatJson((com.alibaba.fastjson2.JSONObject) item, sb, fullKey + "[" + i + "]");
+                    }
+                }
+            } else {
+                // 👇👇👇 这里自动把英文key转换成中文 👇👇👇
+                String chineseKey = convertToChineseKey(key);
+                sb.append(chineseKey).append("：").append(val).append("\n");
+            }
+        }
+    }
+
+    // ===================== 字段名映射：英文 → 中文（你要的全部在这里） =====================
+    private String convertToChineseKey(String key) {
+        switch (key) {
+            case "minDuration": return "最小耗时";
+            case "totalExecutions": return "总执行次数";
+            case "endDate": return "结束日期";
+            case "startDate": return "开始日期";
+            case "generateTime": return "生成时间";
+            case "overallAvgDuration": return "平均耗时";
+            case "maxDuration": return "最大耗时";
+            case "dataSource": return "数据源";
+            case "dataSourceName": return "数据源名称";
+            case "timeSlot": return "统计时段";
+            case "hourGroup": return "小时分组";
+            case "executionCount": return "执行次数";
+            case "avgDuration": return "平均耗时";
+            default: return key; // 没有匹配的返回原key
+        }
     }
     
     /**
