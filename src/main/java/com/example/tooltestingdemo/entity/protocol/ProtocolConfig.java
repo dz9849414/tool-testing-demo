@@ -100,7 +100,7 @@ public class ProtocolConfig extends BaseEntity {
     private Integer status;
 
     /**
-     * 协议参数配置描述
+     * 协议参数配置描述（文本说明）
      */
-    private Integer description;
+    private String description;
 }
