@@ -17,7 +17,7 @@ public interface ProtocolTypeMapper extends BaseMapper<ProtocolType> {
 
     @Select("""
             SELECT COUNT(*)
-            FROM protocol_project
+            FROM pdm_tool_protocol_project
             WHERE protocol_id = #{protocolId}
               AND (is_deleted = 0 OR is_deleted IS NULL)
             """)
@@ -25,7 +25,7 @@ public interface ProtocolTypeMapper extends BaseMapper<ProtocolType> {
 
     @Select("""
             SELECT COUNT(*)
-            FROM protocol_template
+            FROM pdm_tool_interface_template
             WHERE protocol_id = #{protocolId}
               AND (is_deleted = 0 OR is_deleted IS NULL)
             """)

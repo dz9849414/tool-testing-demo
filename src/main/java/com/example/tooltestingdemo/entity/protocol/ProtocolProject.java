@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
-@TableName("protocol_project")
+@TableName("pdm_tool_protocol_project")
 public class ProtocolProject extends BaseEntity {
     @Serial
     private static final long serialVersionUID = 1L;

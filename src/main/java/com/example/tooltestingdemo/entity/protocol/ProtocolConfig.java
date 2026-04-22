@@ -19,7 +19,7 @@ import java.io.Serial;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
-@TableName(value = "protocol_config", autoResultMap = true)
+@TableName(value = "pdm_tool_protocol_config", autoResultMap = true)
 public class ProtocolConfig extends BaseEntity {
     @Serial
     private static final long serialVersionUID = 1L;
