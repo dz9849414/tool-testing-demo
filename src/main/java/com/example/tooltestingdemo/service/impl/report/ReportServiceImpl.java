@@ -163,7 +163,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     /**
      * 从pdm_tool_template_execute_log表获取最近的测试数据
      * 
-     * @param reportType 报告类型
+     * @param reportType 报告类型（支持数字和字符串）
      * @param dataSourceIds 数据源ID
      * @return 统计数据
      */
@@ -173,29 +173,36 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             LocalDateTime endTime = LocalDateTime.now();
             LocalDateTime startTime = endTime.minusDays(7);
             
-            // 根据reportType调用不同的统计方法
-            switch (reportType.toUpperCase()) {
+            // 根据reportType调用不同的统计方法（支持数字和字符串）
+            String normalizedReportType = normalizeReportType(reportType);
+            
+            switch (normalizedReportType) {
                 case "PROTOCOL_DISTRIBUTION":
+                case "1":
                     return templateStatisticsService.getProtocolDistributionReport(
                         startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
                         endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 
                         "CATEGORY");
                 case "RESPONSE_TIME":
+                case "2":
                     return templateStatisticsService.getHourlyResponseTimeReportSimple(
                         startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
                         endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 
                         "UNIFIED");
                 case "FAILURE_REASONS":
+                case "3":
                     return templateStatisticsService.getTopFailureReasonsReportSimple(
                         startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
                         endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 
                         "UNIFIED");
                 case "WEEKLY_EXECUTION":
+                case "4":
                     return templateStatisticsService.getWeeklyExecutionReport(
                         startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
                         endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 
                         "UNIFIED");
                 case "SUCCESS_RATE":
+                case "5":
                     return templateStatisticsService.getSuccessRateReport(
                         startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
                         endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 
@@ -207,6 +214,28 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         } catch (Exception e) {
             log.error("获取最近测试数据失败", e);
             return null;
+        }
+    }
+    
+    /**
+     * 标准化报告类型参数
+     * 
+     * @param reportType 原始报告类型参数
+     * @return 标准化的报告类型
+     */
+    private String normalizeReportType(String reportType) {
+        if (reportType == null) {
+            return "UNKNOWN";
+        }
+        
+        // 数字映射
+        switch (reportType) {
+            case "1": return "PROTOCOL_DISTRIBUTION";
+            case "2": return "RESPONSE_TIME";
+            case "3": return "FAILURE_REASONS";
+            case "4": return "WEEKLY_EXECUTION";
+            case "5": return "SUCCESS_RATE";
+            default: return reportType.toUpperCase();
         }
     }
 
