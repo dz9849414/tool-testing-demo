@@ -68,7 +68,7 @@ app:
     # 示例：C:\Users\用户名\tool-testing-uploads 或 /home/用户名/tool-testing-uploads
     upload-path: D:\file
     # 文件访问基础URL（可选）
-    base-url: 
+    base-url:
     # 最大文件大小
     max-file-size: 10MB
     # 最大请求大小

@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
  * 接口模板主表实体类
  */
 @Data
-@TableName("interface_template")
+@TableName("pdm_tool_interface_template")
 public class InterfaceTemplate {
 
     @TableId(value = "id", type = IdType.AUTO)
