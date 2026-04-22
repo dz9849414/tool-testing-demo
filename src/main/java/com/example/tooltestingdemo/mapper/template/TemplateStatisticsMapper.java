@@ -426,6 +426,18 @@ public interface TemplateStatisticsMapper {
                                                   @Param("endTime") LocalDateTime endTime);
 
     /**
+     * 获取失败时间线数据
+     */
+    List<Map<String, Object>> getFailureTimelineData(@Param("templateId") Long templateId, 
+                                                     @Param("startTime") LocalDateTime startTime, 
+                                                     @Param("endTime") LocalDateTime endTime);
+
+    /**
+     * 获取失败原因统计报告（简化格式）
+     */
+    List<Map<String, Object>> getTopFailureReasonsReportSimple(@Param("startTime") String startTime, @Param("endTime") String endTime);
+
+    /**
      * 获取批量任务的前5失败原因统计
      */
     @Select("SELECT " +

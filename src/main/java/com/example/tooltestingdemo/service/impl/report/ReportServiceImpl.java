@@ -124,6 +124,23 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     }
 
     @Override
+    public java.util.List<FailureTimelineDTO> getFailureTimeline(Long templateId, String timeRange) {
+        try {
+            // 根据时间范围计算开始时间
+            LocalDateTime startTime = calculateStartTime(timeRange);
+            LocalDateTime endTime = LocalDateTime.now();
+            
+            // 查询失败记录
+            List<FailureTimelineDTO> timeline = templateStatisticsService.getFailureTimelineData(templateId, startTime, endTime);
+            
+            return timeline != null ? timeline : new java.util.ArrayList<>();
+        } catch (Exception e) {
+            log.error("获取失败时间线失败 - templateId: {}, timeRange: {}", templateId, timeRange, e);
+            return new java.util.ArrayList<>();
+        }
+    }
+
+    @Override
     public Long autoGenerateReport(String reportType, String dataSourceIds) {
         try {
             // 根据reportType从pdm_tool_template_execute_log表获取最近的测试数据
@@ -291,7 +308,8 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             // 生成文件名
             String filename = "report_" + id + "_" + System.currentTimeMillis() + "." + format.toLowerCase();
             File exportFile = new File(exportDir, filename);
-            
+
+            try {
             // 根据格式生成文件
             switch (format.toLowerCase()) {
                 case "pdf":
@@ -312,7 +330,10 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 default:
                     throw new IllegalArgumentException("不支持的导出格式：" + format);
             }
-            
+            }catch (Exception e) {
+                throw new RuntimeException("导出报告文件失败：" + e.getMessage(), e);
+            }
+
             // 更新导出统计
             report.setExportCount(report.getExportCount() + 1);
             report.setLastExportTime(LocalDateTime.now());
@@ -332,7 +353,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     /**
      * 生成 PDF 报告（支持中文，不乱码）
      */
-    private void generatePdfReport(Report report, File exportFile, String pageRange) throws Exception {
+    public void generatePdfReport(Report report, File exportFile, String pageRange) {
         try (PDDocument document = new PDDocument()) {
             PDPage page = new PDPage();
             document.addPage(page);
@@ -341,36 +362,56 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 // ========= 关键：加载支持中文的字体 =========
                 PDType0Font font = PDType0Font.load(document, getClass().getResourceAsStream("/fonts/simhei.ttf"));
 
-                // 开始写内容
+                // ========= 报告标题 =========
                 contentStream.beginText();
-                contentStream.setFont(font, 12); // 必须用支持中文的字体
+                contentStream.setFont(font, 16); // 标题字体大小
                 contentStream.newLineAtOffset(50, 750);
+                contentStream.showText("测试报告详情");
+                contentStream.endText();
 
-                // 你的报告内容（这里可以写任意中文！）使用Report对象的内容
-                contentStream.showText("报告名称：" + report.getName());
-                contentStream.newLineAtOffset(0, -20);
-                contentStream.showText("生成时间：" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-                contentStream.newLineAtOffset(0, -20);
-                contentStream.showText("数据范围：" + pageRange);
-                contentStream.newLineAtOffset(0, -20);
+                // ========= 报告基本信息 =========
+                contentStream.beginText();
+                contentStream.setFont(font, 12); // 正文字体大小
+                contentStream.newLineAtOffset(50, 720);
                 
+                // 报告名称（加粗效果）
+                contentStream.setFont(font, 14);
+                contentStream.showText("报告名称：");
+                contentStream.setFont(font, 12);
+                contentStream.showText(report.getName() != null ? report.getName() : "未命名");
+                contentStream.newLineAtOffset(0, -25);
+                
+                // 生成时间
+                contentStream.showText("生成时间：" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                contentStream.newLineAtOffset(0, -25);
+                
+                // 数据范围
+                contentStream.showText("数据范围：" + pageRange);
+                contentStream.newLineAtOffset(0, -25);
+                
+                // 报告描述
                 if (report.getDescription() != null && !report.getDescription().trim().isEmpty()) {
                     contentStream.showText("报告描述：" + report.getDescription());
-                    contentStream.newLineAtOffset(0, -20);
+                    contentStream.newLineAtOffset(0, -25);
                 }
                 
-                if (report.getReportType() != null) {
-                    contentStream.showText("报告类型：" + report.getReportType());
-                    contentStream.newLineAtOffset(0, -20);
-                }
+                // 报告类型（中文翻译）
+                contentStream.setFont(font, 14);
+                contentStream.showText("报告类型：");
+                contentStream.setFont(font, 12);
+                contentStream.showText(report.getReportType() != null ? getReadableReportType(report.getReportType()) : "未知类型");
+                contentStream.newLineAtOffset(0, -25);
                 
-                if (report.getStatus() != null) {
-                    contentStream.showText("报告状态：" + report.getStatus());
-                    contentStream.newLineAtOffset(0, -20);
-                }
+                // 报告状态（中文翻译）
+                contentStream.setFont(font, 14);
+                contentStream.showText("报告状态：");
+                contentStream.setFont(font, 12);
+                contentStream.showText(report.getStatus() != null ? getReadableReportStatus(report.getStatus()) : "未知状态");
+                contentStream.newLineAtOffset(0, -25);
                 
+                // 报告ID
                 contentStream.showText("报告ID：" + report.getId());
-                contentStream.newLineAtOffset(0, -20);
+                contentStream.newLineAtOffset(0, -25);
                 
                 // 分隔线
                 contentStream.endText();
@@ -401,10 +442,14 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 }
 
                 contentStream.endText();
+            }catch (Exception e) {
+                throw new RuntimeException("导出报告文件失败：" + e.getMessage(), e);
             }
 
             // 输出文件
             document.save(new FileOutputStream(exportFile));
+        }catch (Exception e) {
+            throw new RuntimeException("导出报告文件失败：" + e.getMessage(), e);
         }
     }
 
@@ -719,12 +764,29 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         }
     }
     
+
+    /**
+     * 根据时间范围计算开始时间
+     */
+    private LocalDateTime calculateStartTime(String timeRange) {
+        LocalDateTime now = LocalDateTime.now();
+        switch (timeRange.toUpperCase()) {
+            case "TODAY":
+                return now.withHour(0).withMinute(0).withSecond(0).withNano(0);
+            case "WEEK":
+                return now.minusWeeks(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
+            case "MONTH":
+                return now.minusMonths(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
+            default:
+                return now.minusDays(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
+        }
+    }
+
     /**
      * 获取可读的报告状态
      */
     private String getReadableReportStatus(String status) {
         if (status == null) return "未知状态";
-        
         switch (status.toUpperCase()) {
             case "DRAFT": return "草稿";
             case "PUBLISHED": return "已发布";

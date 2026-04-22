@@ -1,8 +1,10 @@
 package com.example.tooltestingdemo.service.report;
 
+import com.example.tooltestingdemo.dto.report.FailureTimelineDTO;
 import com.example.tooltestingdemo.dto.report.ReportDTO;
 import com.example.tooltestingdemo.dto.report.StatisticsReportDTO;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -122,4 +124,14 @@ public interface ITemplateStatisticsService {
      * @return 前5的失败原因统计报告（简化格式：List<Map<String, Object>>）
      */
     List<Map<String, Object>> getTopFailureReasonsReportSimple(String startDate, String endDate, String dataSource);
+
+    /**
+     * 获取失败时间线数据
+     * 
+     * @param templateId 模板ID
+     * @param startTime 开始时间
+     * @param endTime 结束时间
+     * @return 失败时间线数据列表
+     */
+    java.util.List<FailureTimelineDTO> getFailureTimelineData(Long templateId, LocalDateTime startTime, LocalDateTime endTime);
 }

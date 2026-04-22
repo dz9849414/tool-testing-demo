@@ -1,6 +1,8 @@
 package com.example.tooltestingdemo.service.impl.report;
 
 import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
+import com.example.tooltestingdemo.dto.report.FailureTimelineDTO;
 import com.example.tooltestingdemo.dto.report.ReportDTO;
 import com.example.tooltestingdemo.dto.report.ReportTemplateDTO;
 import com.example.tooltestingdemo.dto.report.StatisticsReportDTO;
@@ -1336,6 +1338,97 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
             case "TRANSFER": return "数据传输";
             case "COMPREHENSIVE": return "综合测试";
             default: return testType;
+        }
+    }
+
+    /**
+     * 将失败记录转换为FailureTimelineDTO
+     */
+    private FailureTimelineDTO convertToFailureTimelineDTO(Map<String, Object> record) {
+        if (record == null || record.isEmpty()) {
+            return null;
+        }
+        
+        FailureTimelineDTO dto = new FailureTimelineDTO();
+        
+        // 设置基本字段
+        if (record.get("create_time") != null) {
+            dto.setTimestamp((LocalDateTime) record.get("create_time"));
+        }
+        if (record.get("template_name") != null) {
+            dto.setTemplateName((String) record.get("template_name"));
+        }
+        if (record.get("duration_ms") != null) {
+            dto.setDurationMs(((Number) record.get("duration_ms")).longValue());
+        }
+        
+        // 解析execute_result JSON字段
+        if (record.get("execute_result") != null) {
+            try {
+                String jsonStr = (String) record.get("execute_result");
+                if (jsonStr != null && !jsonStr.trim().isEmpty()) {
+                    JSONObject jsonResult = JSONObject.parseObject(jsonStr);
+                    
+                    // 提取失败原因和错误信息
+                    if (jsonResult.containsKey("message")) {
+                        dto.setFailureReason(jsonResult.getString("message"));
+                    }
+                    if (jsonResult.containsKey("statusCode")) {
+                        dto.setErrorCode(jsonResult.getString("statusCode"));
+                    }
+                    
+                    // 提取响应信息
+                    if (jsonResult.containsKey("response")) {
+                        JSONObject response = jsonResult.getJSONObject("response");
+                        if (response != null) {
+                            if (response.containsKey("statusCode")) {
+                                dto.setResponseStatusCode(response.getInteger("statusCode"));
+                            }
+                            if (response.containsKey("body")) {
+                                dto.setResponseMessage(response.getString("body"));
+                            }
+                        }
+                    }
+                    
+                    // 提取请求信息
+                    if (jsonResult.containsKey("request")) {
+                        JSONObject request = jsonResult.getJSONObject("request");
+                        if (request != null && request.containsKey("url")) {
+                            dto.setRequestUrl(request.getString("url"));
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("解析execute_result JSON失败: {}", record.get("execute_result"), e);
+            }
+        }
+        
+        return dto;
+    }
+
+    @Override
+    public java.util.List<FailureTimelineDTO> getFailureTimelineData(Long templateId, LocalDateTime startTime, LocalDateTime endTime) {
+        try {
+            // 查询失败记录
+            List<Map<String, Object>> failureRecords = templateStatisticsMapper.getFailureTimelineData(
+                templateId, startTime, endTime);
+            
+            // 转换为FailureTimelineDTO列表
+            List<FailureTimelineDTO> timeline = new java.util.ArrayList<>();
+            if (failureRecords != null) {
+                for (Map<String, Object> record : failureRecords) {
+                    FailureTimelineDTO dto = convertToFailureTimelineDTO(record);
+                    if (dto != null) {
+                        timeline.add(dto);
+                    }
+                }
+            }
+            
+            return timeline;
+        } catch (Exception e) {
+            log.error("获取失败时间线数据失败 - templateId: {}, startTime: {}, endTime: {}", 
+                templateId, startTime, endTime, e);
+            return new java.util.ArrayList<>();
         }
     }
 

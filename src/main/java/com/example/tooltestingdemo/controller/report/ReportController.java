@@ -2,11 +2,7 @@ package com.example.tooltestingdemo.controller.report;
 
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.dto.common.PageResult;
-import com.example.tooltestingdemo.dto.report.AutoReportConfigDTO;
-import com.example.tooltestingdemo.dto.report.ReportDTO;
-import com.example.tooltestingdemo.dto.report.ReportPreviewDTO;
-import com.example.tooltestingdemo.dto.report.TestResultTableDTO;
-import com.example.tooltestingdemo.dto.report.TimelineNodeDTO;
+import com.example.tooltestingdemo.dto.report.*;
 import com.example.tooltestingdemo.service.report.IReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -346,6 +342,28 @@ public class ReportController {
             return Result.success(timeline);
         } catch (Exception e) {
             return Result.error("获取测试结果时间线失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/timeline")
+    @Operation(summary = "查看失败时间线")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:view')")
+    public Result<List<FailureTimelineDTO>> getFailureTimeline(
+            @RequestParam Long templateId,
+            @RequestParam String timeRange) {
+        try {
+            // 参数校验
+            if (templateId == null) {
+                return Result.error("模板ID不能为空");
+            }
+            if (timeRange == null || timeRange.trim().isEmpty()) {
+                return Result.error("时间范围不能为空");
+            }
+            
+            List<FailureTimelineDTO> timeline = reportService.getFailureTimeline(templateId, timeRange);
+            return Result.success("失败时间线获取成功", timeline);
+        } catch (Exception e) {
+            return Result.error("获取失败时间线失败：" + e.getMessage());
         }
     }
 
