@@ -30,7 +30,7 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
     @Override
     public Map<String, Object> executeTemplate(Long templateId, Long environmentId, Map<String, Object> variables) {
         log.info("执行模板请求: 模板id={}, 环境标识={}", templateId, environmentId);
-        
+
         ExecutionRequest request = ExecutionRequest.builder()
             .templateId(templateId)
             .environmentId(environmentId)
@@ -39,7 +39,7 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
             .executePreProcessors(true)
             .executePostProcessors(true)
             .build();
-        
+
         ExecutionResult result = executionEngine.execute(request);
         Map<String, Object> legacy = convertToLegacyFormat(result);
         // 不直接使用硬编码的创建者信息，尝试从安全服务获取当前用户
@@ -86,11 +86,13 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
             log.setErrorMsg((String) legacy.get("message"));
             // 如果调用方没有传入创建者信息，尝试从 SecurityService 获取当前登录用户
             if (createId != null) {
+                log.setExecuteUserId(createId);
                 log.setCreateId(createId);
             } else {
                 Long currentUserId = securityService.getCurrentUserId();
                 if (currentUserId != null) {
                     try {
+                        log.setExecuteUserId(Long.valueOf(currentUserId));
                         log.setCreateId(Long.valueOf(currentUserId));
                     } catch (Exception ignored) {
                     }
@@ -101,7 +103,7 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
             } else {
                 String currentUsername = securityService.getCurrentUsername();
                 if (currentUsername != null) {
-                    log.setCreateName(currentUsername);
+                    log.setExecuteUserName(currentUsername);
                 }
             }
             executeLogMapper.insert(log);
@@ -138,26 +140,26 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
     @Override
     public Map<String, Object> validateTemplate(Long templateId) {
         log.info("验证模板配置: templateId={}", templateId);
-        
+
         var validation = executionEngine.validate(templateId);
         Map<String, Object> result = new HashMap<>();
         result.put("valid", validation.isValid());
         result.put("errors", validation.isValid() ? Collections.emptyList() : List.of(validation.getMessage()));
         result.put("warnings", Collections.emptyList());
-        
+
         return result;
     }
 
     @Override
     public Map<String, Object> previewRequest(Long templateId, Long environmentId, Map<String, Object> variables) {
         log.info("预览模板请求: templateId={}, environmentId={}", templateId, environmentId);
-        
+
         ExecutionRequest request = ExecutionRequest.builder()
             .templateId(templateId)
             .environmentId(environmentId)
             .variables(variables)
             .build();
-        
+
         var preview = executionEngine.preview(request);
         Map<String, Object> result = new HashMap<>();
         result.put("url", preview.getUrl());
@@ -165,20 +167,20 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
         result.put("headers", preview.getHeaders());
         result.put("body", preview.getBody());
         result.put("parameters", preview.getParameters());
-        
+
         return result;
     }
 
     private Map<String, Object> convertToLegacyFormat(ExecutionResult result) {
         Map<String, Object> legacy = new HashMap<>();
-        
+
         legacy.put("templateId", result.getTemplateId());
         legacy.put("templateName", result.getTemplateName());
         legacy.put("success", result.isSuccess());
         legacy.put("statusCode", result.getStatusCode());
         legacy.put("message", result.getMessage());
         legacy.put("durationMs", result.getDurationMs());
-        
+
         Optional.ofNullable(result.getRequest()).ifPresent(req -> {
             Map<String, Object> reqInfo = new HashMap<>();
             reqInfo.put("url", req.getUrl());
@@ -188,7 +190,7 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
             reqInfo.put("parameters", req.getParameters());
             legacy.put("request", reqInfo);
         });
-        
+
         Optional.ofNullable(result.getResponse()).ifPresent(resp -> {
             Map<String, Object> respInfo = new HashMap<>();
             respInfo.put("statusCode", resp.getStatusCode());
@@ -199,10 +201,10 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
             respInfo.put("size", resp.getSize());
             legacy.put("response", respInfo);
         });
-        
+
         legacy.put("variables", result.getVariables());
-        
-        Optional.ofNullable(result.getAssertions()).ifPresent(assertions -> 
+
+        Optional.ofNullable(result.getAssertions()).ifPresent(assertions ->
             legacy.put("assertions", assertions.stream().map(a -> {
                 Map<String, Object> map = new HashMap<>();
                 map.put("name", a.getName());
@@ -214,7 +216,7 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
                 return map;
             }).collect(Collectors.toList()))
         );
-        
+
         return legacy;
-    }
+}
 }

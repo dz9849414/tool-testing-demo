@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板导入导出记录实体类
  */
 @Data
-@TableName("template_import_export")
+@TableName("pdm_tool_template_import_export")
 public class TemplateImportExport {
 
     @TableId(value = "id", type = IdType.AUTO)

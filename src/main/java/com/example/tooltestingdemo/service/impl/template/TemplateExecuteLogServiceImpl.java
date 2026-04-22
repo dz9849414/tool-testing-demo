@@ -36,7 +36,9 @@ public class TemplateExecuteLogServiceImpl extends ServiceImpl<TemplateExecuteLo
                                               Long jobId,
                                               String executeType,
                                               Integer success,
-                                              String keyword) {
+                                              String keyword,
+                                              LocalDateTime startTime,
+                                              LocalDateTime endTime) {
         LambdaQueryWrapper<TemplateExecuteLog> wrapper = new LambdaQueryWrapper<>();
 
         if (templateId != null) {
@@ -56,9 +58,16 @@ public class TemplateExecuteLogServiceImpl extends ServiceImpl<TemplateExecuteLo
                     .or()
                     .like(TemplateExecuteLog::getJobName, keyword)
                     .or()
-                    .like(TemplateExecuteLog::getCreateName, keyword));
+                    .like(TemplateExecuteLog::getExecuteUserName, keyword));
+        }
+        if (startTime != null) {
+            wrapper.ge(TemplateExecuteLog::getCreateTime, startTime);
+        }
+        if (endTime != null) {
+            wrapper.le(TemplateExecuteLog::getCreateTime, endTime);
         }
 
+        wrapper.orderByDesc(TemplateExecuteLog::getExecuteAt);
         wrapper.orderByDesc(TemplateExecuteLog::getCreateTime);
         return page(page, wrapper);
     }
@@ -67,12 +76,14 @@ public class TemplateExecuteLogServiceImpl extends ServiceImpl<TemplateExecuteLo
     public TraceChainDetailVO getTraceChainDetail(String traceId) {
         LambdaQueryWrapper<TemplateExecuteLog> executeWrapper = new LambdaQueryWrapper<>();
         executeWrapper.eq(TemplateExecuteLog::getTraceId, traceId)
+                 .orderByAsc(TemplateExecuteLog::getExecuteAt)
                 .orderByAsc(TemplateExecuteLog::getCreateTime)
                 .orderByAsc(TemplateExecuteLog::getId);
         List<TemplateExecuteLog> executeLogs = list(executeWrapper);
 
         LambdaQueryWrapper<TemplateJobLog> jobWrapper = new LambdaQueryWrapper<>();
         jobWrapper.eq(TemplateJobLog::getTraceId, traceId)
+                 .orderByAsc(TemplateJobLog::getExecuteAt)
                 .orderByAsc(TemplateJobLog::getCreateTime)
                 .orderByAsc(TemplateJobLog::getId);
         List<TemplateJobLog> jobLogs = templateJobLogMapper.selectList(jobWrapper);
@@ -106,13 +117,13 @@ public class TemplateExecuteLogServiceImpl extends ServiceImpl<TemplateExecuteLo
 
         List<LocalDateTime> timestamps = new ArrayList<>();
         for (TemplateJobLog jobLog : jobLogs) {
-            if (jobLog.getCreateTime() != null) {
-                timestamps.add(jobLog.getCreateTime());
+            if (jobLog.getExecuteAt() != null) {
+                timestamps.add(jobLog.getExecuteAt());
             }
         }
         for (TemplateExecuteLog executeLog : executeLogs) {
-            if (executeLog.getCreateTime() != null) {
-                timestamps.add(executeLog.getCreateTime());
+            if (executeLog.getExecuteAt() != null) {
+                timestamps.add(executeLog.getExecuteAt());
             }
         }
         if (!timestamps.isEmpty()) {
@@ -125,5 +136,5 @@ public class TemplateExecuteLogServiceImpl extends ServiceImpl<TemplateExecuteLo
         }
 
         return detail;
-    }
+}
 }

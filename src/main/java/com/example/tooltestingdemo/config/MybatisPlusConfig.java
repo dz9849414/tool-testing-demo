@@ -3,6 +3,7 @@ package com.example.tooltestingdemo.config;
 import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.config.GlobalConfig;
+import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
@@ -29,7 +30,7 @@ public class MybatisPlusConfig {
     }
 
     @Bean
-    public GlobalConfig globalConfig(MyMetaObjectHandler myMetaObjectHandler) {
+    public GlobalConfig globalConfig(MetaObjectHandler metaObjectHandler) {
         GlobalConfig globalConfig = new GlobalConfig();
         GlobalConfig.DbConfig dbConfig = new GlobalConfig.DbConfig();
         dbConfig.setLogicDeleteField("isDeleted");

@@ -38,11 +38,19 @@ public class TemplateConverter {
     // ==================== InterfaceTemplate ====================
 
     public static InterfaceTemplate toEntity(InterfaceTemplateDTO dto) {
-        return convert(dto, InterfaceTemplate.class);
+        InterfaceTemplate entity = convert(dto, InterfaceTemplate.class);
+        if (entity != null && entity.getBodyContent() == null && dto != null) {
+            entity.setBodyContent(dto.getBody());
+        }
+        return entity;
     }
 
     public static InterfaceTemplateVO toVO(InterfaceTemplate entity) {
-        return convert(entity, InterfaceTemplateVO.class);
+        InterfaceTemplateVO vo = convert(entity, InterfaceTemplateVO.class);
+        if (vo != null) {
+            vo.setBody(vo.getBodyContent());
+        }
+        return vo;
     }
 
     public static List<InterfaceTemplateVO> toVOList(List<InterfaceTemplate> entities) {

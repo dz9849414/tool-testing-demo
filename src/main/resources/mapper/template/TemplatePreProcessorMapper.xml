@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.tooltestingdemo.mapper.template.TemplatePreProcessorMapper">
 
-    <!-- 
+    <!--
         文件位置：src/main/resources/mapper/template/TemplatePreProcessorMapper.xml
         命名空间：com.example.tooltestingdemo.mapper.template.TemplatePreProcessorMapper
     -->
@@ -26,15 +26,15 @@
 
     <!-- 根据模板ID查询前置处理器列表 -->
     <select id="selectByTemplateId" resultMap="BaseResultMap">
-        SELECT * FROM template_pre_processor 
-        WHERE template_id = #{templateId} 
-        AND is_enabled = 1 
+        SELECT * FROM pdm_tool_template_pre_processor
+        WHERE template_id = #{templateId}
+        AND is_enabled = 1
         ORDER BY sort_order ASC
     </select>
 
     <!-- 批量插入前置处理器 -->
     <insert id="batchInsert">
-        INSERT INTO template_pre_processor (
+        INSERT INTO pdm_tool_template_pre_processor (
             template_id, processor_name, processor_type, config, script_content,
             target_variable, variable_scope, description, is_enabled, sort_order
         ) VALUES
@@ -47,3 +47,4 @@
     </insert>
 
 </mapper>
+

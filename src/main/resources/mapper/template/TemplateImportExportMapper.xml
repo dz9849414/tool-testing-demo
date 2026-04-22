@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateImportExportMapper">
 
-    <!-- 
+    <!--
         文件位置：src/main/resources/mapper/template/TemplateImportExportMapper.xml
         命名空间：com.example.tooltestingdemo.mapper.template.TemplateImportExportMapper
     -->
@@ -30,12 +30,11 @@
 
     <!-- 查询指定操作类型的记录 -->
     <select id="selectByOperationType" resultMap="BaseResultMap">
-        SELECT * FROM template_import_export
+        SELECT * FROM pdm_tool_template_import_export
         WHERE operation_type = #{operationType}
         ORDER BY create_time DESC
         <if test="limit != null">
             LIMIT #{limit}
         </if>
     </select>
-
 </mapper>

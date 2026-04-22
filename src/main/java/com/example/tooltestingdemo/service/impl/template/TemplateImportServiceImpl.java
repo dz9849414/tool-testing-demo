@@ -54,22 +54,22 @@ public class TemplateImportServiceImpl implements TemplateImportService {
     public TemplateImportResultVO importTemplates(TemplateImportDTO dto) {
         long startTime = System.currentTimeMillis();
         TemplateImportExport record = createImportRecord(dto);
-        
+
         try {
             String content = readFileContent(dto.getFile());
             TemplateParser parser = getParser(dto.getFormat(), content);
-            
+
             if (!parser.validate(content)) {
                 return buildErrorResult("文件格式不正确: " + parser.getDescription());
             }
-            
+
             List<InterfaceTemplateDTO> templates = parser.parse(content);
             if (CollectionUtils.isEmpty(templates)) {
                 return buildErrorResult("未找到可导入的模板");
             }
-            
+
             return processImport(templates, dto, record, startTime);
-            
+
         } catch (Exception e) {
             log.error("模板导入失败", e);
             updateRecordFailed(record, e.getMessage());
@@ -82,11 +82,11 @@ public class TemplateImportServiceImpl implements TemplateImportService {
         try {
             String content = readFileContent(dto.getFile());
             TemplateParser parser = getParser(dto.getFormat(), content);
-            
+
             if (!parser.validate(content)) {
                 return buildErrorResult("文件格式不正确: " + parser.getDescription());
             }
-            
+
             List<InterfaceTemplateDTO> templates = parser.parse(content);
             return TemplateImportResultVO.builder()
                 .success(true)
@@ -94,7 +94,7 @@ public class TemplateImportServiceImpl implements TemplateImportService {
                 .totalCount(templates.size())
                 .importTime(LocalDateTime.now())
                 .build();
-                
+
         } catch (Exception e) {
             return buildErrorResult(e.getMessage());
         }
@@ -103,7 +103,7 @@ public class TemplateImportServiceImpl implements TemplateImportService {
     @Override
     public String exportToJson(Long[] templateIds) {
         if (templateIds == null || templateIds.length == 0) return "[]";
-        
+
         return JSON.toJSONString(
             Arrays.stream(templateIds)
                 .map(templateService::getTemplateDetail)
@@ -117,7 +117,7 @@ public class TemplateImportServiceImpl implements TemplateImportService {
     public String exportToPostman(Long[] templateIds) {
         JSONObject collection = new JSONObject();
         collection.put("info", buildPostmanInfo());
-        
+
         JSONArray items = new JSONArray();
         if (templateIds != null) {
             Arrays.stream(templateIds)
@@ -126,7 +126,7 @@ public class TemplateImportServiceImpl implements TemplateImportService {
                 .forEach(vo -> items.add(convertToPostmanItem(vo)));
         }
         collection.put("item", items);
-        
+
         return JSON.toJSONString(collection);
     }
 
@@ -145,17 +145,17 @@ public class TemplateImportServiceImpl implements TemplateImportService {
         return record;
     }
 
-    private TemplateImportResultVO processImport(List<InterfaceTemplateDTO> templates, TemplateImportDTO dto, 
+    private TemplateImportResultVO processImport(List<InterfaceTemplateDTO> templates, TemplateImportDTO dto,
                                                   TemplateImportExport record, long startTime) {
         String strategy = Optional.ofNullable(dto.getStrategy()).orElse(TemplateEnums.ImportStrategy.SKIP.getCode()).toLowerCase();
         Long folderId = dto.getFolderId();
-        
+
         List<TemplateImportResultVO.ImportedTemplateVO> importedList = new ArrayList<>();
         List<TemplateImportResultVO.ImportErrorVO> errors = new ArrayList<>();
         Set<Long> importedIds = new HashSet<>();
-        
+
         int[] counts = {0, 0, 0}; // success, skip, fail
-        
+
         IntStream.range(0, templates.size()).forEach(i -> {
             InterfaceTemplateDTO templateDTO = templates.get(i);
             try {
@@ -170,13 +170,13 @@ public class TemplateImportServiceImpl implements TemplateImportService {
                     .build());
             }
         });
-        
+
         updateRecordSuccess(record, counts, importedIds);
-        
+
         long duration = System.currentTimeMillis() - startTime;
-        log.info("模板导入完成: 总计={}, 成功={}, 跳过={}, 失败={}, 耗时={}ms", 
+        log.info("模板导入完成: 总计={}, 成功={}, 跳过={}, 失败={}, 耗时={}ms",
             templates.size(), counts[0], counts[1], counts[2], duration);
-        
+
         return TemplateImportResultVO.builder()
             .success(counts[2] == 0)
             .message(buildMessage(counts))
@@ -194,10 +194,10 @@ public class TemplateImportServiceImpl implements TemplateImportService {
                                         List<TemplateImportResultVO.ImportedTemplateVO> importedList,
                                         Set<Long> importedIds, int[] counts) {
         Optional.ofNullable(folderId).ifPresent(dto::setFolderId);
-        
+
         InterfaceTemplate existing = findExistingTemplate(dto);
         var builder = TemplateImportResultVO.ImportedTemplateVO.builder().originalName(dto.getName());
-        
+
         if (existing != null) {
             switch (strategy) {
                 case "skip":
@@ -219,7 +219,7 @@ public class TemplateImportServiceImpl implements TemplateImportService {
                     return;
             }
         }
-        
+
         InterfaceTemplateVO vo = templateService.createTemplate(dto);
         counts[0]++;
         importedList.add(builder.status("CREATED").templateId(vo.getId()).templateName(vo.getName()).build());
@@ -227,7 +227,7 @@ public class TemplateImportServiceImpl implements TemplateImportService {
     }
 
     private void updateRecordSuccess(TemplateImportExport record, int[] counts, Set<Long> importedIds) {
-        record.setStatus(counts[2] == 0 ? TemplateEnums.ImportExportStatus.SUCCESS.getCode() 
+        record.setStatus(counts[2] == 0 ? TemplateEnums.ImportExportStatus.SUCCESS.getCode()
             : TemplateEnums.ImportExportStatus.PARTIAL_SUCCESS.getCode());
         record.setSuccessCount(counts[0]);
         record.setFailCount(counts[2]);
@@ -345,14 +345,14 @@ public class TemplateImportServiceImpl implements TemplateImportService {
     private JSONObject convertToPostmanItem(InterfaceTemplateVO vo) {
         JSONObject item = new JSONObject();
         item.put("name", vo.getName());
-        
+
         JSONObject request = new JSONObject();
         request.put("method", vo.getMethod());
         request.put("description", vo.getDescription());
         request.put("url", buildPostmanUrl(vo));
         request.put("header", buildPostmanHeaders(vo));
         request.put("body", buildPostmanBody(vo));
-        
+
         item.put("request", request);
         return item;
     }
@@ -362,9 +362,9 @@ public class TemplateImportServiceImpl implements TemplateImportService {
         String fullUrl = Optional.ofNullable(vo.getBaseUrl()).orElse("") + Optional.ofNullable(vo.getPath()).orElse("");
         url.put("raw", fullUrl);
         url.put("protocol", "http");
-        Optional.ofNullable(vo.getBaseUrl()).ifPresent(baseUrl -> 
+        Optional.ofNullable(vo.getBaseUrl()).ifPresent(baseUrl ->
             url.put("host", new JSONArray().fluentAdd(baseUrl.replace("http://", "").replace("https://", ""))));
-        Optional.ofNullable(vo.getPath()).ifPresent(path -> 
+        Optional.ofNullable(vo.getPath()).ifPresent(path ->
             url.put("path", Arrays.asList(path.split("/"))));
         return url;
     }

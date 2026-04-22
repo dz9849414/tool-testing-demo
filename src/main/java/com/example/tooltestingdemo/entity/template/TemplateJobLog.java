@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板定时任务执行日志
  */
 @Data
-@TableName("template_job_log")
+@TableName("pdm_tool_template_job_log")
 public class TemplateJobLog {
 
     @TableId(value = "id", type = IdType.AUTO)
@@ -63,6 +63,34 @@ public class TemplateJobLog {
     @TableField(value = "trace_id")
     private String traceId;
 
+    @TableField(value = "execute_at", fill = FieldFill.INSERT)
+    private LocalDateTime executeAt;
+
+    @TableField(value = "create_id", fill = FieldFill.INSERT)
+    private Long createId;
+
+    @TableField(value = "create_name", fill = FieldFill.INSERT)
+    private String createName;
+
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+
+    @TableField(value = "update_id", fill = FieldFill.UPDATE)
+    private Long updateId;
+
+    @TableField(value = "update_name", fill = FieldFill.UPDATE)
+    private String updateName;
+
+    @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updateTime;
+
+    @TableField(value = "is_deleted", fill = FieldFill.INSERT)
+    @TableLogic
+    private Integer isDeleted;
+
+    @TableField(value = "deleted_by")
+    private Long deletedBy;
+
+    @TableField(value = "deleted_time")
+    private LocalDateTime deletedTime;
 }

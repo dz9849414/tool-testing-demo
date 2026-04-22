@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板分类/文件夹实体类
  */
 @Data
-@TableName("template_folder")
+@TableName("pdm_tool_template_folder")
 public class TemplateFolder {
 
     @TableId(value = "id", type = IdType.AUTO)
@@ -58,6 +58,7 @@ public class TemplateFolder {
     private LocalDateTime deletedTime;
 
     @TableField(value = "is_deleted")
+    @TableLogic(value = "0", delval = "1")
     private Integer isDeleted;
 
     @TableField(value = "update_id", fill = FieldFill.UPDATE)

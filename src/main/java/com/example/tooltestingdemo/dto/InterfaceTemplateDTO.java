@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * 接口模板 DTO（用于创建/更新）
- * 
+ *
  * 文件位置：src/main/java/com/example/tooltestingdemo/dto/InterfaceTemplateDTO.java
  */
 @Data
@@ -87,6 +87,8 @@ public class InterfaceTemplateDTO {
      * 请求体内容
      */
     private String bodyContent;
+
+    private String body;
 
     /**
      * RAW类型：JSON/XML/HTML/TEXT/JavaScript

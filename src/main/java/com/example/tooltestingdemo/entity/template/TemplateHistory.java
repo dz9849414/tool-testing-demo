@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板历史版本实体类
  */
 @Data
-@TableName("template_history")
+@TableName("pdm_tool_template_history")
 public class TemplateHistory {
 
     @TableId(value = "id", type = IdType.AUTO)
@@ -61,6 +61,7 @@ public class TemplateHistory {
     private LocalDateTime updateTime;
 
     @TableField(value = "is_deleted")
+    @TableLogic(value = "0", delval = "1")
     private Integer isDeleted;
 
     @TableField(value = "deleted_by")

@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板执行统一日志表（手动执行 + 定时任务执行）
  */
 @Data
-@TableName("template_execute_log")
+@TableName("pdm_tool_template_execute_log")
 public class TemplateExecuteLog {
 
     @TableId(value = "id", type = IdType.AUTO)
@@ -90,15 +90,43 @@ public class TemplateExecuteLog {
     /**
      * 执行人ID（手动执行时填充）
      */
-    @TableField(value = "create_id")
-    private Long createId;
+    @TableField(value = "execute_user_id")
+    private Long executeUserId;
 
     /**
      * 执行人姓名
      */
-    @TableField(value = "create_name")
+    @TableField(value = "execute_user_name")
+    private String executeUserName;
+
+    @TableField(value = "execute_at", fill = FieldFill.INSERT)
+    private LocalDateTime executeAt;
+
+    @TableField(value = "create_id", fill = FieldFill.INSERT)
+    private Long createId;
+
+    @TableField(value = "create_name", fill = FieldFill.INSERT)
     private String createName;
 
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+
+    @TableField(value = "update_id", fill = FieldFill.UPDATE)
+    private Long updateId;
+
+    @TableField(value = "update_name", fill = FieldFill.UPDATE)
+    private String updateName;
+
+    @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updateTime;
+
+    @TableField(value = "is_deleted", fill = FieldFill.INSERT)
+    @TableLogic
+    private Integer isDeleted;
+
+    @TableField(value = "deleted_by")
+    private Long deletedBy;
+
+    @TableField(value = "deleted_time")
+    private LocalDateTime deletedTime;
 }

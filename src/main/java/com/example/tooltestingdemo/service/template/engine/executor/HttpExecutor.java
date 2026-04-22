@@ -1,37 +1,52 @@
 package com.example.tooltestingdemo.service.template.engine.executor;
 
 import com.example.tooltestingdemo.entity.template.InterfaceTemplate;
+import com.example.tooltestingdemo.enums.TemplateEnums;
 import com.example.tooltestingdemo.service.template.InterfaceTemplateService;
 import com.example.tooltestingdemo.service.template.engine.core.ExecutionResult;
 import com.example.tooltestingdemo.service.template.engine.core.TemplateContext;
 import com.example.tooltestingdemo.vo.InterfaceTemplateVO;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.*;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
-/**
- * HTTP/HTTPS 执行器
- * <p>
- * 执行 HTTP 协议的模板请求
- *
- * @author PDM接口测试工具
- * @since 1.0
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class HttpExecutor implements TemplateExecutor {
+
+    private static final Set<String> METHODS_WITHOUT_BODY =
+        Set.of("GET", "DELETE", "HEAD", "OPTIONS");
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -48,27 +63,22 @@ public class HttpExecutor implements TemplateExecutor {
             context.getTemplate() != null ? context.getTemplate().getId() : null);
 
         LocalDateTime startTime = LocalDateTime.now();
-        long startMs = System.currentTimeMillis();
-
-        // 1. 构建请求
         RequestBuilder requestBuilder = new RequestBuilder(context);
         ExecutionResult.RequestInfo requestInfo = requestBuilder.build();
+        ResponseData responseData = sendHttpRequest(requestBuilder, requestInfo);
 
-        // 2. 发送请求
-        ResponseData responseData = sendHttpRequest(requestInfo);
-
-        // 3. 构建结果
         ExecutionResult.ResponseInfo responseInfo = ExecutionResult.ResponseInfo.builder()
             .statusCode(responseData.getStatusCode())
             .statusText(responseData.getStatusText())
             .headers(responseData.getHeaders())
             .body(parseResponseBody(responseData.getBody()))
             .size(responseData.getBody() != null ? (long) responseData.getBody().length() : 0L)
-            .responseTime(System.currentTimeMillis() - startMs)
+            .responseTime(responseData.getResponseTime())
             .build();
 
-        boolean success = responseData.getStatusCode() != null &&
-            responseData.getStatusCode() >= 200 && responseData.getStatusCode() < 300;
+        boolean success = responseData.getStatusCode() != null
+            && responseData.getStatusCode() >= 200
+            && responseData.getStatusCode() < 300;
 
         return ExecutionResult.builder()
             .success(success)
@@ -86,26 +96,20 @@ public class HttpExecutor implements TemplateExecutor {
     @Override
     public ValidationResult validate(TemplateContext context) {
         if (context.getTemplate() == null) {
-            return ValidationResult.failure("模板信息为空");
+            return ValidationResult.failure("模板信息不能为空");
         }
-
-        // 验证必填字段
         if (!StringUtils.hasText(context.getTemplate().getMethod())) {
             return ValidationResult.failure("请求方法不能为空");
         }
-
         String fullUrl = buildFullUrl(context.getTemplate(), context.getTemplateVariables());
         if (!StringUtils.hasText(fullUrl)) {
             return ValidationResult.failure("请求URL不能为空");
         }
-
-        // 验证URL格式
         try {
             new java.net.URL(fullUrl);
         } catch (Exception e) {
             return ValidationResult.failure("URL格式不正确: " + fullUrl);
         }
-
         return ValidationResult.success();
     }
 
@@ -113,7 +117,6 @@ public class HttpExecutor implements TemplateExecutor {
     public PreviewResult preview(TemplateContext context) {
         RequestBuilder builder = new RequestBuilder(context);
         ExecutionResult.RequestInfo requestInfo = builder.build();
-
         return new PreviewResult(
             requestInfo.getUrl(),
             requestInfo.getMethod(),
@@ -124,75 +127,71 @@ public class HttpExecutor implements TemplateExecutor {
     }
 
     /**
-     * 发送 HTTP 请求
+     * 发送请求并获取响应数据
+     *
+     * @param requestBuilder
+     * @param requestInfo
+     * @return
      */
-    private ResponseData sendHttpRequest(ExecutionResult.RequestInfo requestInfo) {
+    private ResponseData sendHttpRequest(RequestBuilder requestBuilder,
+                                         ExecutionResult.RequestInfo requestInfo) {
         ResponseData responseData = new ResponseData();
-
         try {
-            HttpHeaders headers = new HttpHeaders();
-            if (requestInfo.getHeaders() != null) {
-                requestInfo.getHeaders().forEach(headers::set);
-            }
-            if (!headers.containsKey(HttpHeaders.CONTENT_TYPE)) {
-                headers.setContentType(MediaType.APPLICATION_JSON);
-            }
-            if (!headers.containsKey(HttpHeaders.ACCEPT)) {
-                headers.setAccept(List.of(MediaType.APPLICATION_JSON));
-            }
+            HttpHeaders headers = requestBuilder.buildHttpHeaders(requestInfo);
+            HttpEntity<?> entity = requestBuilder.buildRequestEntity(headers);
+            HttpMethod httpMethod = HttpMethod.valueOf(requestInfo.getMethod().toUpperCase(Locale.ROOT));
 
-            HttpEntity<String> entity = new HttpEntity<>(requestInfo.getBody(), headers);
-            HttpMethod httpMethod = HttpMethod.valueOf(requestInfo.getMethod().toUpperCase());
+            logRequest(requestInfo, headers, entity.getBody());
 
             long start = System.currentTimeMillis();
             ResponseEntity<String> responseEntity = restTemplate.exchange(
                 requestInfo.getUrl(), httpMethod, entity, String.class);
-            long responseTime = System.currentTimeMillis() - start;
 
             responseData.setStatusCode(responseEntity.getStatusCode().value());
             responseData.setStatusText(HttpStatus.valueOf(
                 responseEntity.getStatusCode().value()).getReasonPhrase());
             responseData.setHeaders(convertHeaders(responseEntity.getHeaders()));
             responseData.setBody(responseEntity.getBody());
-            responseData.setResponseTime(responseTime);
-
+            responseData.setResponseTime(System.currentTimeMillis() - start);
+        } catch (HttpStatusCodeException e) {
+            log.error("HTTP 请求返回错误状态: method={}, url={}, status={}",
+                requestInfo.getMethod(), requestInfo.getUrl(), e.getStatusCode().value(), e);
+            responseData.setStatusCode(e.getStatusCode().value());
+            responseData.setStatusText(e.getStatusText());
+            responseData.setHeaders(convertHeaders(e.getResponseHeaders()));
+            responseData.setBody(e.getResponseBodyAsString());
+            responseData.setResponseTime(0L);
         } catch (Exception e) {
-            log.error("HTTP 请求执行失败", e);
+            log.error("HTTP 请求执行失败: method={}, url={}",
+                requestInfo.getMethod(), requestInfo.getUrl(), e);
             responseData.setStatusCode(0);
             responseData.setStatusText("Error");
             responseData.setBody(e.getMessage());
+            responseData.setResponseTime(0L);
         }
-
         return responseData;
     }
 
-    /**
-     * 解析响应体
-     */
     private Object parseResponseBody(String body) {
         if (!StringUtils.hasText(body)) {
             return null;
         }
-
         try {
             String trimBody = body.trim();
             if (trimBody.startsWith("{")) {
                 return objectMapper.readValue(trimBody, new TypeReference<Map<String, Object>>() {
                 });
-            } else if (trimBody.startsWith("[")) {
+            }
+            if (trimBody.startsWith("[")) {
                 return objectMapper.readValue(trimBody, new TypeReference<List<Object>>() {
                 });
             }
         } catch (Exception e) {
-            log.debug("响应体不是JSON格式，返回原始字符串");
+            log.debug("响应体不是 JSON，按原始字符串返回");
         }
-
         return body;
     }
 
-    /**
-     * 转换响应头
-     */
     private Map<String, String> convertHeaders(HttpHeaders headers) {
         Map<String, String> result = new HashMap<>();
         if (headers != null) {
@@ -205,11 +204,21 @@ public class HttpExecutor implements TemplateExecutor {
         return result;
     }
 
-    /**
-     * 构建完整 URL
-     */
-    private String buildFullUrl(InterfaceTemplate template,
-                                Map<String, Object> variables) {
+    private void logRequest(ExecutionResult.RequestInfo requestInfo, HttpHeaders headers, Object body) {
+        String bodyPreview;
+        try {
+            bodyPreview = body == null ? null : objectMapper.writeValueAsString(body);
+        } catch (Exception e) {
+            bodyPreview = String.valueOf(body);
+        }
+        if (bodyPreview != null && bodyPreview.length() > 2000) {
+            bodyPreview = bodyPreview.substring(0, 2000) + "...";
+        }
+        log.info("发送 HTTP 请求: method={}, url={}, headers={}, body={}",
+            requestInfo.getMethod(), requestInfo.getUrl(), headers, bodyPreview);
+    }
+
+    private String buildFullUrl(InterfaceTemplate template, Map<String, Object> variables) {
         String overrideFullUrl = resolveFullUrl(variables);
         if (StringUtils.hasText(overrideFullUrl)) {
             return overrideFullUrl;
@@ -219,34 +228,29 @@ public class HttpExecutor implements TemplateExecutor {
         }
 
         StringBuilder url = new StringBuilder();
-
-        // Base URL
         String baseUrl = template.getBaseUrl();
         if (StringUtils.hasText(baseUrl)) {
             if (baseUrl.startsWith("http://") || baseUrl.startsWith("https://")) {
                 url.append(baseUrl);
             } else {
                 String protocol = StringUtils.hasText(template.getProtocolType())
-                    ? template.getProtocolType().toLowerCase() : "http";
+                    ? template.getProtocolType().toLowerCase(Locale.ROOT) : "http";
                 url.append(protocol).append("://").append(baseUrl);
             }
         } else {
             String protocol = StringUtils.hasText(template.getProtocolType())
-                ? template.getProtocolType().toLowerCase() : "http";
+                ? template.getProtocolType().toLowerCase(Locale.ROOT) : "http";
             url.append(protocol).append("://");
         }
 
-        // Path
         String resolvedPath = resolvePath(template, variables);
         if (StringUtils.hasText(resolvedPath)) {
-            String path = resolvedPath;
             char lastChar = url.charAt(url.length() - 1);
-            if (lastChar != '/' && !path.startsWith("/")) {
+            if (lastChar != '/' && !resolvedPath.startsWith("/")) {
                 url.append("/");
             }
-            url.append(path);
+            url.append(resolvedPath);
         }
-
         return url.toString();
     }
 
@@ -284,47 +288,35 @@ public class HttpExecutor implements TemplateExecutor {
         return null;
     }
 
-    /**
-     * 请求构建器内部类
-     */
     private class RequestBuilder {
-        private final TemplateContext context;
         private final Map<String, Object> templateVariables;
         private final Map<String, Object> variables;
+        private final InterfaceTemplate template;
+        private InterfaceTemplateVO fullTemplate;
 
         RequestBuilder(TemplateContext context) {
-            this.context = context;
             this.templateVariables = context.getTemplateVariables();
             this.variables = context.getAllVariables();
+            this.template = context.getTemplate();
         }
 
         ExecutionResult.RequestInfo build() {
-            InterfaceTemplate template = context.getTemplate();
+            InterfaceTemplateVO currentTemplate = getFullTemplate();
+            String url = replaceVariables(buildFullUrl(template, templateVariables));
 
-            // 获取完整模板详情（包含 headers、parameters 等）
-            InterfaceTemplateVO fullTemplate = templateService.getTemplateDetail(template.getId());
-
-            // URL（使用模板中的，已包含环境 baseUrl）
-            String url = buildFullUrl(template, templateVariables);
-            url = replaceVariables(url);
-
-            // Headers
             Map<String, String> headers = new HashMap<>();
-            if (fullTemplate != null && !CollectionUtils.isEmpty(fullTemplate.getHeaders())) {
-                fullTemplate.getHeaders().stream()
-                    .filter(h -> Integer.valueOf(1).equals(h.getIsEnabled())
-                        && StringUtils.hasText(h.getHeaderName())
-                        && StringUtils.hasText(h.getHeaderValue()))
+            if (currentTemplate != null && !CollectionUtils.isEmpty(currentTemplate.getHeaders())) {
+                currentTemplate.getHeaders().stream()
+                    .filter(h -> Integer.valueOf(1).equals(h.getIsEnabled()))
+                    .filter(h -> StringUtils.hasText(h.getHeaderName()))
+                    .filter(h -> StringUtils.hasText(h.getHeaderValue()))
                     .forEach(h -> headers.put(h.getHeaderName(), replaceVariables(h.getHeaderValue())));
             }
 
-            // Body
-            String body = resolveRequestBody(template, fullTemplate);
-
-            // Parameters
+            String body = resolvePreviewBody(currentTemplate);
             Map<String, String> parameters = new HashMap<>();
-            if (fullTemplate != null && !CollectionUtils.isEmpty(fullTemplate.getParameters())) {
-                for (var parameter : fullTemplate.getParameters()) {
+            if (currentTemplate != null && !CollectionUtils.isEmpty(currentTemplate.getParameters())) {
+                for (var parameter : currentTemplate.getParameters()) {
                     if (!Integer.valueOf(1).equals(parameter.getIsEnabled())) {
                         continue;
                     }
@@ -336,6 +328,7 @@ public class HttpExecutor implements TemplateExecutor {
                     }
                 }
             }
+            applyAuthQueryParameters(parameters);
             url = replacePathVariablesFromTemplateVariables(url);
             url = appendQueryParameters(url, parameters);
 
@@ -348,18 +341,102 @@ public class HttpExecutor implements TemplateExecutor {
                 .build();
         }
 
-        private String resolveRequestBody(InterfaceTemplate template, InterfaceTemplateVO fullTemplate) {
+        HttpHeaders buildHttpHeaders(ExecutionResult.RequestInfo requestInfo) {
+            HttpHeaders headers = new HttpHeaders();
+            if (requestInfo.getHeaders() != null) {
+                requestInfo.getHeaders().forEach(headers::set);
+            }
+            MediaType contentType = resolveContentType();
+            if (shouldSetContentType(requestInfo) && contentType != null
+                && !headers.containsKey(HttpHeaders.CONTENT_TYPE)) {
+                headers.setContentType(contentType);
+            }
+            if (!headers.containsKey(HttpHeaders.ACCEPT)) {
+                headers.setAccept(List.of(MediaType.ALL));
+            }
+            applyForwardedAuthHeaders(headers);
+            applyAuthHeaders(headers);
+            return headers;
+        }
+
+        private boolean shouldSetContentType(ExecutionResult.RequestInfo requestInfo) {
+            if (requestInfo == null || !StringUtils.hasText(requestInfo.getMethod())) {
+                return false;
+            }
+            return !METHODS_WITHOUT_BODY.contains(requestInfo.getMethod().trim().toUpperCase(Locale.ROOT));
+        }
+
+        private void applyForwardedAuthHeaders(HttpHeaders headers) {
+            ServletRequestAttributes attributes =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attributes == null) {
+                return;
+            }
+
+            HttpServletRequest currentRequest = attributes.getRequest();
+            if (currentRequest == null) {
+                return;
+            }
+
+            copyHeaderIfAbsent(currentRequest, headers, HttpHeaders.AUTHORIZATION);
+            copyHeaderIfAbsent(currentRequest, headers, HttpHeaders.COOKIE);
+        }
+
+        private void copyHeaderIfAbsent(HttpServletRequest request, HttpHeaders headers, String headerName) {
+            if (headers.containsKey(headerName)) {
+                return;
+            }
+            String headerValue = request.getHeader(headerName);
+            if (StringUtils.hasText(headerValue)) {
+                headers.set(headerName, headerValue);
+            }
+        }
+
+        HttpEntity<?> buildRequestEntity(HttpHeaders headers) {
+            String method = template != null ? template.getMethod() : null;
+            if (!StringUtils.hasText(method)
+                || METHODS_WITHOUT_BODY.contains(method.trim().toUpperCase(Locale.ROOT))) {
+                return new HttpEntity<>(headers);
+            }
+
+            String bodyType = resolveBodyType();
+            if (TemplateEnums.BodyType.FORM_DATA.getCode().equalsIgnoreCase(bodyType)) {
+                return new HttpEntity<>(buildFormDataBody(), headers);
+            }
+            if (TemplateEnums.BodyType.X_WWW_FORM_URLENCODED.getCode().equalsIgnoreCase(bodyType)) {
+                return new HttpEntity<>(buildUrlEncodedBody(), headers);
+            }
+            return new HttpEntity<>(resolveRawBody(getFullTemplate()), headers);
+        }
+
+        private InterfaceTemplateVO getFullTemplate() {
+            if (fullTemplate == null && template != null && template.getId() != null) {
+                fullTemplate = templateService.getTemplateDetail(template.getId());
+            }
+            return fullTemplate;
+        }
+
+        private String resolvePreviewBody(InterfaceTemplateVO currentTemplate) {
+            String bodyType = resolveBodyType();
+            if (TemplateEnums.BodyType.FORM_DATA.getCode().equalsIgnoreCase(bodyType)
+                || TemplateEnums.BodyType.X_WWW_FORM_URLENCODED.getCode().equalsIgnoreCase(bodyType)) {
+                return buildFormPreview(currentTemplate);
+            }
+            return resolveRawBody(currentTemplate);
+        }
+
+        private String resolveRawBody(InterfaceTemplateVO currentTemplate) {
             String bodyFromVariables = resolveBodyFromTemplateVariables();
             if (StringUtils.hasText(bodyFromVariables)) {
                 return bodyFromVariables;
             }
-            if (StringUtils.hasText(template.getBodyContent())) {
+            if (template != null && StringUtils.hasText(template.getBodyContent())) {
                 return replaceVariables(template.getBodyContent());
             }
-            if (fullTemplate == null || CollectionUtils.isEmpty(fullTemplate.getParameters())) {
+            if (currentTemplate == null || CollectionUtils.isEmpty(currentTemplate.getParameters())) {
                 return null;
             }
-            for (var parameter : fullTemplate.getParameters()) {
+            for (var parameter : currentTemplate.getParameters()) {
                 if (!Integer.valueOf(1).equals(parameter.getIsEnabled())) {
                     continue;
                 }
@@ -369,6 +446,231 @@ public class HttpExecutor implements TemplateExecutor {
                 return replaceVariables(parameter.getParamValue());
             }
             return null;
+        }
+
+        private String buildFormPreview(InterfaceTemplateVO currentTemplate) {
+            if (currentTemplate == null || CollectionUtils.isEmpty(currentTemplate.getFormDataList())) {
+                return null;
+            }
+
+            Map<String, Object> preview = new HashMap<>();
+            currentTemplate.getFormDataList().stream()
+                .filter(item -> Integer.valueOf(1).equals(item.getIsEnabled()))
+                .filter(item -> StringUtils.hasText(item.getFieldName()))
+                .forEach(item -> {
+                    String fieldType = defaultString(item.getFieldType()).toUpperCase(Locale.ROOT);
+                    if ("FILE".equals(fieldType) && StringUtils.hasText(item.getFilePath())) {
+                        preview.put(item.getFieldName().trim(), replaceVariables(item.getFilePath()));
+                    } else {
+                        preview.put(item.getFieldName().trim(),
+                            replaceVariables(defaultString(item.getFieldValue())));
+                    }
+                });
+            try {
+                return objectMapper.writeValueAsString(preview);
+            } catch (Exception e) {
+                return preview.toString();
+            }
+        }
+
+        private String resolveBodyType() {
+            if (template != null && StringUtils.hasText(template.getBodyType())) {
+                return template.getBodyType().trim();
+            }
+            InterfaceTemplateVO currentTemplate = getFullTemplate();
+            if (currentTemplate != null && StringUtils.hasText(currentTemplate.getBodyType())) {
+                return currentTemplate.getBodyType().trim();
+            }
+            return TemplateEnums.BodyType.RAW.getCode();
+        }
+
+        private MediaType resolveContentType() {
+            String configuredContentType = resolveConfiguredContentType();
+            if (StringUtils.hasText(configuredContentType)) {
+                try {
+                    return MediaType.parseMediaType(configuredContentType);
+                } catch (Exception e) {
+                    log.warn("无效的 Content-Type 配置: {}", configuredContentType, e);
+                }
+            }
+
+            String bodyType = resolveBodyType().toUpperCase(Locale.ROOT);
+            return switch (bodyType) {
+                case "FORM_DATA" -> MediaType.MULTIPART_FORM_DATA;
+                case "X_WWW_FORM_URLENCODED" -> MediaType.APPLICATION_FORM_URLENCODED;
+                case "XML" -> MediaType.APPLICATION_XML;
+                case "HTML" -> MediaType.TEXT_HTML;
+                case "TEXT" -> MediaType.TEXT_PLAIN;
+                case "JAVASCRIPT" -> MediaType.parseMediaType("application/javascript");
+                case "BINARY" -> MediaType.APPLICATION_OCTET_STREAM;
+                default -> MediaType.APPLICATION_JSON;
+            };
+        }
+
+        private String resolveConfiguredContentType() {
+            if (template != null && StringUtils.hasText(template.getContentType())) {
+                return replaceVariables(template.getContentType());
+            }
+            InterfaceTemplateVO currentTemplate = getFullTemplate();
+            if (currentTemplate != null && StringUtils.hasText(currentTemplate.getContentType())) {
+                return replaceVariables(currentTemplate.getContentType());
+            }
+
+            String bodyType = resolveBodyType();
+            String bodyRawType = template != null ? template.getBodyRawType() : null;
+            if (!StringUtils.hasText(bodyRawType) && currentTemplate != null) {
+                bodyRawType = currentTemplate.getBodyRawType();
+            }
+            if (!TemplateEnums.BodyType.RAW.getCode().equalsIgnoreCase(bodyType)
+                && !TemplateEnums.BodyType.GRAPHQL.getCode().equalsIgnoreCase(bodyType)) {
+                return null;
+            }
+            if (!StringUtils.hasText(bodyRawType)) {
+                return MediaType.APPLICATION_JSON_VALUE;
+            }
+            return switch (bodyRawType.trim().toUpperCase(Locale.ROOT)) {
+                case "XML" -> MediaType.APPLICATION_XML_VALUE;
+                case "HTML" -> MediaType.TEXT_HTML_VALUE;
+                case "TEXT" -> MediaType.TEXT_PLAIN_VALUE;
+                case "JAVASCRIPT" -> "application/javascript";
+                case "JSON" -> MediaType.APPLICATION_JSON_VALUE;
+                default -> MediaType.APPLICATION_JSON_VALUE;
+            };
+        }
+
+        private void applyAuthHeaders(HttpHeaders headers) {
+            Map<String, Object> authConfig = parseAuthConfig();
+            String authType = resolveAuthType();
+            if (!StringUtils.hasText(authType) || CollectionUtils.isEmpty(authConfig)) {
+                return;
+            }
+
+            switch (authType.trim().toUpperCase(Locale.ROOT)) {
+                case "BASIC" -> applyBasicAuth(headers, authConfig);
+                case "BEARER", "JWT", "OAUTH2" -> applyBearerAuth(headers, authConfig);
+                case "APIKEY" -> applyApiKeyHeader(headers, authConfig);
+                default -> {
+                }
+            }
+        }
+
+        private void applyBasicAuth(HttpHeaders headers, Map<String, Object> authConfig) {
+            String username = getConfigValue(authConfig, "username", "userName");
+            String password = getConfigValue(authConfig, "password", "passWord");
+            if (!StringUtils.hasText(username)) {
+                return;
+            }
+            String rawValue = username + ":" + defaultString(password);
+            String encodedValue = Base64.getEncoder()
+                .encodeToString(rawValue.getBytes(StandardCharsets.UTF_8));
+            headers.set(HttpHeaders.AUTHORIZATION, "Basic " + encodedValue);
+        }
+
+        private void applyBearerAuth(HttpHeaders headers, Map<String, Object> authConfig) {
+            String token = getConfigValue(authConfig, "token", "accessToken", "bearerToken", "jwt");
+            if (StringUtils.hasText(token)) {
+                headers.setBearerAuth(token.trim());
+            }
+        }
+
+        private void applyApiKeyHeader(HttpHeaders headers, Map<String, Object> authConfig) {
+            String key = getConfigValue(authConfig, "key", "headerName", "name");
+            String value = getConfigValue(authConfig, "value", "apiKey", "token");
+            String location = getConfigValue(authConfig, "in", "location");
+            if (!StringUtils.hasText(key) || !StringUtils.hasText(value)) {
+                return;
+            }
+            if (!"QUERY".equalsIgnoreCase(defaultString(location, "HEADER"))) {
+                headers.set(key.trim(), replaceVariables(value));
+            }
+        }
+
+        private void applyAuthQueryParameters(Map<String, String> parameters) {
+            Map<String, Object> authConfig = parseAuthConfig();
+            String authType = resolveAuthType();
+            if (!"APIKEY".equalsIgnoreCase(authType) || CollectionUtils.isEmpty(authConfig)) {
+                return;
+            }
+            String location = getConfigValue(authConfig, "in", "location");
+            if (!"QUERY".equalsIgnoreCase(location)) {
+                return;
+            }
+
+            String key = getConfigValue(authConfig, "key", "paramName", "name");
+            String value = getConfigValue(authConfig, "value", "apiKey", "token");
+            if (StringUtils.hasText(key) && StringUtils.hasText(value)) {
+                parameters.put(key.trim(), replaceVariables(value));
+            }
+        }
+
+        private String resolveAuthType() {
+            if (template != null && StringUtils.hasText(template.getAuthType())) {
+                return template.getAuthType();
+            }
+            InterfaceTemplateVO currentTemplate = getFullTemplate();
+            if (currentTemplate != null && StringUtils.hasText(currentTemplate.getAuthType())) {
+                return currentTemplate.getAuthType();
+            }
+            return null;
+        }
+
+        private Map<String, Object> parseAuthConfig() {
+            String authConfig = null;
+            if (template != null && StringUtils.hasText(template.getAuthConfig())) {
+                authConfig = replaceVariables(template.getAuthConfig());
+            } else if (getFullTemplate() != null && StringUtils.hasText(getFullTemplate().getAuthConfig())) {
+                authConfig = replaceVariables(getFullTemplate().getAuthConfig());
+            }
+            if (!StringUtils.hasText(authConfig)) {
+                return Collections.emptyMap();
+            }
+            try {
+                return objectMapper.readValue(authConfig, new TypeReference<Map<String, Object>>() {
+                });
+            } catch (Exception e) {
+                log.warn("解析认证配置失败: {}", authConfig, e);
+                return Collections.emptyMap();
+            }
+        }
+
+        private MultiValueMap<String, Object> buildFormDataBody() {
+            LinkedMultiValueMap<String, Object> formData = new LinkedMultiValueMap<>();
+            InterfaceTemplateVO currentTemplate = getFullTemplate();
+            if (currentTemplate == null || CollectionUtils.isEmpty(currentTemplate.getFormDataList())) {
+                return formData;
+            }
+
+            currentTemplate.getFormDataList().stream()
+                .filter(item -> Integer.valueOf(1).equals(item.getIsEnabled()))
+                .filter(item -> StringUtils.hasText(item.getFieldName()))
+                .forEach(item -> {
+                    String fieldName = item.getFieldName().trim();
+                    String fieldType = defaultString(item.getFieldType()).toUpperCase(Locale.ROOT);
+                    if ("FILE".equals(fieldType) && StringUtils.hasText(item.getFilePath())) {
+                        File file = new File(replaceVariables(item.getFilePath()));
+                        if (file.exists() && file.isFile()) {
+                            formData.add(fieldName, new FileSystemResource(file));
+                            return;
+                        }
+                    }
+                    formData.add(fieldName, replaceVariables(defaultString(item.getFieldValue())));
+                });
+            return formData;
+        }
+
+        private MultiValueMap<String, String> buildUrlEncodedBody() {
+            LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+            InterfaceTemplateVO currentTemplate = getFullTemplate();
+            if (currentTemplate == null || CollectionUtils.isEmpty(currentTemplate.getFormDataList())) {
+                return formData;
+            }
+
+            currentTemplate.getFormDataList().stream()
+                .filter(item -> Integer.valueOf(1).equals(item.getIsEnabled()))
+                .filter(item -> StringUtils.hasText(item.getFieldName()))
+                .forEach(item -> formData.add(item.getFieldName().trim(),
+                    replaceVariables(defaultString(item.getFieldValue()))));
+            return formData;
         }
 
         private String resolveBodyFromTemplateVariables() {
@@ -426,7 +728,6 @@ public class HttpExecutor implements TemplateExecutor {
             if (!StringUtils.hasText(url) || !StringUtils.hasText(paramName)) {
                 return url;
             }
-
             String normalizedParamName = paramName.trim();
             String safeValue = paramValue != null ? paramValue : "";
             return url.replace("{" + normalizedParamName + "}", safeValue)
@@ -438,7 +739,6 @@ public class HttpExecutor implements TemplateExecutor {
             if (!StringUtils.hasText(url) || CollectionUtils.isEmpty(templateVariables)) {
                 return url;
             }
-
             String resolvedUrl = url;
             for (Map.Entry<String, Object> entry : templateVariables.entrySet()) {
                 if (!StringUtils.hasText(entry.getKey())) {
@@ -454,16 +754,30 @@ public class HttpExecutor implements TemplateExecutor {
             if (!StringUtils.hasText(url) || parameters == null || parameters.isEmpty()) {
                 return url;
             }
-
             UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(url);
             parameters.forEach(builder::queryParam);
             return builder.build(true).toUriString();
         }
+
+        private String getConfigValue(Map<String, Object> config, String... keys) {
+            for (String key : keys) {
+                Object value = config.get(key);
+                if (value != null && StringUtils.hasText(value.toString())) {
+                    return value.toString().trim();
+                }
+            }
+            return null;
+        }
+
+        private String defaultString(String value) {
+            return value == null ? "" : value;
+        }
+
+        private String defaultString(String value, String defaultValue) {
+            return StringUtils.hasText(value) ? value : defaultValue;
+        }
     }
 
-    /**
-     * 响应数据内部类
-     */
     private static class ResponseData {
         private Integer statusCode;
         private String statusText;
@@ -471,7 +785,6 @@ public class HttpExecutor implements TemplateExecutor {
         private String body;
         private Long responseTime;
 
-        // Getters and Setters
         public Integer getStatusCode() {
             return statusCode;
         }

@@ -63,7 +63,7 @@ public class TemplateFileServiceImpl implements TemplateFileService {
             Path filePath = targetPath.resolve(newFilename);
             file.transferTo(filePath.toFile());
 
-            TemplateFile templateFile = buildTemplateFile(templateId, originalFilename, newFilename, 
+            TemplateFile templateFile = buildTemplateFile(templateId, originalFilename, newFilename,
                 filePath.toString(), buildFileUrl(targetPath, newFilename), file, extension, fileCategory, description);
             fileMapper.insert(templateFile);
 
@@ -79,7 +79,7 @@ public class TemplateFileServiceImpl implements TemplateFileService {
     @Override
     public List<TemplateFile> uploadFiles(Long templateId, List<MultipartFile> files, String fileCategory) {
         List<TemplateFile> result = new ArrayList<>();
-        Optional.ofNullable(files).ifPresent(list -> 
+        Optional.ofNullable(files).ifPresent(list ->
             list.stream().filter(f -> !f.isEmpty()).forEach(f -> result.add(uploadFile(templateId, f, fileCategory, null))));
         return result;
     }
@@ -103,7 +103,7 @@ public class TemplateFileServiceImpl implements TemplateFileService {
     public boolean deleteFile(Long fileId) {
         TemplateFile file = fileMapper.selectById(fileId);
         if (file == null) return false;
-        
+
         deletePhysicalFile(file.getFilePath());
         return fileMapper.deleteById(fileId) > 0;
     }
@@ -139,7 +139,7 @@ public class TemplateFileServiceImpl implements TemplateFileService {
         return fileMapper.updateById(file) > 0;
     }
 
-    private TemplateFile buildTemplateFile(Long templateId, String originalName, String newName, String path, 
+    private TemplateFile buildTemplateFile(Long templateId, String originalName, String newName, String path,
                                             String url, MultipartFile file, String extension, String category, String desc) {
         TemplateFile tf = new TemplateFile();
         tf.setTemplateId(templateId);
@@ -173,7 +173,7 @@ public class TemplateFileServiceImpl implements TemplateFileService {
     }
 
     private String buildFileUrl(Path filePath, String filename) {
-        return StringUtils.hasText(fileBaseUrl) 
+        return StringUtils.hasText(fileBaseUrl)
             ? fileBaseUrl + "/" + filePath.getFileName() + "/" + filename
             : "/api/template/files/download/" + filename;
     }

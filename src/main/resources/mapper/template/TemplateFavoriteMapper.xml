@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateFavoriteMapper">
 
-    <!-- 
+    <!--
         文件位置：src/main/resources/mapper/template/TemplateFavoriteMapper.xml
         命名空间：com.example.tooltestingdemo.mapper.template.TemplateFavoriteMapper
     -->
@@ -19,33 +19,32 @@
 
     <!-- 根据用户ID和模板ID查询收藏记录 -->
     <select id="selectByUserAndTemplate" resultMap="BaseResultMap">
-        SELECT * FROM template_favorite 
-        WHERE create_id = #{userId} 
+        SELECT * FROM pdm_tool_template_favorite
+        WHERE create_id = #{userId}
         AND template_id = #{templateId}
     </select>
 
     <!-- 查询用户的收藏列表 -->
     <select id="selectFavoritesByUserId" resultMap="BaseResultMap">
-        SELECT * FROM template_favorite 
-        WHERE create_id = #{userId} 
-        AND favorite_type = 1 
+        SELECT * FROM pdm_tool_template_favorite
+        WHERE create_id = #{userId}
+        AND favorite_type = 1
         ORDER BY create_time DESC
     </select>
 
     <!-- 查询用户的关注列表 -->
     <select id="selectFollowsByUserId" resultMap="BaseResultMap">
-        SELECT * FROM template_favorite 
-        WHERE create_id = #{userId} 
-        AND favorite_type = 2 
+        SELECT * FROM pdm_tool_template_favorite
+        WHERE create_id = #{userId}
+        AND favorite_type = 2
         ORDER BY create_time DESC
     </select>
 
     <!-- 检查用户是否已收藏模板 -->
     <select id="checkFavoriteExists" resultType="int">
-        SELECT COUNT(*) FROM template_favorite 
-        WHERE create_id = #{userId} 
-        AND template_id = #{templateId} 
+        SELECT COUNT(*) FROM pdm_tool_template_favorite
+        WHERE create_id = #{userId}
+        AND template_id = #{templateId}
         AND favorite_type = 1
     </select>
-
 </mapper>

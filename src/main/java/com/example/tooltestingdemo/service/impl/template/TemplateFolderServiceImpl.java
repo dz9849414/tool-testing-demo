@@ -16,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,27 +33,24 @@ public class TemplateFolderServiceImpl extends ServiceImpl<TemplateFolderMapper,
     @Override
     public List<TemplateFolderVO> getFolderTree(Long parentId) {
         Long rootId = Optional.ofNullable(parentId).orElse(0L);
-        // 一次性查询所有未删除的文件夹
         List<TemplateFolder> allFolders = lambdaQuery()
-            .eq(TemplateFolder::getIsDeleted, 0)
-            .orderByAsc(TemplateFolder::getSortOrder)
-            .list();
-        
-        // 递归构建树
+                .eq(TemplateFolder::getIsDeleted, 0)
+                .orderByAsc(TemplateFolder::getSortOrder)
+                .list();
         return buildFolderTree(allFolders, rootId);
     }
-    
+
     private List<TemplateFolderVO> buildFolderTree(List<TemplateFolder> allFolders, Long parentId) {
         return allFolders.stream()
-            .filter(f -> parentId.equals(f.getParentId()))
-            .map(f -> {
-                TemplateFolderVO vo = TemplateConverter.toVO(f);
-                List<TemplateFolderVO> children = buildFolderTree(allFolders, f.getId());
-                vo.setChildren(children);
-                vo.setChildrenCount(children.size());
-                return vo;
-            })
-            .toList();
+                .filter(f -> parentId.equals(f.getParentId()))
+                .map(f -> {
+                    TemplateFolderVO vo = TemplateConverter.toVO(f);
+                    List<TemplateFolderVO> children = buildFolderTree(allFolders, f.getId());
+                    vo.setChildren(children);
+                    vo.setChildrenCount(children.size());
+                    return vo;
+                })
+                .toList();
     }
 
     @Override
@@ -63,12 +59,12 @@ public class TemplateFolderServiceImpl extends ServiceImpl<TemplateFolderMapper,
         folder.setParentId(Optional.ofNullable(folder.getParentId()).orElse(0L));
         folder.setSortOrder(Optional.ofNullable(folder.getSortOrder()).orElse(0));
         folder.setStatus(TemplateEnums.TemplateStatus.PUBLISHED.getCode());
-        
+
         if (folder.getCreateId() == null) {
             folder.setCreateId(1L);
             folder.setCreateName("管理员");
         }
-        
+
         save(folder);
         log.info("创建文件夹成功: id={}, name={}", folder.getId(), folder.getName());
         return TemplateConverter.toVO(folder);
@@ -83,11 +79,10 @@ public class TemplateFolderServiceImpl extends ServiceImpl<TemplateFolderMapper,
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteFolder(Long id) {
-        // 校验文件夹下是否存在未删除的模板
         long templateCount = templateMapper.selectCount(
-            new LambdaQueryWrapper<InterfaceTemplate>()
-                .eq(InterfaceTemplate::getFolderId, id)
-                .eq(InterfaceTemplate::getIsDeleted, 0)
+                new LambdaQueryWrapper<InterfaceTemplate>()
+                        .eq(InterfaceTemplate::getFolderId, id)
+                        .eq(InterfaceTemplate::getIsDeleted, 0)
         );
         if (templateCount > 0) {
             throw new TemplateValidationException(TemplateValidationException.ErrorType.OPERATION_NOT_ALLOWED, "该文件夹下存在模板，无法删除");
@@ -95,10 +90,11 @@ public class TemplateFolderServiceImpl extends ServiceImpl<TemplateFolderMapper,
 
         TemplateFolder folder = new TemplateFolder();
         folder.setId(id);
-        folder.setIsDeleted(1);
-        folder.setDeletedTime(LocalDateTime.now());
         folder.setStatus(TemplateEnums.TemplateStatus.DISABLED.getCode());
-        return updateById(folder);
+        if (!updateById(folder)) {
+            return false;
+        }
+        return removeById(id);
     }
 
     @Override

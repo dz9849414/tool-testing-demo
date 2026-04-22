@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板FormData参数实体类
  */
 @Data
-@TableName("template_form_data")
+@TableName("pdm_tool_template_form_data")
 public class TemplateFormData {
 
     @TableId(value = "id", type = IdType.AUTO)

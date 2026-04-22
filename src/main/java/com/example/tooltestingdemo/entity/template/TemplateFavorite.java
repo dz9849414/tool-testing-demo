@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板收藏/关注实体类
  */
 @Data
-@TableName("template_favorite")
+@TableName("pdm_tool_template_favorite")
 public class TemplateFavorite {
 
     @TableId(value = "id", type = IdType.AUTO)

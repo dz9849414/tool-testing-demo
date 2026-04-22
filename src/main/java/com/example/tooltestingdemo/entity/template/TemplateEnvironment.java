@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板环境配置实体类
  */
 @Data
-@TableName("template_environment")
+@TableName("pdm_tool_template_environment")
 public class TemplateEnvironment {
 
     @TableId(value = "id", type = IdType.AUTO)
@@ -79,6 +79,7 @@ public class TemplateEnvironment {
     private LocalDateTime updateTime;
 
     @TableField(value = "is_deleted")
+    @TableLogic(value = "0", delval = "1")
     private Integer isDeleted;
 
     @TableField(value = "deleted_by")

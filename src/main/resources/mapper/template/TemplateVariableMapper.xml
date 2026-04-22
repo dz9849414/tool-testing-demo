@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateVariableMapper">
 
-    <!-- 
+    <!--
         文件位置：src/main/resources/mapper/template/TemplateVariableMapper.xml
         命名空间：com.example.tooltestingdemo.mapper.template.TemplateVariableMapper
     -->
@@ -30,14 +30,14 @@
 
     <!-- 根据模板ID查询变量列表 -->
     <select id="selectByTemplateId" resultMap="BaseResultMap">
-        SELECT * FROM template_variable 
-        WHERE template_id = #{templateId} 
+        SELECT * FROM pdm_tool_template_variable
+        WHERE template_id = #{templateId}
         ORDER BY sort_order ASC
     </select>
 
     <!-- 批量插入变量 -->
     <insert id="batchInsert">
-        INSERT INTO template_variable (
+        INSERT INTO pdm_tool_template_variable (
             template_id, variable_name, variable_type, default_value, current_value,
             description, example_value, is_required, is_editable, is_persistent,
             source_type, source_config, validation_rules, sort_order
@@ -52,3 +52,4 @@
     </insert>
 
 </mapper>
+

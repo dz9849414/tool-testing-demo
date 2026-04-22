@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板使用记录实体类
  */
 @Data
-@TableName("template_usage_log")
+@TableName("pdm_tool_template_usage_log")
 public class TemplateUsageLog {
 
     @TableId(value = "id", type = IdType.AUTO)

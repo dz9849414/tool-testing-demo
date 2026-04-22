@@ -21,6 +21,8 @@ public class TemplateJobListVO {
 
     private String description;
 
+    private String createName;
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime lastExecuteTime;
 

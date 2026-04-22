@@ -26,7 +26,7 @@ public interface TemplateStatisticsMapper {
             "FROM template_job_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "GROUP BY template_id")
-    List<Map<String, Object>> getTemplateUsageStats(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getTemplateUsageStats(@Param("startTime") LocalDateTime startTime,
                                                    @Param("endTime") LocalDateTime endTime);
 
     /**
@@ -42,7 +42,7 @@ public interface TemplateStatisticsMapper {
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "GROUP BY DATE(create_time) " +
             "ORDER BY date")
-    List<Map<String, Object>> getTemplateEfficiencyStats(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getTemplateEfficiencyStats(@Param("startTime") LocalDateTime startTime,
                                                        @Param("endTime") LocalDateTime endTime);
 
     /**
@@ -59,7 +59,7 @@ public interface TemplateStatisticsMapper {
             "AND template_id = #{templateId} " +
             "GROUP BY DATE(create_time) " +
             "ORDER BY date")
-    List<Map<String, Object>> getTemplateEfficiencyStatsByTemplateId(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getTemplateEfficiencyStatsByTemplateId(@Param("startTime") LocalDateTime startTime,
                                                                     @Param("endTime") LocalDateTime endTime,
                                                                     @Param("templateId") Long templateId);
 
@@ -73,7 +73,7 @@ public interface TemplateStatisticsMapper {
             "FROM template_job_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "GROUP BY job_id")
-    List<Map<String, Object>> getJobSuccessRateStats(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getJobSuccessRateStats(@Param("startTime") LocalDateTime startTime,
                                                     @Param("endTime") LocalDateTime endTime);
 
     /**
@@ -86,7 +86,7 @@ public interface TemplateStatisticsMapper {
             "AND success = 1 " +
             "GROUP BY DATE(create_time) " +
             "ORDER BY date")
-    List<Map<String, Object>> getExecutionTimeTrend(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getExecutionTimeTrend(@Param("startTime") LocalDateTime startTime,
                                                    @Param("endTime") LocalDateTime endTime);
 
     // ====================== 批量任务统计相关方法 ======================
@@ -102,7 +102,7 @@ public interface TemplateStatisticsMapper {
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "GROUP BY DATE(create_time) " +
             "ORDER BY date")
-    List<Map<String, Object>> getBatchJobStats(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getBatchJobStats(@Param("startTime") LocalDateTime startTime,
                                               @Param("endTime") LocalDateTime endTime);
 
     /**
@@ -112,7 +112,7 @@ public interface TemplateStatisticsMapper {
             "FROM template_job_batch " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "ORDER BY create_time DESC")
-    List<Map<String, Object>> getBatchJobDetails(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getBatchJobDetails(@Param("startTime") LocalDateTime startTime,
                                                 @Param("endTime") LocalDateTime endTime);
 
     // ====================== 统一执行统计相关方法 ======================
@@ -130,7 +130,7 @@ public interface TemplateStatisticsMapper {
             "FROM template_execute_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "GROUP BY execute_type")
-    List<Map<String, Object>> getUnifiedExecutionStats(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getUnifiedExecutionStats(@Param("startTime") LocalDateTime startTime,
                                                       @Param("endTime") LocalDateTime endTime);
 
     /**
@@ -145,7 +145,7 @@ public interface TemplateStatisticsMapper {
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "GROUP BY DATE(create_time), execute_type " +
             "ORDER BY date, execute_type")
-    List<Map<String, Object>> getUnifiedExecutionTrend(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getUnifiedExecutionTrend(@Param("startTime") LocalDateTime startTime,
                                                       @Param("endTime") LocalDateTime endTime);
 
     /**
@@ -159,7 +159,7 @@ public interface TemplateStatisticsMapper {
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "AND template_id = #{templateId} " +
             "GROUP BY execute_type")
-    List<Map<String, Object>> getUnifiedExecutionStatsByTemplateId(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getUnifiedExecutionStatsByTemplateId(@Param("startTime") LocalDateTime startTime,
                                                                   @Param("endTime") LocalDateTime endTime,
                                                                   @Param("templateId") Long templateId);
 
@@ -204,8 +204,8 @@ public interface TemplateStatisticsMapper {
             "FROM template_job_log " +
             "WHERE job_id = #{jobId} " +
             "AND create_time BETWEEN #{startTime} AND #{endTime}")
-    Map<String, Object> getJobExecutionStats(@Param("jobId") Long jobId, 
-                                            @Param("startTime") LocalDateTime startTime, 
+    Map<String, Object> getJobExecutionStats(@Param("jobId") Long jobId,
+                                            @Param("startTime") LocalDateTime startTime,
                                             @Param("endTime") LocalDateTime endTime);
 
     /**
@@ -218,8 +218,8 @@ public interface TemplateStatisticsMapper {
             "FROM template_job_log " +
             "WHERE template_id = #{templateId} " +
             "AND create_time BETWEEN #{startTime} AND #{endTime}")
-    Map<String, Object> getTemplateExecutionStats(@Param("templateId") Long templateId, 
-                                                 @Param("startTime") LocalDateTime startTime, 
+    Map<String, Object> getTemplateExecutionStats(@Param("templateId") Long templateId,
+                                                 @Param("startTime") LocalDateTime startTime,
                                                  @Param("endTime") LocalDateTime endTime);
 
     // ====================== 每2小时响应时间统计 ======================
@@ -239,7 +239,7 @@ public interface TemplateStatisticsMapper {
             "AND success = 1 " +
             "GROUP BY DATE(create_time), FLOOR(HOUR(create_time) / 2) * 2, time_slot " +
             "ORDER BY time_slot")
-    List<Map<String, Object>> getHourlyResponseTimeStats(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getHourlyResponseTimeStats(@Param("startTime") LocalDateTime startTime,
                                                         @Param("endTime") LocalDateTime endTime);
 
     /**
@@ -258,7 +258,7 @@ public interface TemplateStatisticsMapper {
             "AND success = 1 " +
             "GROUP BY DATE(create_time), FLOOR(HOUR(create_time) / 2) * 2, execute_type, time_slot " +
             "ORDER BY time_slot")
-    List<Map<String, Object>> getUnifiedHourlyResponseTimeStats(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getUnifiedHourlyResponseTimeStats(@Param("startTime") LocalDateTime startTime,
                                                               @Param("endTime") LocalDateTime endTime);
 
     /**
@@ -276,7 +276,7 @@ public interface TemplateStatisticsMapper {
             "AND response_time IS NOT NULL " +
             "GROUP BY DATE(create_time), FLOOR(HOUR(create_time) / 2) * 2, time_slot, batch_type " +
             "ORDER BY DATE(create_time), hour_group")
-    List<Map<String, Object>> getBatchHourlyResponseTimeStats(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getBatchHourlyResponseTimeStats(@Param("startTime") LocalDateTime startTime,
                                                             @Param("endTime") LocalDateTime endTime);
 
     // ====================== 周一到周日执行量统计 ======================
@@ -293,7 +293,7 @@ public interface TemplateStatisticsMapper {
             "AND success = 1 " +
             "GROUP BY DAYNAME(create_time), DAYOFWEEK(create_time) " +
             "ORDER BY DAYOFWEEK(create_time)")
-    List<Map<String, Object>> getWeeklyExecutionStats(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getWeeklyExecutionStats(@Param("startTime") LocalDateTime startTime,
                                                      @Param("endTime") LocalDateTime endTime);
 
     /**
@@ -309,7 +309,7 @@ public interface TemplateStatisticsMapper {
             "AND success = 1 " +
             "GROUP BY DAYNAME(create_time), DAYOFWEEK(create_time), execute_type " +
             "ORDER BY DAYOFWEEK(create_time)")
-    List<Map<String, Object>> getUnifiedWeeklyExecutionStats(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getUnifiedWeeklyExecutionStats(@Param("startTime") LocalDateTime startTime,
                                                            @Param("endTime") LocalDateTime endTime);
 
     // ====================== 成功率分析统计方法 ======================
@@ -324,7 +324,7 @@ public interface TemplateStatisticsMapper {
             "ROUND(SUM(success) * 100.0 / COUNT(*), 2) as success_rate " +
             "FROM template_job_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime}")
-    Map<String, Object> getSuccessRateStats(@Param("startTime") LocalDateTime startTime, 
+    Map<String, Object> getSuccessRateStats(@Param("startTime") LocalDateTime startTime,
                                            @Param("endTime") LocalDateTime endTime);
 
     /**
@@ -337,7 +337,7 @@ public interface TemplateStatisticsMapper {
             "ROUND(SUM(success) * 100.0 / COUNT(*), 2) as success_rate " +
             "FROM template_execute_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime}")
-    Map<String, Object> getUnifiedSuccessRateStats(@Param("startTime") LocalDateTime startTime, 
+    Map<String, Object> getUnifiedSuccessRateStats(@Param("startTime") LocalDateTime startTime,
                                                   @Param("endTime") LocalDateTime endTime);
 
     /**
@@ -350,7 +350,7 @@ public interface TemplateStatisticsMapper {
             "ROUND(SUM(CASE WHEN status = 'SUCCESS' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as success_rate " +
             "FROM template_job_batch " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime}")
-    Map<String, Object> getBatchSuccessRateStats(@Param("startTime") LocalDateTime startTime, 
+    Map<String, Object> getBatchSuccessRateStats(@Param("startTime") LocalDateTime startTime,
                                                 @Param("endTime") LocalDateTime endTime);
 
     // ====================== 协议类型分布统计方法 ======================
@@ -368,7 +368,7 @@ public interface TemplateStatisticsMapper {
             "AND ptr.is_deleted = 0 AND pt.is_deleted = 0 " +
             "GROUP BY pt.protocol_name " +
             "ORDER BY usage_count DESC")
-    List<Map<String, Object>> getProtocolCategoryStats(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getProtocolCategoryStats(@Param("startTime") LocalDateTime startTime,
                                                       @Param("endTime") LocalDateTime endTime);
 
     /**
@@ -386,7 +386,7 @@ public interface TemplateStatisticsMapper {
             "AND ptr.is_deleted = 0 AND pt.is_deleted = 0 " +
             "GROUP BY pt.protocol_code, pt.protocol_name " +
             "ORDER BY usage_count DESC")
-    List<Map<String, Object>> getProtocolDetailStats(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getProtocolDetailStats(@Param("startTime") LocalDateTime startTime,
                                                     @Param("endTime") LocalDateTime endTime);
 
     /**
@@ -401,7 +401,7 @@ public interface TemplateStatisticsMapper {
             "AND ptr.is_deleted = 0 " +
             "GROUP BY ptr.test_type " +
             "ORDER BY test_count DESC")
-    List<Map<String, Object>> getProtocolTestTypeStats(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getProtocolTestTypeStats(@Param("startTime") LocalDateTime startTime,
                                                       @Param("endTime") LocalDateTime endTime);
 
     /**
@@ -422,7 +422,7 @@ public interface TemplateStatisticsMapper {
             "GROUP BY error_message, error_code, protocol_id " +
             "ORDER BY failure_count DESC " +
             "LIMIT 5")
-    List<Map<String, Object>> getTopFailureReasons(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getTopFailureReasons(@Param("startTime") LocalDateTime startTime,
                                                   @Param("endTime") LocalDateTime endTime);
 
     /**
@@ -452,6 +452,6 @@ public interface TemplateStatisticsMapper {
             "GROUP BY failure_reason, error_code " +
             "ORDER BY failure_count DESC " +
             "LIMIT 5")
-    List<Map<String, Object>> getBatchTopFailureReasons(@Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getBatchTopFailureReasons(@Param("startTime") LocalDateTime startTime,
                                                        @Param("endTime") LocalDateTime endTime);
 }
