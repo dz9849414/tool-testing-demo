@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.ProtocolConfigCreateDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigModifyDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigQueryDTO;
+import com.example.tooltestingdemo.dto.ProtocolConfigStatusUpdateDTO;
 import com.example.tooltestingdemo.entity.protocol.ProtocolConfig;
 import com.example.tooltestingdemo.mapper.protocol.ProtocolConfigMapper;
 import com.example.tooltestingdemo.service.SecurityService;
@@ -113,6 +114,27 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
 
         if (!this.updateById(updateEntity)) {
             throw new RuntimeException("协议配置编辑失败");
+        }
+        return toVO(this.getById(existing.getId()));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ProtocolConfigVO updateProtocolConfigStatus(ProtocolConfigStatusUpdateDTO dto) {
+        ProtocolConfig existing = this.getById(dto.getId());
+        if (existing == null) {
+            throw new RuntimeException("协议配置不存在");
+        }
+        Integer targetStatus = resolveStatus(dto.getStatus(), null);
+        if (Objects.equals(existing.getStatus(), targetStatus)) {
+            return toVO(existing);
+        }
+
+        ProtocolConfig updateEntity = new ProtocolConfig();
+        updateEntity.setId(existing.getId());
+        updateEntity.setStatus(targetStatus);
+        if (!this.updateById(updateEntity)) {
+            throw new RuntimeException("协议配置状态更新失败");
         }
         return toVO(this.getById(existing.getId()));
     }

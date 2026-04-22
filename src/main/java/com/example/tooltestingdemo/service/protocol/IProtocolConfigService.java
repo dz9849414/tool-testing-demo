@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.dto.ProtocolConfigCreateDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigModifyDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigQueryDTO;
+import com.example.tooltestingdemo.dto.ProtocolConfigStatusUpdateDTO;
 import com.example.tooltestingdemo.entity.protocol.ProtocolConfig;
 import com.example.tooltestingdemo.vo.ProtocolConfigVO;
 
@@ -37,6 +38,11 @@ public interface IProtocolConfigService extends IService<ProtocolConfig> {
      * 编辑协议配置。
      */
     ProtocolConfigVO modifyProtocolConfig(ProtocolConfigModifyDTO dto);
+
+    /**
+     * 更新协议配置状态。
+     */
+    ProtocolConfigVO updateProtocolConfigStatus(ProtocolConfigStatusUpdateDTO dto);
 
     /**
      * 逻辑删除协议配置。
