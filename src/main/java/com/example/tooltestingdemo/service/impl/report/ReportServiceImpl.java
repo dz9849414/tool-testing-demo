@@ -1,6 +1,8 @@
 package com.example.tooltestingdemo.service.impl.report;
 
+import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.common.PageResult;
@@ -662,18 +664,206 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     }
     
     /**
-     * 构建报告内容
+     * 构建报告内容（明文、人眼可读格式）
      */
     private String buildReportContent(Report report, String pageRange) {
-        // 根据页面范围过滤内容
+        StringBuilder readableContent = new StringBuilder();
+        
+        // 1. 报告基本信息
+        readableContent.append("=== 报告基本信息 ===\n");
+        readableContent.append("报告名称：").append(report.getName() != null ? report.getName() : "未命名").append("\n");
+        readableContent.append("报告描述：").append(report.getDescription() != null ? report.getDescription() : "无描述").append("\n");
+        readableContent.append("报告类型：").append(getReadableReportType(report.getReportType())).append("\n");
+        readableContent.append("报告状态：").append(getReadableReportStatus(report.getStatus())).append("\n");
+        readableContent.append("生成方式：").append(getReadableGenerateType(report.getGenerateType())).append("\n");
+        readableContent.append("创建时间：").append(report.getCreateTime() != null ? 
+            report.getCreateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "未知").append("\n");
+        readableContent.append("导出次数：").append(report.getExportCount() != null ? report.getExportCount() : 0).append("\n");
+        readableContent.append("\n");
+        
+        // 2. 报告内容（JSON解析为易读格式）
         String content = report.getContent();
-        if (content == null) {
-            return "报告内容为空";
+        if (content != null && !content.trim().isEmpty()) {
+            readableContent.append("=== 报告统计内容 ===\n");
+            try {
+                // 尝试解析JSON内容
+                Object jsonContent = parseJsonContent(content);
+                readableContent.append(formatJsonToReadable(jsonContent));
+            } catch (Exception e) {
+                // 如果JSON解析失败，显示原始内容
+                readableContent.append("原始JSON内容：\n");
+                readableContent.append(content);
+            }
+        } else {
+            readableContent.append("=== 报告统计内容 ===\n");
+            readableContent.append("报告内容为空\n");
         }
         
-        // 这里可以实现更复杂的内容过滤逻辑
-        // 目前简单返回所有内容
-        return content;
+        return readableContent.toString();
+    }
+    
+    /**
+     * 获取可读的报告类型
+     */
+    private String getReadableReportType(String reportType) {
+        if (reportType == null) return "未知类型";
+        
+        switch (reportType.toUpperCase()) {
+            case "PROTOCOL_DISTRIBUTION": return "协议类型分布统计";
+            case "RESPONSE_TIME": return "响应时间分析";
+            case "FAILURE_REASONS": return "失败原因分析";
+            case "WEEKLY_EXECUTION": return "周执行量统计";
+            case "SUCCESS_RATE": return "成功率分析";
+            case "AUTO_GENERATED": return "自动生成报告";
+            default: return reportType;
+        }
+    }
+    
+    /**
+     * 获取可读的报告状态
+     */
+    private String getReadableReportStatus(String status) {
+        if (status == null) return "未知状态";
+        
+        switch (status.toUpperCase()) {
+            case "DRAFT": return "草稿";
+            case "PUBLISHED": return "已发布";
+            case "ARCHIVED": return "已归档";
+            case "SCHEDULED": return "定时任务";
+            default: return status;
+        }
+    }
+    
+    /**
+     * 获取可读的生成方式
+     */
+    private String getReadableGenerateType(String generateType) {
+        if (generateType == null) return "未知方式";
+        
+        switch (generateType.toUpperCase()) {
+            case "AUTO": return "自动生成";
+            case "MANUAL": return "手动创建";
+            default: return generateType;
+        }
+    }
+    
+
+
+    /**
+     * 解析JSON内容（FastJSON版）
+     */
+    private Object parseJsonContent(String content) {
+        try {
+            if (content.trim().startsWith("{")) {
+                return JSON.parseObject(content);
+            } else if (content.trim().startsWith("[")) {
+                return JSON.parseArray(content);
+            } else {
+                throw new RuntimeException("不是标准JSON格式");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("JSON解析失败", e);
+        }
+    }
+
+    /**
+     * 将JSON格式化为易读的文本（FastJSON版）
+     */
+    private String formatJsonToReadable(Object jsonContent) {
+        StringBuilder result = new StringBuilder();
+
+        if (jsonContent instanceof JSONObject) {
+            formatJsonObject((JSONObject) jsonContent, result, 0);
+        } else if (jsonContent instanceof JSONArray) {
+            formatJsonArray((JSONArray) jsonContent, result, 0);
+        }
+
+        return result.toString();
+    }
+
+    /**
+     * 格式化JSON对象（FastJSON）
+     */
+    private void formatJsonObject(JSONObject jsonObject, StringBuilder result, int indent) {
+        String indentStr = "  ".repeat(indent);
+
+        for (String key : jsonObject.keySet()) {
+            Object value = jsonObject.get(key);
+            String readableKey = getReadableKey(key);
+
+            if (value instanceof JSONObject) {
+                result.append(indentStr).append(readableKey).append(":\n");
+                formatJsonObject((JSONObject) value, result, indent + 1);
+            } else if (value instanceof JSONArray) {
+                result.append(indentStr).append(readableKey).append(":\n");
+                formatJsonArray((JSONArray) value, result, indent + 1);
+            } else {
+                result.append(indentStr).append(readableKey).append(": ").append(formatValue(value)).append("\n");
+            }
+        }
+    }
+
+    /**
+     * 格式化JSON数组（FastJSON）
+     */
+    private void formatJsonArray(JSONArray jsonArray, StringBuilder result, int indent) {
+        String indentStr = "  ".repeat(indent);
+
+        for (int i = 0; i < jsonArray.size(); i++) {
+            Object value = jsonArray.get(i);
+
+            if (value instanceof JSONObject) {
+                result.append(indentStr).append("[").append(i + 1).append("]\n");
+                formatJsonObject((JSONObject) value, result, indent + 1);
+            } else if (value instanceof JSONArray) {
+                result.append(indentStr).append("[").append(i + 1).append("]\n");
+                formatJsonArray((JSONArray) value, result, indent + 1);
+            } else {
+                result.append(indentStr).append("[").append(i + 1).append("] ").append(formatValue(value)).append("\n");
+            }
+        }
+    }
+    
+    /**
+     * 获取可读的键名
+     */
+    private String getReadableKey(String key) {
+        switch (key.toLowerCase()) {
+            case "categorydata": return "分类数据";
+            case "category": return "分类";
+            case "categoryname": return "分类名称";
+            case "protocolcount": return "协议数量";
+            case "totalprotocolcount": return "总协议数量";
+            case "avgduration": return "平均响应时间(ms)";
+            case "maxduration": return "最大响应时间(ms)";
+            case "minduration": return "最小响应时间(ms)";
+            case "executioncount": return "执行次数";
+            case "failurereason": return "失败原因";
+            case "failurecount": return "失败次数";
+            case "errorcode": return "错误代码";
+            case "successrate": return "成功率(%)";
+            case "failurerate": return "失败率(%)";
+            case "timeslot": return "时间区间";
+            case "hourgroup": return "小时分组";
+            default: return key;
+        }
+    }
+    
+    /**
+     * 格式化值
+     */
+    private String formatValue(Object value) {
+        if (value == null) return "空";
+        if (value instanceof Number) {
+            // 数字格式化
+            Number number = (Number) value;
+            if (number.doubleValue() == number.intValue()) {
+                return String.valueOf(number.intValue());
+            } else {
+                return String.format("%.2f", number.doubleValue());
+            }
+        }
+        return value.toString();
     }
     
     /**
