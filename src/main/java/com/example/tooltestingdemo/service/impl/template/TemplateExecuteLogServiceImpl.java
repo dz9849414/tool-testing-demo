@@ -58,7 +58,7 @@ public class TemplateExecuteLogServiceImpl extends ServiceImpl<TemplateExecuteLo
                     .or()
                     .like(TemplateExecuteLog::getJobName, keyword)
                     .or()
-                    .like(TemplateExecuteLog::getExecuteUserName, keyword));
+                    .like(TemplateExecuteLog::getTemplateName, keyword));
         }
         if (startTime != null) {
             wrapper.ge(TemplateExecuteLog::getCreateTime, startTime);

@@ -33,6 +33,10 @@ public class TemplateExecuteLog {
     @TableField(value = "job_id")
     private Long jobId;
 
+
+    @TableField(value = "execute_at")
+    private LocalDateTime executeAt;
+
     /**
      * 任务名称（定时任务时填充）
      */
@@ -101,4 +105,16 @@ public class TemplateExecuteLog {
 
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+
+    /**
+     * 执行人姓名
+     */
+    @TableField(value = "execute_user_id")
+    private Long executeUserId;
+
+    /**
+     * 执行人姓名
+     */
+    @TableField(value = "execute_user_name")
+    private String executeUserName;
 }
