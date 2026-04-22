@@ -6,7 +6,7 @@
 -- ----------------------------
 -- 1. 报告模板表 (report_template)
 -- ----------------------------
-CREATE TABLE `report_template` (
+CREATE TABLE `pdm_tool_report_template` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '模板ID',
     `name` VARCHAR(200) NOT NULL COMMENT '模板名称',
     `description` TEXT COMMENT '模板描述',
@@ -42,7 +42,7 @@ CREATE TABLE `report_template` (
 -- ----------------------------
 -- 2. 报告表 (report)
 -- ----------------------------
-CREATE TABLE `report` (
+CREATE TABLE `pdm_tool_report` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '报告ID',
     `name` VARCHAR(200) NOT NULL COMMENT '报告名称',
     `description` TEXT COMMENT '报告描述',
@@ -80,7 +80,7 @@ CREATE TABLE `report` (
 -- ----------------------------
 -- 3. 报告图表表 (report_chart)
 -- ----------------------------
-CREATE TABLE `report_chart` (
+CREATE TABLE `pdm_tool_report_chart` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '图表ID',
     `name` VARCHAR(200) NOT NULL COMMENT '图表名称',
     `description` TEXT COMMENT '图表描述',
@@ -117,7 +117,7 @@ CREATE TABLE `report_chart` (
 -- ===========================================
 
 -- 任务执行周报模板
-INSERT INTO `report_template` (
+INSERT INTO `pdm_tool_report_template` (
     `name`, `description`, `template_type`, `applicable_scene`, 
     `template_structure`, `style_config`, `is_system_template`, `is_public`,
     `related_business_type`, `sort_order`, `create_name`
@@ -133,7 +133,7 @@ INSERT INTO `report_template` (
 );
 
 -- 接口测试报告模板
-INSERT INTO `report_template` (
+INSERT INTO `pdm_tool_report_template` (
     `name`, `description`, `template_type`, `applicable_scene`, 
     `template_structure`, `style_config`, `is_system_template`, `is_public`,
     `related_business_type`, `sort_order`, `create_name`
@@ -149,7 +149,7 @@ INSERT INTO `report_template` (
 );
 
 -- 协议类型占比分析模板
-INSERT INTO `report_template` (
+INSERT INTO `pdm_tool_report_template` (
     `name`, `description`, `template_type`, `applicable_scene`, 
     `template_structure`, `style_config`, `is_system_template`, `is_public`,
     `related_business_type`, `sort_order`, `create_name`
