@@ -428,12 +428,13 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 
                 String reportContent = buildReportContent(report, pageRange);
                 if (reportContent != null && !reportContent.trim().isEmpty()) {
-                    String[] lines = wrapText(reportContent, 80);
+                    String[] allLines = reportContent.split("\\r?\\n");
                     int y = 560;
-                    for (String line : lines) {
-                        if (y < 50) break;  // 页面底部限制
+                    for (String line : allLines) {
+                        if (y < 50) break;
+                        if (line.trim().isEmpty()) continue;
                         contentStream.newLineAtOffset(0, -15);
-                        contentStream.showText(line);
+                        contentStream.showText(line.trim());
                         y -= 15;
                     }
                 } else {
@@ -723,32 +724,24 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         readableContent.append("导出次数：").append(report.getExportCount() != null ? report.getExportCount() : 0).append("\n");
         readableContent.append("\n");
 
-        // 2. 报告统计内容（全部中文）
+        // 2. 报告内容（JSON解析为易读格式，一行一句话）
         String content = report.getContent();
-        readableContent.append("=== 报告统计内容 ===\n");
-
-        if (content == null || content.trim().isEmpty()) {
-            readableContent.append("报告内容为空\n");
-            return readableContent.toString();
-        }
-
-        try {
-            Object jsonObj = parseJsonContent(content);
-            if (jsonObj instanceof com.alibaba.fastjson2.JSONObject) {
-                com.alibaba.fastjson2.JSONObject json = (com.alibaba.fastjson2.JSONObject) jsonObj;
-                appendFlatJson(json, readableContent, "");
-            } else if (jsonObj instanceof com.alibaba.fastjson2.JSONArray) {
-                com.alibaba.fastjson2.JSONArray array = (com.alibaba.fastjson2.JSONArray) jsonObj;
-                for (int i = 0; i < array.size(); i++) {
-                    Object item = array.get(i);
-                    if (item instanceof com.alibaba.fastjson2.JSONObject) {
-                        readableContent.append("--- 第").append(i + 1).append("条统计数据 ---\n");
-                        appendFlatJson((com.alibaba.fastjson2.JSONObject) item, readableContent, "");
-                    }
-                }
+        if (content != null && !content.trim().isEmpty()) {
+            readableContent.append("=== 报告统计内容 ===\n");
+            try {
+                // 尝试解析JSON内容
+                Object jsonContent = parseJsonContent(content);
+                String formattedContent = formatJsonToReadable(jsonContent);
+                // 将内容按句子分行，一行一句话
+                readableContent.append(formatContentToSentences(formattedContent));
+            } catch (Exception e) {
+                // 如果JSON解析失败，显示原始内容
+                readableContent.append("原始JSON内容：\n");
+                readableContent.append(content);
             }
-        } catch (Exception e) {
-            readableContent.append(content).append("\n");
+        } else {
+            readableContent.append("=== 报告统计内容 ===\n");
+            readableContent.append("报告内容为空\n");
         }
 
         return readableContent.toString();
@@ -886,11 +879,139 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         StringBuilder result = new StringBuilder();
 
         if (jsonContent instanceof JSONObject) {
-            formatJsonObject((JSONObject) jsonContent, result, 0);
+            // 检查是否为周执行量统计数据
+            if (isWeeklyExecutionData(jsonContent)) {
+                // 周执行量数据特殊处理
+                String weeklyData = formatWeeklyExecutionData((JSONObject) jsonContent);
+                if (!weeklyData.trim().isEmpty()) {
+                    result.append(weeklyData);
+                } else {
+                    // 如果没有周执行量数据，使用默认格式化
+                    formatJsonObject((JSONObject) jsonContent, result, 0);
+                }
+            } else {
+                // 其他数据使用默认格式化
+                formatJsonObject((JSONObject) jsonContent, result, 0);
+            }
         } else if (jsonContent instanceof JSONArray) {
             formatJsonArray((JSONArray) jsonContent, result, 0);
         }
 
+        return result.toString();
+    }
+
+    /**
+     * 检查是否为周执行量统计数据
+     */
+    private boolean isWeeklyExecutionData(Object jsonContent) {
+        if (jsonContent instanceof JSONObject) {
+            JSONObject obj = (JSONObject) jsonContent;
+            // 检查是否包含dayNameCn字段
+            for (String key : obj.keySet()) {
+                if (key.contains("dayNameCn")) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 格式化周执行量数据（中文周几、执行次数，然后换行）
+     */
+    private String formatWeeklyExecutionData(Object jsonContent) {
+        if (!(jsonContent instanceof JSONObject)) {
+            return "";
+        }
+        
+        JSONObject obj = (JSONObject) jsonContent;
+        StringBuilder result = new StringBuilder();
+        
+        // 检查数据结构，可能是包含dayNameCn和executionCount的数组
+        if (obj.containsKey("dayNameCn") && obj.containsKey("执行次数")) {
+            // 直接使用dayNameCn和执行次数
+            String dayNameCn = obj.getString("dayNameCn");
+            Integer executionCount = obj.getInteger("执行次数");
+            
+            if (dayNameCn != null) {
+                result.append(dayNameCn).append(" 执行次数 ").append(executionCount != null ? executionCount : 0).append("\n");
+            }
+        } else {
+            // 遍历所有字段，查找dayNameCn和对应的执行次数
+            for (String key : obj.keySet()) {
+                if (key.contains("dayNameCn")) {
+                    String dayNameCn = obj.getString(key);
+                    if (dayNameCn != null) {
+                        // 查找对应的执行次数字段
+                        String countKey = key.replace("dayNameCn", "执行次数");
+                        Integer executionCount = obj.getInteger(countKey);
+                        
+                        result.append(dayNameCn).append(" 执行次数 ").append(executionCount != null ? executionCount : 0).append("\n");
+                    }
+                }
+            }
+        }
+        
+        return result.toString();
+    }
+
+    /**
+     * 将英文周几转换为中文
+     */
+    private String getChineseWeekDay(String weekDay) {
+        if (weekDay == null) return "未知";
+        
+        switch (weekDay.toUpperCase()) {
+            case "MONDAY": return "周一";
+            case "TUESDAY": return "周二";
+            case "WEDNESDAY": return "周三";
+            case "THURSDAY": return "周四";
+            case "FRIDAY": return "周五";
+            case "SATURDAY": return "周六";
+            case "SUNDAY": return "周日";
+            default: return weekDay;
+        }
+    }
+
+    /**
+     * 将内容按句子分行，一行一句话
+     */
+    private String formatContentToSentences(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return "";
+        }
+        
+        StringBuilder result = new StringBuilder();
+        
+        // 按句子分割：句号、问号、感叹号、冒号、分号、换行符
+        String[] sentences = content.split("([。！？：；]|\\n)");
+        
+        for (String sentence : sentences) {
+            String trimmedSentence = sentence.trim();
+            if (!trimmedSentence.isEmpty()) {
+                // 移除多余的空白字符
+                String cleanSentence = trimmedSentence.replaceAll("\\s+", " ");
+                result.append(cleanSentence).append("\n");
+            }
+        }
+        
+        // 如果没有找到句子分隔符，按逗号分割
+        if (result.length() == 0) {
+            String[] phrases = content.split("，");
+            for (String phrase : phrases) {
+                String trimmedPhrase = phrase.trim();
+                if (!trimmedPhrase.isEmpty()) {
+                    String cleanPhrase = trimmedPhrase.replaceAll("\\s+", " ");
+                    result.append(cleanPhrase).append("\n");
+                }
+            }
+        }
+        
+        // 如果还是没有内容，按原样返回
+        if (result.length() == 0) {
+            return content;
+        }
+        
         return result.toString();
     }
 
