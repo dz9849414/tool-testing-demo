@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板环境配置实体类
  */
 @Data
-@TableName("template_environment")
+@TableName("pdm_tool_template_environment")
 public class TemplateEnvironment {
 
     @TableId(value = "id", type = IdType.AUTO)

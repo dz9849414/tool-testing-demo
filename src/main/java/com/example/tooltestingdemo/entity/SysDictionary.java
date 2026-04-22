@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * 数据字典实体类
  */
 @Data
-@TableName("sys_dict")
+@TableName("pdm_tool_sys_dict")
 public class SysDictionary implements Serializable {
 
     private static final long serialVersionUID = 1L;

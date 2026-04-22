@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板历史版本实体类
  */
 @Data
-@TableName("template_history")
+@TableName("pdm_tool_template_history")
 public class TemplateHistory {
 
     @TableId(value = "id", type = IdType.AUTO)

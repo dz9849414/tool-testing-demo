@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板请求参数实体类（Query/Path参数）
  */
 @Data
-@TableName("template_parameter")
+@TableName("pdm_tool_template_parameter")
 public class TemplateParameter {
 
     @TableId(value = "id", type = IdType.AUTO)

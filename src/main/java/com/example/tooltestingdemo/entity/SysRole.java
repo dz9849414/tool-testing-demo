@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 角色实体类
  */
-@TableName("sys_role")
+@TableName("pdm_tool_sys_role")
 @Data
 public class SysRole {
     

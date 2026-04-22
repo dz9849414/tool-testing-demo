@@ -7,7 +7,7 @@ import lombok.Data;
  * 模板定时任务子项（一个任务可配置多个模板）
  */
 @Data
-@TableName("template_job_item")
+@TableName("pdm_tool_template_job_item")
 public class TemplateJobItem {
 
     @TableId(value = "id", type = IdType.AUTO)

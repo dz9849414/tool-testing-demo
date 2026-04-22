@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 操作日志实体类
  */
-@TableName("sys_operation_log")
+@TableName("pdm_tool_sys_operation_log")
 @Data
 public class SysOperationLog {
     

@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板响应验证规则实体类
  */
 @Data
-@TableName("template_assertion")
+@TableName("pdm_tool_template_assertion")
 public class TemplateAssertion {
 
     @TableId(value = "id", type = IdType.AUTO)

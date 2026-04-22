@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 用户组织关联实体类
  */
-@TableName("sys_user_organization")
+@TableName("pdm_tool_sys_user_organization")
 @Data
 public class SysUserOrganization {
     

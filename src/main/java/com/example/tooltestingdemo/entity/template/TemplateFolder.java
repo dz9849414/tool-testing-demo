@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板分类/文件夹实体类
  */
 @Data
-@TableName("template_folder")
+@TableName("pdm_tool_template_folder")
 public class TemplateFolder {
 
     @TableId(value = "id", type = IdType.AUTO)

@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板请求头实体类
  */
 @Data
-@TableName("template_header")
+@TableName("pdm_tool_template_header")
 public class TemplateHeader {
 
     @TableId(value = "id", type = IdType.AUTO)

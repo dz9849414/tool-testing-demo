@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板执行统一日志表（手动执行 + 定时任务执行）
  */
 @Data
-@TableName("template_execute_log")
+@TableName("pdm_tool_template_execute_log")
 public class TemplateExecuteLog {
 
     @TableId(value = "id", type = IdType.AUTO)

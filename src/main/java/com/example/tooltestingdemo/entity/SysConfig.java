@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 系统配置实体类
  */
-@TableName("sys_config")
+@TableName("pdm_tool_sys_config")
 @Data
 public class SysConfig {
     

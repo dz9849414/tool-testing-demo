@@ -10,7 +10,7 @@ import java.util.List;
  * 模板定时任务配置
  */
 @Data
-@TableName("template_job")
+@TableName("pdm_tool_template_job")
 public class TemplateJob {
 
     @TableId(value = "id", type = IdType.AUTO)

@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板定时任务执行日志
  */
 @Data
-@TableName("template_job_log")
+@TableName("pdm_tool_template_job_log")
 public class TemplateJobLog {
 
     @TableId(value = "id", type = IdType.AUTO)

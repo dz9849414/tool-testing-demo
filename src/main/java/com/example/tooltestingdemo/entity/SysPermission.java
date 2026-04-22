@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 权限实体类
  */
-@TableName("sys_permission")
+@TableName("pdm_tool_sys_permission")
 @Data
 public class SysPermission {
     

@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @EqualsAndHashCode(callSuper = false)
-@TableName("report")
+@TableName("pdm_tool_report")
 public class Report {
     
     @TableId(value = "id", type = IdType.AUTO)

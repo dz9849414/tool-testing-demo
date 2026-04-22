@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 字典实体类
  */
-@TableName("sys_dict")
+@TableName("pdm_tool_sys_dict")
 @Data
 public class SysDict {
     

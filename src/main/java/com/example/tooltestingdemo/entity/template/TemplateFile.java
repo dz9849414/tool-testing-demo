@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * 存储模板关联的文件（请求文件、响应文件、附件等）
  */
 @Data
-@TableName("template_file")
+@TableName("pdm_tool_template_file")
 public class TemplateFile {
 
     @TableId(value = "id", type = IdType.AUTO)

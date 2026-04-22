@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 菜单实体类
  */
-@TableName("sys_menu")
+@TableName("pdm_tool_sys_menu")
 @Data
 public class SysMenu {
     

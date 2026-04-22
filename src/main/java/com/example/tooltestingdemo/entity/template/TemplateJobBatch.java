@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 /**
  * 批量任务触发记录（用于异步批量触发结果持久化）
  */
-@TableName("template_job_batch")
+@TableName("pdm_tool_template_job_batch")
 public class TemplateJobBatch {
 
 	@TableId(value = "id")
@@ -67,6 +67,3 @@ public class TemplateJobBatch {
 		this.updateTime = updateTime;
 	}
 }
-
-
-

@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板前置处理器实体类
  */
 @Data
-@TableName("template_pre_processor")
+@TableName("pdm_tool_template_pre_processor")
 public class TemplatePreProcessor {
 
     @TableId(value = "id", type = IdType.AUTO)

@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板共享/授权实体类
  */
 @Data
-@TableName("template_share")
+@TableName("pdm_tool_template_share")
 public class TemplateShare {
 
     @TableId(value = "id", type = IdType.AUTO)

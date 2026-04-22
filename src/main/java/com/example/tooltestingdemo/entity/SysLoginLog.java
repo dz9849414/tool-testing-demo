@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 登录日志实体类
  */
 @Data
-@TableName("sys_login_log")
+@TableName("pdm_tool_sys_login_log")
 public class SysLoginLog {
     
     /**

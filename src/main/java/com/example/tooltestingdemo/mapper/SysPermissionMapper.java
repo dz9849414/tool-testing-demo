@@ -47,15 +47,15 @@ public interface SysPermissionMapper extends BaseMapper<SysPermission> {
     /**
      * 根据角色ID查找权限列表
      */
-    @Select("SELECT p.* FROM sys_permission p JOIN sys_role_permission rp ON p.id = rp.permission_id WHERE rp.role_id = #{roleId}")
+    @Select("SELECT p.* FROM sys_permission p JOIN pdm_tool_sys_role_permission rp ON p.id = rp.permission_id WHERE rp.role_id = #{roleId}")
     List<SysPermission> selectByRoleId(@Param("roleId") String roleId);
     
     /**
      * 根据用户ID查找权限列表
      */
-    @Select("SELECT DISTINCT p.* FROM sys_permission p " +
-           "JOIN sys_role_permission rp ON p.id = rp.permission_id " +
-           "JOIN sys_user_role ur ON rp.role_id = ur.role_id " +
+    @Select("SELECT DISTINCT p.* FROM pdm_tool_sys_permission p " +
+           "JOIN pdm_tool_sys_role_permission rp ON p.id = rp.permission_id " +
+           "JOIN pdm_tool_sys_user_role ur ON rp.role_id = ur.role_id " +
            "WHERE ur.user_id = #{userId}")
     List<SysPermission> selectByUserId(@Param("userId") String userId);
 }

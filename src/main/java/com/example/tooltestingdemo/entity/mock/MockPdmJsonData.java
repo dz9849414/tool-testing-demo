@@ -9,7 +9,7 @@ import lombok.Data;
  * PDM 模拟 JSON 数据。
  */
 @Data
-@TableName("mock_pdm_json_data")
+@TableName("pdm_tool_mock_pdm_json_data")
 public class MockPdmJsonData {
 
     @TableId(value = "id", type = IdType.AUTO)
