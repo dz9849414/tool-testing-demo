@@ -36,6 +36,11 @@ public class ProtocolConfig extends BaseEntity {
     private Long protocolId;
 
     /**
+     * 协议类型名称
+     */
+    private String protocolName;
+
+    /**
      * 配置名称
      */
     private String configName;

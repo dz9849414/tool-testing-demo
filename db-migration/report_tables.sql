@@ -169,20 +169,20 @@ INSERT INTO `pdm_tool_report_template` (
 -- ===========================================
 
 -- 为报告表添加复合索引
-ALTER TABLE `report` ADD INDEX `idx_template_status` (`template_id`, `status`);
-ALTER TABLE `report` ADD INDEX `idx_type_scheduled` (`report_type`, `is_scheduled`);
+ALTER TABLE `pdm_tool_report` ADD INDEX `idx_template_status` (`template_id`, `status`);
+ALTER TABLE `pdm_tool_report` ADD INDEX `idx_type_scheduled` (`report_type`, `is_scheduled`);
 
 -- 为图表表添加复合索引
-ALTER TABLE `report_chart` ADD INDEX `idx_type_group` (`chart_type`, `chart_group`);
-ALTER TABLE `report_chart` ADD INDEX `idx_custom_public` (`is_custom`, `is_public`);
+ALTER TABLE `pdm_tool_report_chart` ADD INDEX `idx_type_group` (`chart_type`, `chart_group`);
+ALTER TABLE `pdm_tool_report_chart` ADD INDEX `idx_custom_public` (`is_custom`, `is_public`);
 
 -- ===========================================
 -- 表注释更新
 -- ===========================================
 
-ALTER TABLE `report_template` COMMENT = '报告模板表 - 存储报告模板定义和配置';
-ALTER TABLE `report` COMMENT = '报告表 - 存储生成的报告实例和内容';
-ALTER TABLE `report_chart` COMMENT = '报告图表表 - 存储图表配置和数据';
+ALTER TABLE `pdm_tool_report_template` COMMENT = '报告模板表 - 存储报告模板定义和配置';
+ALTER TABLE `pdm_tool_report` COMMENT = '报告表 - 存储生成的报告实例和内容';
+ALTER TABLE `pdm_tool_report_chart` COMMENT = '报告图表表 - 存储图表配置和数据';
 
 -- ===========================================
 -- 完成提示

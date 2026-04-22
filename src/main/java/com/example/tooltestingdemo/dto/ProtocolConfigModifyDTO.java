@@ -1,5 +1,6 @@
 package com.example.tooltestingdemo.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -13,6 +14,7 @@ import java.util.List;
  * 协议配置编辑请求体。
  */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ProtocolConfigModifyDTO {
 
     @NotNull(message = "id不能为空")

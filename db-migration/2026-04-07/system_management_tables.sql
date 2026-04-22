@@ -394,7 +394,7 @@ INSERT INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_id`, `c
 
 -- 为manager角色分配部分API权限
 INSERT INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
-    ('rp8', 'manager', 'p5', NOW(), 'admin');
+    ('rp10', 'manager', 'p5', NOW(), 'admin');
 
 -- ===========================================
 -- 为admin角色分配新增的权限

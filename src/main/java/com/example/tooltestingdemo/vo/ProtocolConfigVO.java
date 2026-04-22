@@ -13,6 +13,7 @@ import java.util.List;
 public class ProtocolConfigVO {
     private Long id;
     private Long protocolId;
+    private String protocolName;
     private String configName;
     private List<ProtocolConfigCreateDTO.UrlConfigItemDTO> urlConfigList;
     private List<ProtocolConfigCreateDTO.AuthConfigItemDTO> authConfigList;
