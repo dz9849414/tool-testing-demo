@@ -5,7 +5,7 @@
 
 -- 用户表
 CREATE TABLE `pdm_tool_sys_user` (
-    `id` VARCHAR(50) NOT NULL COMMENT '用户ID',
+    `id` BIGINT NOT NULL COMMENT '用户ID',
     `username` VARCHAR(64) NOT NULL COMMENT '用户名',
     `password` VARCHAR(256) NOT NULL COMMENT '密码',
     `email` VARCHAR(128) COMMENT '邮箱',
