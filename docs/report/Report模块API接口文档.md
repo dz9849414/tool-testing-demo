@@ -787,7 +787,186 @@
 - **protocolId/protocolName**：关联的协议信息
 - **percentage**：该失败原因在总失败次数中的占比
 
-### 3.8 获取模板统计摘要
+### 3.8 获取模板列表（分页）
+- **接口**: `GET /api/report/templates/page?page=1&size=10`
+- **权限**: `report:template:view` 或 ADMIN角色
+- **描述**: 分页获取报告模板列表，支持按类型、公开状态和名称模糊搜索
+- **查询参数**:
+  - `page`：页码，默认1
+  - `size`：每页大小，默认10
+  - `templateType`：模板类型筛选（可选）
+    - `STATISTICAL`：统计类模板
+    - `ANALYTICAL`：分析类模板
+    - `ARCHIVAL`：归档类模板
+    - `TEMPLATE_EFFICIENCY_STATISTICS`：效率统计模板
+    - `一致性`：一致性测试模板
+  - `isPublic`：是否公开筛选（可选）
+  - `name`：模板名称模糊搜索（可选）
+- **响应**:
+```json
+{
+  "code": 200,
+  "message": "获取模板列表成功",
+  "data": {
+    "records": [
+      {
+        "id": 1,
+        "name": "统计报告模板",
+        "description": "用于生成统计报告",
+        "templateType": "STATISTICAL",
+        "isPublic": true,
+        "createTime": "2024-04-21T10:00:00",
+        "updateTime": "2024-04-21T10:00:00"
+      }
+    ],
+    "total": 15,
+    "size": 10,
+    "current": 1,
+    "pages": 2
+  }
+}
+```
+
+### 3.9 获取协议类型分布统计
+- **接口**: `GET /api/report/template-statistics/protocol-distribution?startDate=2026-04-19&endDate=2026-04-22&reportType=CATEGORY`
+- **权限**: `report:statistics:view` 或 ADMIN角色
+- **描述**: 统计协议类型分布情况，支持三种统计维度
+- **查询参数**:
+  - `startDate`：开始日期（必填）
+  - `endDate`：结束日期（必填）
+  - `reportType`：统计维度（可选，默认CATEGORY）
+    - `CATEGORY`：按协议名称统计
+    - `DETAIL`：按具体协议统计
+    - `TEST_TYPE`：按测试类型统计
+  - `dataSource`：数据源（可选，默认JOB_LOG）
+    - `JOB_LOG`：定时任务数据源（template_job_log表）
+    - `UNIFIED`：手动+定时统一数据源（template_execute_log表）
+    - `BATCH`：批量任务数据源（template_job_batch表）
+- **响应**:
+```json
+{
+  "code": 200,
+  "message": "获取协议类型分布统计成功",
+  "data": {
+    "categoryData": [
+      {
+        "category": "HTTP协议",
+        "categoryName": "HTTP协议",
+        "usageCount": 150,
+        "successCount": 135,
+        "failureCount": 15,
+        "successRate": 90.0
+      }
+    ],
+    "totalUsageCount": 270,
+    "totalSuccessCount": 243,
+    "overallSuccessRate": 90.0,
+    "reportType": "CATEGORY",
+    "reportTypeName": "按协议名称"
+  }
+}
+```
+
+### 3.10 获取每2小时响应时间统计
+- **接口**: `GET /api/report/template-statistics/response-time/hourly?startDate=2026-04-19&endDate=2026-04-22`
+- **权限**: `report:statistics:view` 或 ADMIN角色
+- **描述**: 统计每2小时的平均响应时间，用于性能监控
+- **查询参数**:
+  - `startDate`：开始日期（必填）
+  - `endDate`：结束日期（必填）
+  - `dataSource`：数据源（可选，默认JOB_LOG）
+    - `JOB_LOG`：定时任务数据源（template_job_log表）
+    - `UNIFIED`：手动+定时统一数据源（template_execute_log表）
+    - `BATCH`：批量任务数据源（template_job_batch表）
+- **响应**:
+```json
+{
+  "code": 200,
+  "message": "获取响应时间统计成功",
+  "data": {
+    "hourlyData": [
+      {
+        "timeRange": "00:00-02:00",
+        "avgResponseTime": 1250,
+        "executionCount": 45
+      },
+      {
+        "timeRange": "02:00-04:00", 
+        "avgResponseTime": 980,
+        "executionCount": 32
+      }
+    ],
+    "startDate": "2026-04-19",
+    "endDate": "2026-04-22"
+  }
+}
+```
+
+### 3.11 获取成功率分析
+- **接口**: `GET /api/report/template-statistics/success-rate?startDate=2026-04-19&endDate=2026-04-22&dataSource=JOB_LOG`
+- **权限**: `report:statistics:view` 或 ADMIN角色
+- **描述**: 分析成功失败占比，生成饼图数据
+- **查询参数**:
+  - `startDate`：开始日期（必填）
+  - `endDate`：结束日期（必填）
+  - `dataSource`：数据源（可选，默认JOB_LOG）
+    - `JOB_LOG`：定时任务数据源（template_job_log表）
+    - `UNIFIED`：手动+定时统一数据源（template_execute_log表）
+    - `BATCH`：批量任务数据源（template_job_batch表）
+- **响应**:
+```json
+{
+  "code": 200,
+  "message": "获取成功率分析成功",
+  "data": {
+    "successRate": 90.0,
+    "successCount": 135,
+    "failureCount": 15,
+    "totalCount": 150,
+    "startDate": "2026-04-19",
+    "endDate": "2026-04-22"
+  }
+}
+```
+
+### 3.12 获取前5失败原因分析
+- **接口**: `GET /api/report/template-statistics/failure-reasons?startDate=2026-04-19&endDate=2026-04-22`
+- **权限**: `report:statistics:view` 或 ADMIN角色
+- **描述**: 分析最常见的5个失败原因，用于故障排查
+- **查询参数**:
+  - `startDate`：开始日期（必填）
+  - `endDate`：结束日期（必填）
+  - `dataSource`：数据源（可选，默认JOB_LOG）
+    - `JOB_LOG`：定时任务数据源（template_job_log表）
+    - `UNIFIED`：手动+定时统一数据源（template_execute_log表）
+    - `BATCH`：批量任务数据源（template_job_batch表）
+- **响应**:
+```json
+{
+  "code": 200,
+  "message": "获取失败原因分析成功",
+  "data": {
+    "failureData": [
+      {
+        "failureReason": "连接超时",
+        "failureCount": 15,
+        "errorCode": "408",
+        "protocolId": 1,
+        "protocolName": "HTTP协议",
+        "percentage": 30.0
+      }
+    ],
+    "summary": {
+      "totalFailureCount": 50,
+      "topFailureCount": 5,
+      "startDate": "2026-04-19",
+      "endDate": "2026-04-22"
+    }
+  }
+}
+```
+
+### 3.13 获取模板统计摘要
 - **接口**: `GET /api/report/template-statistics/summary`
 - **权限**: `report:statistics:view` 或 ADMIN角色
 - **描述**: 获取模板统计摘要，包含使用频率和效率报告的综合信息
@@ -925,6 +1104,7 @@ GET /api/report/templates/page?page=1&size=10
   - `一致性`：一致性测试模板
 - `isPublic`：是否公开筛选（可选）
 - `name`：模板名称模糊搜索（可选）
+- 
 
 ### 获取协议类型分布统计
 ```bash

@@ -429,18 +429,27 @@ public interface TemplateStatisticsMapper {
      * 获取批量任务的前5失败原因统计
      */
     @Select("SELECT " +
-            "error_message as failure_reason, " +
+            "CASE " +
+            "WHEN JSON_EXTRACT(result, '$.errorMessage') IS NOT NULL THEN JSON_UNQUOTE(JSON_EXTRACT(result, '$.errorMessage')) " +
+            "WHEN JSON_EXTRACT(result, '$.error_message') IS NOT NULL THEN JSON_UNQUOTE(JSON_EXTRACT(result, '$.error_message')) " +
+            "WHEN JSON_EXTRACT(result, '$.message') IS NOT NULL THEN JSON_UNQUOTE(JSON_EXTRACT(result, '$.message')) " +
+            "ELSE '未知错误' " +
+            "END as failure_reason, " +
             "COUNT(*) as failure_count, " +
-            "error_code as error_code, " +
-            "protocol_id, " +
-            "(SELECT protocol_name FROM protocol_type WHERE id = tjb.protocol_id) as protocol_name " +
+            "CASE " +
+            "WHEN JSON_EXTRACT(result, '$.errorCode') IS NOT NULL THEN JSON_UNQUOTE(JSON_EXTRACT(result, '$.errorCode')) " +
+            "WHEN JSON_EXTRACT(result, '$.error_code') IS NOT NULL THEN JSON_UNQUOTE(JSON_EXTRACT(result, '$.error_code')) " +
+            "WHEN JSON_EXTRACT(result, '$.code') IS NOT NULL THEN JSON_UNQUOTE(JSON_EXTRACT(result, '$.code')) " +
+            "ELSE '未知错误码' " +
+            "END as error_code, " +
+            "NULL as protocol_id, " +
+            "'批量任务' as protocol_name " +
             "FROM template_job_batch tjb " +
             "WHERE tjb.create_time BETWEEN #{startTime} AND #{endTime} " +
-            "AND tjb.is_deleted = 0 " +
-            "AND tjb.error_code != '200' " +
-            "AND error_message IS NOT NULL " +
-            "AND error_message != '' " +
-            "GROUP BY error_message, error_code, protocol_id " +
+            "AND tjb.status = 'FAILED' " +
+            "AND tjb.result IS NOT NULL " +
+            "AND tjb.result != '' " +
+            "GROUP BY failure_reason, error_code " +
             "ORDER BY failure_count DESC " +
             "LIMIT 5")
     List<Map<String, Object>> getBatchTopFailureReasons(@Param("startTime") LocalDateTime startTime, 

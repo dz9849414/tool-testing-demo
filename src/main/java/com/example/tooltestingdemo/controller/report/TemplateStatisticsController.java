@@ -1,6 +1,7 @@
 package com.example.tooltestingdemo.controller.report;
 
 import com.example.tooltestingdemo.common.Result;
+import com.example.tooltestingdemo.dto.report.StatisticsReportDTO;
 import com.example.tooltestingdemo.service.report.ITemplateStatisticsService;
 import com.example.tooltestingdemo.utils.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -124,7 +125,7 @@ public class TemplateStatisticsController {
     @GetMapping("/response-time/hourly")
     @Operation(summary = "获取每2小时平均响应时间报告")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:view')")
-    public Result<com.example.tooltestingdemo.dto.report.ReportDTO> getHourlyResponseTimeReport(
+    public Result<com.example.tooltestingdemo.dto.report.StatisticsReportDTO> getHourlyResponseTimeReport(
             @RequestParam String startDate,
             @RequestParam String endDate,
             @RequestParam(defaultValue = "JOB_LOG") String dataSource) {
@@ -136,8 +137,8 @@ public class TemplateStatisticsController {
                     return Result.error("数据源参数不正确，请使用JOB_LOG/UNIFIED/BATCH");
                 }
             }
-            
-            com.example.tooltestingdemo.dto.report.ReportDTO report = templateStatisticsService.getHourlyResponseTimeReport(
+
+            StatisticsReportDTO report = templateStatisticsService.getHourlyResponseTimeReport(
                 startDate, endDate, dataSource);
             return Result.success("每2小时平均响应时间报告获取成功", report);
         } catch (Exception e) {
@@ -148,7 +149,7 @@ public class TemplateStatisticsController {
     @GetMapping("/weekly-execution")
     @Operation(summary = "获取周一到周日执行量统计报告")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:view')")
-    public Result<com.example.tooltestingdemo.dto.report.ReportDTO> getWeeklyExecutionReport(
+    public Result<StatisticsReportDTO> getWeeklyExecutionReport(
             @RequestParam String startDate,
             @RequestParam String endDate,
             @RequestParam(defaultValue = "JOB_LOG") String dataSource) {
@@ -160,8 +161,8 @@ public class TemplateStatisticsController {
                     return Result.error("数据源参数不正确，请使用JOB_LOG/UNIFIED");
                 }
             }
-            
-            com.example.tooltestingdemo.dto.report.ReportDTO report = templateStatisticsService.getWeeklyExecutionReport(
+
+            StatisticsReportDTO report = templateStatisticsService.getWeeklyExecutionReport(
                 startDate, endDate, dataSource);
             return Result.success("周一到周日执行量统计报告获取成功", report);
         } catch (Exception e) {
@@ -172,7 +173,7 @@ public class TemplateStatisticsController {
     @GetMapping("/success-rate")
     @Operation(summary = "获取成功率分析报告（成功失败占比）")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:view')")
-    public Result<com.example.tooltestingdemo.dto.report.ReportDTO> getSuccessRateReport(
+    public Result<com.example.tooltestingdemo.dto.report.StatisticsReportDTO> getSuccessRateReport(
             @RequestParam String startDate,
             @RequestParam String endDate,
             @RequestParam(defaultValue = "JOB_LOG") String dataSource) {
@@ -185,7 +186,7 @@ public class TemplateStatisticsController {
                 }
             }
             
-            com.example.tooltestingdemo.dto.report.ReportDTO report = templateStatisticsService.getSuccessRateReport(
+            com.example.tooltestingdemo.dto.report.StatisticsReportDTO report = templateStatisticsService.getSuccessRateReport(
                 startDate, endDate, dataSource);
             return Result.success("成功率分析报告获取成功", report);
         } catch (Exception e) {
@@ -196,7 +197,7 @@ public class TemplateStatisticsController {
     @GetMapping("/protocol-distribution")
     @Operation(summary = "获取协议类型分布统计报告")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:view')")
-    public Result<com.example.tooltestingdemo.dto.report.ReportDTO> getProtocolDistributionReport(
+    public Result<com.example.tooltestingdemo.dto.report.StatisticsReportDTO> getProtocolDistributionReport(
             @RequestParam String startDate,
             @RequestParam String endDate,
             @RequestParam(defaultValue = "CATEGORY") String reportType) {
@@ -208,8 +209,8 @@ public class TemplateStatisticsController {
                     return Result.error("报告类型参数不正确，请使用CATEGORY/DETAIL/TEST_TYPE");
                 }
             }
-            
-            com.example.tooltestingdemo.dto.report.ReportDTO report = templateStatisticsService.getProtocolDistributionReport(
+
+            StatisticsReportDTO report = templateStatisticsService.getProtocolDistributionReport(
                 startDate, endDate, reportType);
             return Result.success("协议类型分布统计报告获取成功", report);
         } catch (Exception e) {
@@ -220,12 +221,12 @@ public class TemplateStatisticsController {
     @GetMapping("/failure-reasons")
     @Operation(summary = "获取前5的失败原因统计报告")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:statistics:view')")
-    public Result<com.example.tooltestingdemo.dto.report.ReportDTO> getTopFailureReasonsReport(
+    public Result<com.example.tooltestingdemo.dto.report.StatisticsReportDTO> getTopFailureReasonsReport(
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") String startDate,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") String endDate,
             @RequestParam(required = false, defaultValue = "JOB_LOG") String dataSource) {
         try {
-            com.example.tooltestingdemo.dto.report.ReportDTO report = templateStatisticsService.getTopFailureReasonsReport(
+            StatisticsReportDTO report = templateStatisticsService.getTopFailureReasonsReport(
                 startDate, endDate, dataSource);
             return Result.success("前5失败原因分析报告获取成功", report);
         } catch (Exception e) {

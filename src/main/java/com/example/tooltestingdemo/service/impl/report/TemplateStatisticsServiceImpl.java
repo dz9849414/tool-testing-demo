@@ -1,7 +1,9 @@
 package com.example.tooltestingdemo.service.impl.report;
 
+import com.alibaba.fastjson2.JSONArray;
 import com.example.tooltestingdemo.dto.report.ReportDTO;
 import com.example.tooltestingdemo.dto.report.ReportTemplateDTO;
+import com.example.tooltestingdemo.dto.report.StatisticsReportDTO;
 import com.example.tooltestingdemo.entity.template.TemplateJobLog;
 import com.example.tooltestingdemo.mapper.template.TemplateStatisticsMapper;
 import com.example.tooltestingdemo.service.report.ITemplateStatisticsService;
@@ -149,7 +151,7 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
                 report.setReportType(template.getTemplateType());
                 
                 // 使用模板结构格式化报告数据
-                String formattedContent = applyTemplateFormat(template.getTemplateStructure(), reportData);
+                String formattedContent = applyTemplateFormatToString(template.getTemplateStructure(), reportData);
                 report.setContent(formattedContent);
             } else {
                 // 模板不存在，使用默认格式
@@ -580,9 +582,39 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     /**
      * 应用模板格式，将报告数据填充到模板内容中
      */
-    private String applyTemplateFormat(String templateContent, Map<String, Object> reportData) {
+    private String applyTemplateFormatToString(String templateContent, Map<String, Object> reportData) {
         if (templateContent == null || templateContent.trim().isEmpty()) {
             return convertToJson(reportData);
+        }
+
+        try {
+            // 简单的模板变量替换，支持 ${variableName} 格式
+            String formattedContent = templateContent;
+
+            // 替换基本变量
+            formattedContent = replaceTemplateVariables(formattedContent, reportData);
+
+            // 替换日期变量
+            formattedContent = replaceDateVariables(formattedContent);
+
+            // 替换统计变量
+            formattedContent = replaceStatisticsVariables(formattedContent, reportData);
+
+            return formattedContent;
+        } catch (Exception e) {
+            log.error("模板格式化失败，使用默认格式", e);
+            return convertToJson(reportData);
+        }
+    }
+
+    /**
+     * 应用模板格式，将报告数据填充到模板内容中
+     */
+    private JSONArray applyTemplateFormat(String templateContent, Map<String, Object> reportData) {
+        if (templateContent == null || templateContent.trim().isEmpty()) {
+            JSONArray contentArray = new JSONArray();
+            contentArray.add(reportData);
+            return contentArray;
         }
         
         try {
@@ -598,10 +630,19 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
             // 替换统计变量
             formattedContent = replaceStatisticsVariables(formattedContent, reportData);
             
-            return formattedContent;
+            // 将格式化后的字符串转换为JSONArray
+            JSONArray contentArray = new JSONArray();
+            Map<String, Object> formattedData = new HashMap<>();
+            formattedData.put("formattedContent", formattedContent);
+            formattedData.put("originalData", reportData);
+            contentArray.add(formattedData);
+            
+            return contentArray;
         } catch (Exception e) {
             log.error("模板格式化失败，使用默认格式", e);
-            return convertToJson(reportData);
+            JSONArray contentArray = new JSONArray();
+            contentArray.add(reportData);
+            return contentArray;
         }
     }
 
@@ -707,7 +748,7 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     // ====================== 每2小时响应时间统计方法 ======================
 
     @Override
-    public ReportDTO getHourlyResponseTimeReport(String startDate, String endDate, String dataSource) {
+    public StatisticsReportDTO getHourlyResponseTimeReport(String startDate, String endDate, String dataSource) {
         try {
             // 参数验证
             if (startDate == null || endDate == null) {
@@ -742,12 +783,17 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
             // 构建报告数据
             Map<String, Object> reportData = buildHourlyResponseTimeData(hourlyStats, dataSource, start, end);
             
-            // 构建报告DTO
-            ReportDTO report = new ReportDTO();
+            // 构建统计报告DTO
+            StatisticsReportDTO report = new StatisticsReportDTO();
             report.setId(System.currentTimeMillis());
             report.setName("每2小时平均响应时间报告 - " + getDataSourceDisplayName(dataSource) + " - " + startDate + " 至 " + endDate);
             report.setDescription("基于" + getDataSourceDisplayName(dataSource) + "生成的每2小时平均响应时间统计报告");
-            report.setContent(convertToJson(reportData));
+            
+            // 将content改为JSON数组格式
+            JSONArray contentArray = new JSONArray();
+            contentArray.add(reportData);
+            report.setContent(contentArray);
+            
             report.setCreateTime(LocalDateTime.now());
             
             return report;
@@ -819,7 +865,7 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     // ====================== 周一到周日执行量统计方法 ======================
 
     @Override
-    public ReportDTO getWeeklyExecutionReport(String startDate, String endDate, String dataSource) {
+    public StatisticsReportDTO getWeeklyExecutionReport(String startDate, String endDate, String dataSource) {
         try {
             // 参数验证
             if (startDate == null || endDate == null) {
@@ -852,11 +898,13 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
             Map<String, Object> reportData = buildWeeklyExecutionData(weeklyStats, dataSource, start, end);
             
             // 构建报告DTO
-            ReportDTO report = new ReportDTO();
+            StatisticsReportDTO report = new StatisticsReportDTO();
             report.setId(System.currentTimeMillis());
             report.setName("周一到周日执行量统计报告 - " + getDataSourceDisplayName(dataSource) + " - " + startDate + " 至 " + endDate);
             report.setDescription("基于" + getDataSourceDisplayName(dataSource) + "生成的周一到周日执行量统计报告");
-            report.setContent(convertToJson(reportData));
+            JSONArray contentArray = new JSONArray();
+            contentArray.add(reportData);
+            report.setContent(contentArray);
             report.setCreateTime(LocalDateTime.now());
             
             return report;
@@ -941,7 +989,7 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     // ====================== 成功率分析方法 ======================
 
     @Override
-    public ReportDTO getSuccessRateReport(String startDate, String endDate, String dataSource) {
+    public StatisticsReportDTO getSuccessRateReport(String startDate, String endDate, String dataSource) {
         try {
             // 参数验证
             if (startDate == null || endDate == null) {
@@ -976,12 +1024,17 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
             // 构建报告数据
             Map<String, Object> reportData = buildSuccessRateData(successRateStats, dataSource, start, end);
             
-            // 构建报告DTO
-            ReportDTO report = new ReportDTO();
+            // 构建统计报告DTO
+            StatisticsReportDTO report = new StatisticsReportDTO();
             report.setId(System.currentTimeMillis());
             report.setName("成功率分析报告 - " + getDataSourceDisplayName(dataSource) + " - " + startDate + " 至 " + endDate);
             report.setDescription("基于" + getDataSourceDisplayName(dataSource) + "生成的成功失败占比分析报告");
-            report.setContent(convertToJson(reportData));
+            
+            // 将content改为JSON数组格式
+            JSONArray contentArray = new JSONArray();
+            contentArray.add(reportData);
+            report.setContent(contentArray);
+            
             report.setCreateTime(LocalDateTime.now());
             
             return report;
@@ -1047,7 +1100,7 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     // ====================== 协议类型分布统计方法 ======================
 
     @Override
-    public ReportDTO getProtocolDistributionReport(String startDate, String endDate, String reportType) {
+    public StatisticsReportDTO getProtocolDistributionReport(String startDate, String endDate, String reportType) {
         try {
             // 参数验证
             if (startDate == null || endDate == null) {
@@ -1082,12 +1135,17 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
                     break;
             }
             
-            // 构建报告DTO
-            ReportDTO report = new ReportDTO();
+            // 构建统计报告DTO
+            StatisticsReportDTO report = new StatisticsReportDTO();
             report.setId(System.currentTimeMillis());
             report.setName("协议类型分布统计报告 - " + getReportTypeDisplayName(reportType) + " - " + startDate + " 至 " + endDate);
             report.setDescription("基于协议测试记录生成的" + getReportTypeDisplayName(reportType) + "分布统计报告");
-            report.setContent(convertToJson(reportData));
+            
+            // 将content改为JSON数组格式
+            JSONArray contentArray = new JSONArray();
+            contentArray.add(reportData);
+            report.setContent(contentArray);
+            
             report.setCreateTime(LocalDateTime.now());
             
             return report;
@@ -1263,7 +1321,7 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     }
 
     @Override
-    public ReportDTO getTopFailureReasonsReport(String startDate, String endDate, String dataSource) {
+    public StatisticsReportDTO getTopFailureReasonsReport(String startDate, String endDate, String dataSource) {
         try {
             // 参数验证
             if (startDate == null || endDate == null) {
@@ -1296,12 +1354,17 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
             // 构建报告数据
             Map<String, Object> reportData = buildFailureReasonsData(failureReasons, start, end);
             
-            // 构建报告DTO
-            ReportDTO report = new ReportDTO();
+            // 构建统计报告DTO
+            StatisticsReportDTO report = new StatisticsReportDTO();
             report.setId(System.currentTimeMillis());
             report.setName("前5失败原因分析报告 - " + getDataSourceDisplayName(dataSource) + " - " + startDate + " 至 " + endDate);
             report.setDescription("基于" + getDataSourceDisplayName(dataSource) + "生成的前5失败原因统计分析报告");
-            report.setContent(convertToJson(reportData));
+            
+            // 将content改为JSON数组格式
+            JSONArray contentArray = new JSONArray();
+            contentArray.add(reportData);
+            report.setContent(contentArray);
+            
             report.setCreateTime(LocalDateTime.now());
             
             return report;

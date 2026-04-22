@@ -1,6 +1,7 @@
 package com.example.tooltestingdemo.service.report;
 
 import com.example.tooltestingdemo.dto.report.ReportDTO;
+import com.example.tooltestingdemo.dto.report.StatisticsReportDTO;
 
 /**
  * 模板统计服务接口
@@ -57,7 +58,7 @@ public interface ITemplateStatisticsService {
      * @param dataSource 数据源：JOB_LOG（定时任务）/UNIFIED（手动+定时）/BATCH（批量任务）
      * @return 每2小时平均响应时间报告
      */
-    ReportDTO getHourlyResponseTimeReport(String startDate, String endDate, String dataSource);
+    StatisticsReportDTO getHourlyResponseTimeReport(String startDate, String endDate, String dataSource);
 
     /**
      * 获取周一到周日执行量统计报告
@@ -67,7 +68,7 @@ public interface ITemplateStatisticsService {
      * @param dataSource 数据源：JOB_LOG（定时任务）/UNIFIED（手动+定时）
      * @return 周一到周日执行量统计报告
      */
-    ReportDTO getWeeklyExecutionReport(String startDate, String endDate, String dataSource);
+    StatisticsReportDTO getWeeklyExecutionReport(String startDate, String endDate, String dataSource);
 
     /**
      * 获取成功率分析报告（成功失败占比）
@@ -77,7 +78,7 @@ public interface ITemplateStatisticsService {
      * @param dataSource 数据源：JOB_LOG（定时任务）/UNIFIED（手动+定时）/BATCH（批量任务）
      * @return 成功率分析报告
      */
-    ReportDTO getSuccessRateReport(String startDate, String endDate, String dataSource);
+    StatisticsReportDTO getSuccessRateReport(String startDate, String endDate, String dataSource);
 
     /**
      * 获取协议类型分布统计报告
@@ -87,7 +88,7 @@ public interface ITemplateStatisticsService {
      * @param reportType 报告类型：CATEGORY（按分类）/DETAIL（按具体协议）/TEST_TYPE（按测试类型）
      * @return 协议类型分布统计报告
      */
-    ReportDTO getProtocolDistributionReport(String startDate, String endDate, String reportType);
+    StatisticsReportDTO getProtocolDistributionReport(String startDate, String endDate, String reportType);
 
     /**
      * 获取前5的失败原因统计报告
@@ -97,5 +98,5 @@ public interface ITemplateStatisticsService {
      * @param dataSource 数据源：JOB_LOG（定时任务）/UNIFIED（手动+定时）/BATCH（批量任务）
      * @return 前5的失败原因统计报告
      */
-    ReportDTO getTopFailureReasonsReport(String startDate, String endDate, String dataSource);
+    StatisticsReportDTO getTopFailureReasonsReport(String startDate, String endDate, String dataSource);
 }
