@@ -14,7 +14,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/tool_testing?useSSL=false&serverTimezone=Asia/Shanghai
     username: root
-    password: 123456
+    password: root
   
   # MyBatis Plus配置
   mybatis-plus:
