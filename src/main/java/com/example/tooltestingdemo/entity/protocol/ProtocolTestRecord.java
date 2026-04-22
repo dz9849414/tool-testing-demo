@@ -17,7 +17,7 @@ import lombok.experimental.Accessors;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
-@TableName("protocol_test_record")
+@TableName("pdm_tool_protocol_test_record")
 public class ProtocolTestRecord extends BaseEntity {
     private static final long serialVersionUID = 1L;
 

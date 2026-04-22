@@ -18,7 +18,7 @@ import java.io.Serial;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
-@TableName("protocol_type")
+@TableName("pdm_tool_protocol_type")
 public class ProtocolType extends BaseEntity {
     @Serial
     private static final long serialVersionUID = 1L;

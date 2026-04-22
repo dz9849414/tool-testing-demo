@@ -4,17 +4,17 @@
 -- ===========================================
 
 -- 用户表
-CREATE TABLE `sys_user` (
-    `id` BIGINT NOT NULL COMMENT '用户ID',
+CREATE TABLE `pdm_tool_sys_user` (
+    `id` VARCHAR(50) NOT NULL COMMENT '用户ID',
     `username` VARCHAR(64) NOT NULL COMMENT '用户名',
     `password` VARCHAR(256) NOT NULL COMMENT '密码',
     `email` VARCHAR(128) COMMENT '邮箱',
     `phone` VARCHAR(20) COMMENT '手机号',
     `real_name` VARCHAR(64) COMMENT '真实姓名',
     `status` TINYINT DEFAULT 1 COMMENT '状态：0-禁用，1-启用',
-    `create_id` BIGINT DEFAULT NULL COMMENT '创建人ID', 
+    `create_id` BIGINT DEFAULT NULL COMMENT '创建人ID',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_id` BIGINT DEFAULT NULL COMMENT '更新人ID', 
+    `update_id` BIGINT DEFAULT NULL COMMENT '更新人ID',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标记：0-未删除，1-已删除',
     `deleted_by` BIGINT DEFAULT NULL COMMENT '删除人ID',
@@ -30,8 +30,7 @@ CREATE TABLE `sys_user` (
     UNIQUE KEY `uk_email` (`email`),
     KEY `idx_status` (`status`),
     KEY `idx_create_time` (`create_time`),
-    KEY `idx_approver_id` (`approver_id`),
-    KEY `idx_is_deleted` (`is_deleted`)
+    KEY `idx_approver_id` (`approver_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
 -- 角色表

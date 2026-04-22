@@ -32,7 +32,7 @@ public class ProtocolConfigController {
      * 新增协议配置
      */
     @PostMapping
-    @Operation(summary = "新增协议配置", description = "创建协议配置并写入URL配置/认证配置（JSON），可同时创建多个参数模板及模板分组参数")
+    @Operation(summary = "新增协议配置", description = "创建协议配置：将 URL 列表、认证列表校验后序列化为 JSON 写入库表；不包含参数模板。")
     public Result<ProtocolConfig> create(@RequestBody @Valid ProtocolConfigCreateDTO dto) {
         ProtocolConfig saved = protocolConfigService.createProtocolConfig(dto);
         return Result.success("创建成功", saved);

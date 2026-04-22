@@ -8,7 +8,6 @@ import org.apache.ibatis.reflection.MetaObject;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.Objects;
 
 /**
  * 元对象字段填充处理器
@@ -72,23 +71,6 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
         if (metaObject.hasSetter("updateName")) {
             this.strictUpdateFill(metaObject, "updateName", String.class, getUsername());
         }
-
-        if (metaObject.hasSetter("isDeleted") && Objects.nonNull(metaObject.getValue("isDeleted"))) {
-            Object isDeleted = metaObject.getValue("isDeleted");
-            this.strictUpdateFill(metaObject, "isDeleted", Integer.class, (Integer) isDeleted);
-
-            // 填充删除人（软删除时）
-            if (metaObject.hasSetter("deletedBy")) {
-                this.strictUpdateFill(metaObject, "deletedBy", Long.class, getUserId());
-            }
-
-            // 填充删除时间（软删除时）
-            if (metaObject.hasSetter("deletedTime")) {
-                this.strictUpdateFill(metaObject, "deletedTime", LocalDateTime.class, currentTIme);
-            }
-        }
-
-
     }
 
     private Long getUserId() {

@@ -29,13 +29,15 @@ public class MybatisPlusConfig {
     }
 
     @Bean
-    public GlobalConfig globalConfig() {
+    public GlobalConfig globalConfig(MyMetaObjectHandler myMetaObjectHandler) {
         GlobalConfig globalConfig = new GlobalConfig();
         GlobalConfig.DbConfig dbConfig = new GlobalConfig.DbConfig();
         dbConfig.setLogicDeleteField("isDeleted");
         dbConfig.setLogicDeleteValue("1");
         dbConfig.setLogicNotDeleteValue("0");
         globalConfig.setDbConfig(dbConfig);
+        // 关键：注册自动填充处理器，否则 insertFill/updateFill 不会被调用
+        globalConfig.setMetaObjectHandler(myMetaObjectHandler);
         return globalConfig;
     }
 
