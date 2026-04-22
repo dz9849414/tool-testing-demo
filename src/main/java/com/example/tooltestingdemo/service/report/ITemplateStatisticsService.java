@@ -3,6 +3,9 @@ package com.example.tooltestingdemo.service.report;
 import com.example.tooltestingdemo.dto.report.ReportDTO;
 import com.example.tooltestingdemo.dto.report.StatisticsReportDTO;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 模板统计服务接口
  */
@@ -59,6 +62,16 @@ public interface ITemplateStatisticsService {
      * @return 每2小时平均响应时间报告
      */
     StatisticsReportDTO getHourlyResponseTimeReport(String startDate, String endDate, String dataSource);
+
+    /**
+     * 获取每2小时平均响应时间报告（简化格式）
+     * 
+     * @param startDate 开始日期
+     * @param endDate 结束日期
+     * @param dataSource 数据源：JOB_LOG（定时任务）/UNIFIED（手动+定时）/BATCH（批量任务）
+     * @return 每2小时平均响应时间报告（简化格式：List<Map<String, Object>>）
+     */
+    List<Map<String, Object>> getHourlyResponseTimeReportSimple(String startDate, String endDate, String dataSource);
 
     /**
      * 获取周一到周日执行量统计报告

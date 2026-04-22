@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 模板统计控制器
@@ -122,10 +123,10 @@ public class TemplateStatisticsController {
         }
     }
 
-    @GetMapping("/response-time/hourly")
-    @Operation(summary = "获取每2小时平均响应时间报告")
+    @GetMapping("/response-time/hourly/simple")
+    @Operation(summary = "获取每2小时平均响应时间报告（简化格式）")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:view')")
-    public Result<com.example.tooltestingdemo.dto.report.StatisticsReportDTO> getHourlyResponseTimeReport(
+    public Result<Object> getHourlyResponseTimeReportSimple(
             @RequestParam String startDate,
             @RequestParam String endDate,
             @RequestParam(defaultValue = "JOB_LOG") String dataSource) {
@@ -138,9 +139,33 @@ public class TemplateStatisticsController {
                 }
             }
 
-            StatisticsReportDTO report = templateStatisticsService.getHourlyResponseTimeReport(
+            List<Map<String, Object>> data = templateStatisticsService.getHourlyResponseTimeReportSimple(
                 startDate, endDate, dataSource);
-            return Result.success("每2小时平均响应时间报告获取成功", report);
+            return Result.success("每2小时平均响应时间报告获取成功", data);
+        } catch (Exception e) {
+            return Result.error("获取每2小时平均响应时间报告失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/response-time/hourly")
+    @Operation(summary = "获取每2小时平均响应时间报告")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:view')")
+    public Result<Object> getHourlyResponseTimeReport(
+            @RequestParam String startDate,
+            @RequestParam String endDate,
+            @RequestParam(defaultValue = "JOB_LOG") String dataSource) {
+        try {
+            // 参数校验
+            if (dataSource != null && !dataSource.trim().isEmpty()) {
+                String validDataSource = dataSource.toUpperCase();
+                if (!validDataSource.equals("JOB_LOG") && !validDataSource.equals("UNIFIED") && !validDataSource.equals("BATCH")) {
+                    return Result.error("数据源参数不正确，请使用JOB_LOG/UNIFIED/BATCH");
+                }
+            }
+
+            List<Map<String, Object>> data = templateStatisticsService.getHourlyResponseTimeReportSimple(
+                startDate, endDate, dataSource);
+            return Result.success("每2小时平均响应时间报告获取成功", data);
         } catch (Exception e) {
             return Result.error("获取每2小时平均响应时间报告失败：" + e.getMessage());
         }

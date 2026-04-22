@@ -748,6 +748,59 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     // ====================== 每2小时响应时间统计方法 ======================
 
     @Override
+    public List<Map<String, Object>> getHourlyResponseTimeReportSimple(String startDate, String endDate, String dataSource) {
+        try {
+            // 参数验证
+            if (startDate == null || endDate == null) {
+                throw new IllegalArgumentException("开始日期和结束日期不能为空");
+            }
+            
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+            
+            if (start.isAfter(end)) {
+                throw new IllegalArgumentException("开始日期不能晚于结束日期");
+            }
+            
+            LocalDateTime startTime = start.atStartOfDay();
+            LocalDateTime endTime = end.atTime(23, 59, 59);
+            
+            // 根据数据源获取统计信息
+            List<Map<String, Object>> hourlyStats;
+            switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
+                case "BATCH":
+                    hourlyStats = templateStatisticsMapper.getBatchHourlyResponseTimeStats(startTime, endTime);
+                    break;
+                case "UNIFIED":
+                    hourlyStats = templateStatisticsMapper.getUnifiedHourlyResponseTimeStats(startTime, endTime);
+                    break;
+                case "JOB_LOG":
+                default:
+                    hourlyStats = templateStatisticsMapper.getHourlyResponseTimeStats(startTime, endTime);
+                    break;
+            }
+            
+            // 构建简化格式的数据
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (Map<String, Object> stat : hourlyStats) {
+                String timeSlot = safeGetString(stat, "time_slot");
+                BigDecimal avgDuration = safeGetBigDecimal(stat, "avg_duration");
+                
+                Map<String, Object> item = new HashMap<>();
+                item.put("name", timeSlot);
+                item.put("value", avgDuration != null ? avgDuration.doubleValue() : 0);
+                
+                result.add(item);
+            }
+            
+            return result;
+        } catch (Exception e) {
+            log.error("获取每2小时平均响应时间报告（简化格式）失败", e);
+            throw new RuntimeException("获取每2小时平均响应时间报告（简化格式）失败：" + e.getMessage(), e);
+        }
+    }
+
+    @Override
     public StatisticsReportDTO getHourlyResponseTimeReport(String startDate, String endDate, String dataSource) {
         try {
             // 参数验证

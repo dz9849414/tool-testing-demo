@@ -235,8 +235,7 @@ public interface TemplateStatisticsMapper {
             "MAX(duration_ms) as max_duration, " +
             "MIN(duration_ms) as min_duration " +
             "FROM pdm_tool_template_job_log " +
-            "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
-            "AND success = 1 " +
+
             "GROUP BY DATE(create_time), FLOOR(HOUR(create_time) / 2) * 2, time_slot " +
             "ORDER BY time_slot")
     List<Map<String, Object>> getHourlyResponseTimeStats(@Param("startTime") LocalDateTime startTime,
