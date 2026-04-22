@@ -1083,7 +1083,7 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
     }
 
     private Long getCurrentUserIdOrDefault() {
-        String userId = SecurityUtils.getUserId();
+        String userId = String.valueOf(SecurityUtils.getUserId());
         if (StringUtils.hasText(userId)) {
             try {
                 return Long.valueOf(userId);

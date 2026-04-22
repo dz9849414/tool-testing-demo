@@ -124,7 +124,7 @@ public class SysUserController {
      */
     @GetMapping("/{id}")
     @PreAuthorize("@securityService.hasPermission('system:user:api') or @securityService.isCurrentUser(#id)")
-    public Result<SysUserVO> getUserById(@PathVariable String id) {
+    public Result<SysUserVO> getUserById(@PathVariable Long id) {
         SysUser user = userService.findById(id);
         if (user == null) {
             return Result.error(ErrorStatus.NOT_FOUND, "用户不存在");
@@ -178,12 +178,12 @@ public class SysUserController {
     @PutMapping("/{id}")
     @PreAuthorize("@securityService.hasPermission('system:user:api') or @securityService.isCurrentUser(#id)")
     @PermissionCheck(type = "update")
-    public Result<SysUser> updateUser(@PathVariable String id, @RequestBody SysUserUpdateDTO userDTO) {
+    public Result<SysUser> updateUser(@PathVariable Long id, @RequestBody SysUserUpdateDTO userDTO) {
         SysUser user = new SysUser();
         user.setId(id);
         
         // 检查是否是admin用户
-        if (RoleEnum.ADMIN.getCode().equals(id)) {
+        if (RoleEnum.ADMIN.getCode().equals(id.toString())) {
             // 检查是否尝试修改admin的用户名
             if (userDTO.getUsername() != null && !RoleEnum.ADMIN.getCode().equals(userDTO.getUsername())) {
                 return Result.error(400, "不能更改admin用户名");
@@ -223,7 +223,7 @@ public class SysUserController {
     @DeleteMapping("/{id}")
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
     @PermissionCheck(type = "delete")
-    public Result<String> deleteUser(@PathVariable String id) {
+    public Result<String> deleteUser(@PathVariable Long id) {
         SysUser user = userService.findById(id);
         if (user == null) {
             return Result.error(ErrorStatus.NOT_FOUND, "用户不存在");
@@ -341,7 +341,7 @@ public class SysUserController {
     @PutMapping("/{id}/approve")
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
     @PermissionCheck(type = "approve")
-    public Result<String> approveUser(@PathVariable String id, @RequestParam Integer status) {
+    public Result<String> approveUser(@PathVariable Long id, @RequestParam Integer status) {
         // 获取当前登录用户（审批人）
         org.springframework.security.core.Authentication authentication = 
             org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
@@ -371,7 +371,7 @@ public class SysUserController {
      */
     @PutMapping("/{id}/password")
     @PreAuthorize("@securityService.hasPermission('system:user:api') or @securityService.isCurrentUser(#id)")
-    public Result<String> changePassword(@PathVariable String id, @RequestBody PasswordChangeRequest request) {
+    public Result<String> changePassword(@PathVariable Long id, @RequestBody PasswordChangeRequest request) {
         boolean success = userService.changePassword(id, request.getOldPassword(), request.getNewPassword());
         if (!success) {
             return Result.error(400, "旧密码错误");
@@ -391,7 +391,7 @@ public class SysUserController {
      */
     @GetMapping("/{id}/permissions")
     @PreAuthorize("@securityService.hasPermission('system:user:api') or @securityService.isCurrentUser(#id)")
-    public Result<java.util.Map<String, java.util.List<String>>> getUserPermissions(@PathVariable String id) {
+    public Result<java.util.Map<String, java.util.List<String>>> getUserPermissions(@PathVariable Long id) {
         java.util.Map<String, java.util.List<String>> permissions = userService.getPermissionsByUserIdGrouped(id);
         return Result.success("获取权限列表成功", permissions);
     }
@@ -402,7 +402,7 @@ public class SysUserController {
     @PostMapping("/{id}/roles")
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
     @PermissionCheck(type = "assignRoles")
-    public Result<String> assignRoles(@PathVariable String id, @RequestBody List<String> roleIds) {
+    public Result<String> assignRoles(@PathVariable Long id, @RequestBody List<String> roleIds) {
         // 检查是否包含admin角色
         if (roleIds != null && roleIds.contains("admin")) {
             return Result.error(ErrorStatus.BAD_REQUEST, "不能分配admin角色");
@@ -431,7 +431,7 @@ public class SysUserController {
     @PutMapping("/{id}/status")
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
     @PermissionCheck(type = "update")
-    public Result<String> updateUserStatus(@PathVariable String id, @RequestParam Integer status) {
+    public Result<String> updateUserStatus(@PathVariable Long id, @RequestParam Integer status) {
         // 检查是否是admin用户
         if ("admin".equals(id)) {
             return Result.error(ErrorStatus.BAD_REQUEST, "不能修改admin用户");

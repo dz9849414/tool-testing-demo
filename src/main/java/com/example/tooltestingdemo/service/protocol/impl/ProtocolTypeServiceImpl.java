@@ -814,7 +814,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     }
 
     private Long getCurrentOperatorId() {
-        String currentUserId = securityService.getCurrentUserId();
+        String currentUserId = String.valueOf(securityService.getCurrentUserId());
         if (StringUtils.isNumeric(currentUserId)) {
             return Long.valueOf(currentUserId);
         }

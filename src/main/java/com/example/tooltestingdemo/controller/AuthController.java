@@ -163,7 +163,12 @@ public class AuthController {
         }
         
         SysUser user = new SysUser();
-        user.setId(java.util.UUID.randomUUID().toString().replace("-", "_"));
+        // 生成尽量不重复的随机Long类型ID
+        // 使用时间戳 + 随机数组合，确保唯一性
+        long timestamp = System.currentTimeMillis();
+        long random = (long) (Math.random() * 1000000);
+        long userId = (timestamp << 20) | (random & 0xFFFFF);
+        user.setId(userId);
         
         // 使用BeanUtils.copyProperties()复制属性
         try {
@@ -184,7 +189,7 @@ public class AuthController {
         if (registerDTO.getOrganizationId() != null && !registerDTO.getOrganizationId().isEmpty()) {
             SysUserOrganization userOrganization = new SysUserOrganization();
             userOrganization.setId(java.util.UUID.randomUUID().toString().replace("-", "_"));
-            userOrganization.setUserId(savedUser.getId());
+            userOrganization.setUserId(String.valueOf(savedUser.getId()));
             userOrganization.setOrgId(registerDTO.getOrganizationId());
             userOrganization.setIsPrimary(1); // 设置为主要部门
             userOrganization.setCreateTime(LocalDateTime.now());

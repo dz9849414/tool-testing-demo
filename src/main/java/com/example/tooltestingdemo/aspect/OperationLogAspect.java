@@ -70,7 +70,7 @@ public class OperationLogAspect {
         HttpServletRequest request = attributes.getRequest();
 
         // 获取当前用户
-        String userId = securityService.getCurrentUserId();
+        String userId = String.valueOf(securityService.getCurrentUserId());
         String username = securityService.getCurrentUsername();
         String roleId = securityService.getCurrentUserRoleId();
 

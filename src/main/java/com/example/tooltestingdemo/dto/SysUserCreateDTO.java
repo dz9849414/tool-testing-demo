@@ -10,7 +10,9 @@ public class SysUserCreateDTO {
     private String username;
     private String password;
     private String email;
+    private String phone;
     private String realName;
     private String organizationId;
     private Integer status;
+    private String source;
 }

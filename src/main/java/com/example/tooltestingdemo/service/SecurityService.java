@@ -17,7 +17,7 @@ public class SecurityService {
     /**
      * 获取当前登录用户ID
      */
-    public String getCurrentUserId() {
+    public Long getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() instanceof CustomUserDetails) {
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
@@ -29,8 +29,8 @@ public class SecurityService {
     /**
      * 检查是否为当前用户
      */
-    public boolean isCurrentUser(String userId) {
-        String currentUserId = getCurrentUserId();
+    public boolean isCurrentUser(Long userId) {
+        Long currentUserId = getCurrentUserId();
         return currentUserId != null && currentUserId.equals(userId);
     }
     
@@ -58,8 +58,8 @@ public class SecurityService {
      * 检查当前用户是否是admin
      */
     public boolean isAdmin() {
-        String currentUserId = getCurrentUserId();
-        return "admin".equals(currentUserId);
+        Long currentUserId = getCurrentUserId();
+        return 1L == currentUserId;
     }
     
     /**

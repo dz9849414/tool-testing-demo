@@ -305,7 +305,7 @@ public class PermissionCheckAspect {
         }
 
         // 获取目标用户信息
-        com.example.tooltestingdemo.entity.SysUser targetUser = userService.findById(targetUserId);
+        com.example.tooltestingdemo.entity.SysUser targetUser = userService.findById(Long.valueOf(targetUserId));
         if (targetUser == null) {
             return createErrorResponse("目标用户不存在");
         }

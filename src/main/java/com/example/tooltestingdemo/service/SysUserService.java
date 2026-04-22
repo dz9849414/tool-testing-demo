@@ -13,7 +13,7 @@ public interface SysUserService {
     /**
      * 根据ID查找用户
      */
-    SysUser findById(String id);
+    SysUser findById(Long id);
     
     /**
      * 根据用户名查找用户
@@ -48,7 +48,7 @@ public interface SysUserService {
     /**
      * 删除用户
      */
-    void deleteById(String id);
+    void deleteById(Long id);
     
     /**
      * 检查用户名是否存在
@@ -78,37 +78,37 @@ public interface SysUserService {
     /**
      * 更新用户最后登录信息
      */
-    void updateLastLoginInfo(String userId, String ipAddress);
+    void updateLastLoginInfo(Long userId, String ipAddress);
     
     /**
      * 更新用户状态并记录审批人信息
      */
-    void updateUserStatusWithApproval(String userId, Integer status, String approverId);
+    void updateUserStatusWithApproval(Long userId, Integer status, Long approverId);
     
     /**
      * 修改用户密码
      */
-    boolean changePassword(String userId, String oldPassword, String newPassword);
+    boolean changePassword(Long userId, String oldPassword, String newPassword);
     
     /**
      * 获取用户的角色列表
      */
-    List<String> getRolesByUserId(String userId);
+    List<String> getRolesByUserId(Long userId);
     
     /**
      * 为用户分配角色
      */
-    void assignRoles(String userId, List<String> roleIds, String operatorId);
+    void assignRoles(Long userId, List<String> roleIds, Long operatorId);
     
     /**
      * 获取用户的权限列表
      */
-    List<String> getPermissionsByUserId(String userId);
+    List<String> getPermissionsByUserId(Long userId);
 
     /**
      * 获取用户的权限列表，按模块分组
      */
-    java.util.Map<String, java.util.List<String>> getPermissionsByUserIdGrouped(String userId);
+    java.util.Map<String, java.util.List<String>> getPermissionsByUserIdGrouped(Long userId);
     
     /**
      * 搜索用户

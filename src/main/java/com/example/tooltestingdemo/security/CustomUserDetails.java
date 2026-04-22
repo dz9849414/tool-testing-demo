@@ -12,16 +12,16 @@ import java.util.List;
  */
 public class CustomUserDetails extends User {
 
-    private final String userId;
+    private final Long userId;
     private final List<String> roles;
 
-    public CustomUserDetails(String userId, String username, String password, List<String> roles, Collection<? extends GrantedAuthority> authorities) {
+    public CustomUserDetails(Long userId, String username, String password, List<String> roles, Collection<? extends GrantedAuthority> authorities) {
         super(username, password, authorities);
         this.userId = userId;
         this.roles = roles;
     }
 
-    public CustomUserDetails(String userId, String username, String password, boolean enabled, boolean accountNonExpired, boolean credentialsNonExpired, boolean accountNonLocked, List<String> roles, Collection<? extends GrantedAuthority> authorities) {
+    public CustomUserDetails(Long userId, String username, String password, boolean enabled, boolean accountNonExpired, boolean credentialsNonExpired, boolean accountNonLocked, List<String> roles, Collection<? extends GrantedAuthority> authorities) {
         super(username, password, enabled, accountNonExpired, credentialsNonExpired, accountNonLocked, authorities);
         this.userId = userId;
         this.roles = roles;
@@ -30,7 +30,7 @@ public class CustomUserDetails extends User {
     /**
      * 获取用户ID
      */
-    public String getUserId() {
+    public Long getUserId() {
         return userId;
     }
     

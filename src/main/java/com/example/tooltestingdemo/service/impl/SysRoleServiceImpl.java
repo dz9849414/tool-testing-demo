@@ -124,7 +124,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             userRole.setUserId(userId);
             userRole.setRoleId(roleId);
             userRole.setCreateTime(LocalDateTime.now());
-            userRole.setCreateUser("system");
+            userRole.setCreateUser(1L);
             userRoleMapper.insert(userRole);
         }
     }

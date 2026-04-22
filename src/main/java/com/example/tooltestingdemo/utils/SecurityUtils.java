@@ -31,7 +31,7 @@ public final class SecurityUtils {
     /**
      * 获取当前登录用户ID
      */
-    public static String getUserId() {
+    public static Long getUserId() {
         CustomUserDetails user = getUser();
         return user == null ? null : user.getUserId();
     }
@@ -65,7 +65,7 @@ public final class SecurityUtils {
      * 检查是否为当前用户
      */
     public static boolean isCurrentUser(String userId) {
-        String currentUserId = getUserId();
+        Long currentUserId = getUserId();
         return currentUserId != null && currentUserId.equals(userId);
     }
 
@@ -73,7 +73,7 @@ public final class SecurityUtils {
      * 检查是否为管理员
      */
     public static boolean isAdmin() {
-        String userId = getUserId();
+        Long userId = getUserId();
         return userId != null && "admin".equals(userId);
     }
 
@@ -120,8 +120,8 @@ public final class SecurityUtils {
     /**
      * 获取当前用户ID，如果未登录返回默认值
      */
-    public static String getUserIdOrDefault(String defaultValue) {
-        String userId = getUserId();
+    public static Long getUserIdOrDefault(Long defaultValue) {
+        Long userId = getUserId();
         return userId != null ? userId : defaultValue;
     }
 

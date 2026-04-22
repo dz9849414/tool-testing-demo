@@ -25,5 +25,5 @@ public class SysUserRole {
     private LocalDateTime createTime;
     
     @TableField(value = "create_user")
-    private String createUser;
+    private Long createUser;
 }

@@ -21,7 +21,7 @@ public class SysLoginLog {
      * 用户ID
      */
     @TableField("user_id")
-    private String userId;
+    private Long userId;
     
     /**
      * 用户名

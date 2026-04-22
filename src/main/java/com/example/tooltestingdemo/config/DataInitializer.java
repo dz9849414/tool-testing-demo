@@ -119,7 +119,7 @@ public class DataInitializer implements CommandLineRunner {
         SysUser existingUser = userMapper.selectByUsername("admin");
         if (existingUser == null) {
             SysUser adminUser = new SysUser();
-            adminUser.setId("admin");
+            adminUser.setId(1L);
             adminUser.setUsername("admin");
             adminUser.setPassword(passwordEncoder.encode("admin123"));
             adminUser.setEmail("admin@example.com");
@@ -133,7 +133,7 @@ public class DataInitializer implements CommandLineRunner {
             log.info("创建默认管理员用户: {}", adminUser.getUsername());
             return adminUser;
         }
-        SysUser user2 = userMapper.selectById("admin");
+        SysUser user2 = userMapper.selectById(1L);
         // 更新新密码
         user2.setPassword(passwordEncoder.encode("admin123"));
         
@@ -145,14 +145,14 @@ public class DataInitializer implements CommandLineRunner {
      * 初始化用户角色关联
      */
     private void initializeUserRoleRelation(SysUser user, SysRole role) {
-        int count = userRoleMapper.countByUserIdAndRoleId(user.getId(), role.getId());
+        int count = userRoleMapper.countByUserIdAndRoleId(String.valueOf(user.getId()), role.getId());
         if (count == 0) {
             SysUserRole userRole = new SysUserRole();
             userRole.setId("ur_admin");
-            userRole.setUserId(user.getId());
+            userRole.setUserId(String.valueOf(user.getId()));
             userRole.setRoleId(role.getId());
             userRole.setCreateTime(LocalDateTime.now());
-            userRole.setCreateUser("system");
+            userRole.setCreateUser(1L);
             
             userRoleMapper.insert(userRole);
             log.info("建立用户角色关联: {} -> {}", user.getUsername(), role.getName());

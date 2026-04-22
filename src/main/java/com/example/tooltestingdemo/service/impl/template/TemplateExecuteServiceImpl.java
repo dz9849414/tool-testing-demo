@@ -88,7 +88,7 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
             if (createId != null) {
                 log.setCreateId(createId);
             } else {
-                String currentUserId = securityService.getCurrentUserId();
+                Long currentUserId = securityService.getCurrentUserId();
                 if (currentUserId != null) {
                     try {
                         log.setCreateId(Long.valueOf(currentUserId));

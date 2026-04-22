@@ -29,7 +29,7 @@ public class SysUserServiceImpl implements SysUserService {
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     
     @Override
-    public SysUser findById(String id) {
+    public SysUser findById(Long id) {
         // 获取当前登录用户
         org.springframework.security.core.Authentication authentication = 
             org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
@@ -93,8 +93,10 @@ public class SysUserServiceImpl implements SysUserService {
         // 获取当前用户的角色列表
         List<String> currentRoles = userMapper.selectRolesByUserId(currentUser.getId());
         
-        // 执行查询
-        List<SysUser> users = userMapper.selectList(new QueryWrapper<>());
+        // 执行查询，过滤掉已逻辑删除的用户
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysUser::getIsDeleted, 0);
+        List<SysUser> users = userMapper.selectList(queryWrapper);
         
         // 根据角色权限过滤结果
         List<SysUser> filteredUsers = new java.util.ArrayList<>();
@@ -133,8 +135,10 @@ public class SysUserServiceImpl implements SysUserService {
         // 获取当前用户的角色列表
         List<String> currentRoles = userMapper.selectRolesByUserId(currentUser.getId());
         
-        // 执行分页查询
-        Page<SysUser> usersPage = userMapper.selectPage(page, new QueryWrapper<>());
+        // 执行分页查询，过滤掉已逻辑删除的用户
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysUser::getIsDeleted, 0);
+        Page<SysUser> usersPage = userMapper.selectPage(page, queryWrapper);
         
         // 根据角色权限过滤结果
         List<SysUser> filteredUsers = new java.util.ArrayList<>();
@@ -164,6 +168,22 @@ public class SysUserServiceImpl implements SysUserService {
     @Override
     @Transactional
     public SysUser save(SysUser user) {
+        // 设置创建人ID（当前登录用户）
+        org.springframework.security.core.Authentication authentication = 
+            org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            String currentUsername = authentication.getName();
+            SysUser currentUser = userMapper.selectByUsername(currentUsername);
+            if (currentUser != null) {
+                user.setCreateId(currentUser.getId());
+            }
+        }
+        
+        // 设置默认值
+        if (user.getIsDeleted() == null) {
+            user.setIsDeleted(0);
+        }
+        
         userMapper.insert(user);
         return user;
     }
@@ -181,6 +201,17 @@ public class SysUserServiceImpl implements SysUserService {
             existingUser.setStatus(user.getStatus());
             existingUser.setSource(user.getSource());
             
+            // 设置更新人ID（当前登录用户）
+            org.springframework.security.core.Authentication authentication = 
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.isAuthenticated()) {
+                String currentUsername = authentication.getName();
+                SysUser currentUser = userMapper.selectByUsername(currentUsername);
+                if (currentUser != null) {
+                    existingUser.setUpdateId(currentUser.getId());
+                }
+            }
+            
             // 如果密码不为空，则更新密码并编码
             if (user.getPassword() != null && !user.getPassword().isEmpty()) {
                 org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder passwordEncoder = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
@@ -195,8 +226,28 @@ public class SysUserServiceImpl implements SysUserService {
     
     @Override
     @Transactional
-    public void deleteById(String id) {
-        userMapper.deleteById(id);
+    public void deleteById(Long id) {
+        // 逻辑删除：设置删除标记和删除信息
+        SysUser user = userMapper.selectById(id);
+        if (user != null) {
+            user.setIsDeleted(1);
+            
+            // 设置删除人ID（当前登录用户）
+            org.springframework.security.core.Authentication authentication = 
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.isAuthenticated()) {
+                String currentUsername = authentication.getName();
+                SysUser currentUser = userMapper.selectByUsername(currentUsername);
+                if (currentUser != null) {
+                    user.setDeletedBy(currentUser.getId());
+                }
+            }
+            
+            // 设置删除时间
+            user.setDeletedTime(java.time.LocalDateTime.now());
+            
+            userMapper.updateById(user);
+        }
     }
     
     @Override
@@ -225,8 +276,11 @@ public class SysUserServiceImpl implements SysUserService {
         // 获取当前用户的角色列表
         List<String> currentRoles = userMapper.selectRolesByUserId(currentUser.getId());
         
-        // 执行查询
-        List<SysUser> users = userMapper.selectByStatus(status);
+        // 执行查询，过滤掉已逻辑删除的用户
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysUser::getStatus, status);
+        queryWrapper.eq(SysUser::getIsDeleted, 0);
+        List<SysUser> users = userMapper.selectList(queryWrapper);
         
         // 根据角色权限过滤结果
         List<SysUser> filteredUsers = new java.util.ArrayList<>();
@@ -338,7 +392,7 @@ public class SysUserServiceImpl implements SysUserService {
     
     @Override
     @Transactional
-    public void updateLastLoginInfo(String userId, String ipAddress) {
+    public void updateLastLoginInfo(Long userId, String ipAddress) {
         SysUser user = userMapper.selectById(userId);
         if (user != null) {
             user.setLastLoginTime(LocalDateTime.now());
@@ -349,18 +403,18 @@ public class SysUserServiceImpl implements SysUserService {
 
     @Override
     @Transactional
-    public void updateUserStatusWithApproval(String userId, Integer status, String approverId) {
+    public void updateUserStatusWithApproval(Long userId, Integer status, Long approverId) {
         SysUser user = userMapper.selectById(userId);
         
         user.setStatus(status);
-        user.setApproverId(approverId);
+        user.setApproverId(approverId != null ? approverId.toString() : null);
         user.setApproveTime(LocalDateTime.now());
         userMapper.updateById(user);
     }
 
     @Override
     @Transactional
-    public boolean changePassword(String userId, String oldPassword, String newPassword) {
+    public boolean changePassword(Long userId, String oldPassword, String newPassword) {
         SysUser user = userMapper.selectById(userId);
         if (user == null) {
             return false;
@@ -378,22 +432,22 @@ public class SysUserServiceImpl implements SysUserService {
     }
 
     @Override
-    public List<String> getRolesByUserId(String userId) {
+    public List<String> getRolesByUserId(Long userId) {
         return userMapper.selectRolesByUserId(userId);
     }
 
     @Override
     @Transactional
-    public void assignRoles(String userId, List<String> roleIds, String operatorId) {
+    public void assignRoles(Long userId, List<String> roleIds, Long operatorId) {
         // 先删除用户现有的所有角色关联
-        userRoleMapper.deleteByUserId(userId);
+        userRoleMapper.deleteByUserId(userId.toString());
         
         // 然后添加新的角色关联
         if (roleIds != null && !roleIds.isEmpty()) {
             for (String roleId : roleIds) {
                 SysUserRole userRole = new SysUserRole();
                 userRole.setId(java.util.UUID.randomUUID().toString().replace("-", "_"));
-                userRole.setUserId(userId);
+                userRole.setUserId(userId.toString());
                 userRole.setRoleId(roleId);
                 userRole.setCreateTime(java.time.LocalDateTime.now());
                 userRole.setCreateUser(operatorId);
@@ -403,12 +457,12 @@ public class SysUserServiceImpl implements SysUserService {
     }
 
     @Override
-    public List<String> getPermissionsByUserId(String userId) {
+    public List<String> getPermissionsByUserId(Long userId) {
         return userMapper.selectPermissionsByUserId(userId);
     }
 
     @Override
-    public java.util.Map<String, java.util.List<String>> getPermissionsByUserIdGrouped(String userId) {
+    public java.util.Map<String, java.util.List<String>> getPermissionsByUserIdGrouped(Long userId) {
         List<String> permissions = getPermissionsByUserId(userId);
         java.util.Map<String, java.util.List<String>> groupedPermissions = new java.util.HashMap<>();
 
