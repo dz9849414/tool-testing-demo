@@ -5,15 +5,20 @@
 
 -- 用户表
 CREATE TABLE `sys_user` (
-    `id` VARCHAR(50) NOT NULL COMMENT '用户ID',
+    `id` BIGINT NOT NULL COMMENT '用户ID',
     `username` VARCHAR(64) NOT NULL COMMENT '用户名',
     `password` VARCHAR(256) NOT NULL COMMENT '密码',
     `email` VARCHAR(128) COMMENT '邮箱',
     `phone` VARCHAR(20) COMMENT '手机号',
     `real_name` VARCHAR(64) COMMENT '真实姓名',
     `status` TINYINT DEFAULT 1 COMMENT '状态：0-禁用，1-启用',
-    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `create_id` BIGINT DEFAULT NULL COMMENT '创建人ID', 
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_id` BIGINT DEFAULT NULL COMMENT '更新人ID', 
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标记：0-未删除，1-已删除',
+    `deleted_by` BIGINT DEFAULT NULL COMMENT '删除人ID',
+    `deleted_time` DATETIME DEFAULT NULL COMMENT '删除时间',
     `last_login_time` DATETIME COMMENT '最后登录时间',
     `last_login_ip` VARCHAR(64) COMMENT '最后登录IP',
     `source` VARCHAR(32) DEFAULT 'LOCAL' COMMENT '用户来源：LOCAL-本地，LDAP-LDAP，OIDC-OIDC',
@@ -25,7 +30,8 @@ CREATE TABLE `sys_user` (
     UNIQUE KEY `uk_email` (`email`),
     KEY `idx_status` (`status`),
     KEY `idx_create_time` (`create_time`),
-    KEY `idx_approver_id` (`approver_id`)
+    KEY `idx_approver_id` (`approver_id`),
+    KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
 -- 角色表
