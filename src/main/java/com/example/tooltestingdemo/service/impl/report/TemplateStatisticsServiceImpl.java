@@ -1,6 +1,8 @@
 package com.example.tooltestingdemo.service.impl.report;
 
 import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
+import com.example.tooltestingdemo.dto.report.FailureTimelineDTO;
 import com.example.tooltestingdemo.dto.report.ReportDTO;
 import com.example.tooltestingdemo.dto.report.ReportTemplateDTO;
 import com.example.tooltestingdemo.dto.report.StatisticsReportDTO;
@@ -748,6 +750,59 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     // ====================== 每2小时响应时间统计方法 ======================
 
     @Override
+    public List<Map<String, Object>> getHourlyResponseTimeReportSimple(String startDate, String endDate, String dataSource) {
+        try {
+            // 参数验证
+            if (startDate == null || endDate == null) {
+                throw new IllegalArgumentException("开始日期和结束日期不能为空");
+            }
+            
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+            
+            if (start.isAfter(end)) {
+                throw new IllegalArgumentException("开始日期不能晚于结束日期");
+            }
+            
+            LocalDateTime startTime = start.atStartOfDay();
+            LocalDateTime endTime = end.atTime(23, 59, 59);
+            
+            // 根据数据源获取统计信息
+            List<Map<String, Object>> hourlyStats;
+            switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
+                case "BATCH":
+                    hourlyStats = templateStatisticsMapper.getBatchHourlyResponseTimeStats(startTime, endTime);
+                    break;
+                case "UNIFIED":
+                    hourlyStats = templateStatisticsMapper.getUnifiedHourlyResponseTimeStats(startTime, endTime);
+                    break;
+                case "JOB_LOG":
+                default:
+                    hourlyStats = templateStatisticsMapper.getHourlyResponseTimeStats(startTime, endTime);
+                    break;
+            }
+            
+            // 构建简化格式的数据
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (Map<String, Object> stat : hourlyStats) {
+                String timeSlot = safeGetString(stat, "time_slot");
+                BigDecimal avgDuration = safeGetBigDecimal(stat, "avg_duration");
+                
+                Map<String, Object> item = new HashMap<>();
+                item.put("name", timeSlot);
+                item.put("value", avgDuration != null ? avgDuration.doubleValue() : 0);
+                
+                result.add(item);
+            }
+            
+            return result;
+        } catch (Exception e) {
+            log.error("获取每2小时平均响应时间报告（简化格式）失败", e);
+            throw new RuntimeException("获取每2小时平均响应时间报告（简化格式）失败：" + e.getMessage(), e);
+        }
+    }
+
+    @Override
     public StatisticsReportDTO getHourlyResponseTimeReport(String startDate, String endDate, String dataSource) {
         try {
             // 参数验证
@@ -1102,36 +1157,14 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     @Override
     public StatisticsReportDTO getProtocolDistributionReport(String startDate, String endDate, String reportType) {
         try {
-            // 参数验证
-            if (startDate == null || endDate == null) {
-                throw new IllegalArgumentException("开始日期和结束日期不能为空");
-            }
-            
-            LocalDate start = LocalDate.parse(startDate);
-            LocalDate end = LocalDate.parse(endDate);
-            
-            if (start.isAfter(end)) {
-                throw new IllegalArgumentException("开始日期不能晚于结束日期");
-            }
-            
-            LocalDateTime startTime = start.atStartOfDay();
-            LocalDateTime endTime = end.atTime(23, 59, 59);
-            
             // 根据报告类型获取统计信息
             Map<String, Object> reportData;
             switch (reportType != null ? reportType.toUpperCase() : "CATEGORY") {
-                case "DETAIL":
-                    List<Map<String, Object>> detailStats = templateStatisticsMapper.getProtocolDetailStats(startTime, endTime);
-                    reportData = buildProtocolDetailData(detailStats, start, end);
-                    break;
-                case "TEST_TYPE":
-                    List<Map<String, Object>> testTypeStats = templateStatisticsMapper.getProtocolTestTypeStats(startTime, endTime);
-                    reportData = buildProtocolTestTypeData(testTypeStats, start, end);
-                    break;
                 case "CATEGORY":
                 default:
-                    List<Map<String, Object>> categoryStats = templateStatisticsMapper.getProtocolCategoryStats(startTime, endTime);
-                    reportData = buildProtocolCategoryData(categoryStats, start, end);
+                    // 只需要查询pdm_tool_protocol_type表的protocol_name分组统计
+                    List<Map<String, Object>> categoryStats = templateStatisticsMapper.getProtocolCategoryStats(null, null);
+                    reportData = buildProtocolCategoryData(categoryStats);
                     break;
             }
             
@@ -1158,41 +1191,29 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     /**
      * 构建协议分类分布数据
      */
-    private Map<String, Object> buildProtocolCategoryData(List<Map<String, Object>> categoryStats, LocalDate startDate, LocalDate endDate) {
+    private Map<String, Object> buildProtocolCategoryData(List<Map<String, Object>> categoryStats) {
         Map<String, Object> reportData = new HashMap<>();
         
         List<Map<String, Object>> categoryData = new ArrayList<>();
-        int totalUsageCount = 0;
-        int totalSuccessCount = 0;
+        int totalProtocolCount = 0;
         
         for (Map<String, Object> stat : categoryStats) {
             String category = safeGetString(stat, "category");
-            BigDecimal usageCount = safeGetBigDecimal(stat, "usage_count");
-            BigDecimal successCount = safeGetBigDecimal(stat, "success_count");
+            BigDecimal protocolCount = safeGetBigDecimal(stat, "protocol_count");
             
             Map<String, Object> categoryInfo = new HashMap<>();
             categoryInfo.put("category", category);
-            categoryInfo.put("categoryName", getProtocolCategoryDisplayName(category));
-            categoryInfo.put("usageCount", usageCount != null ? usageCount.longValue() : 0);
-            categoryInfo.put("successCount", successCount != null ? successCount.longValue() : 0);
-            categoryInfo.put("successRate", usageCount != null && successCount != null && usageCount.compareTo(BigDecimal.ZERO) > 0 ? 
-                successCount.divide(usageCount, 4, BigDecimal.ROUND_HALF_UP).multiply(new BigDecimal("100")).doubleValue() : 0);
-            categoryInfo.put("failureCount", usageCount != null && successCount != null ? 
-                usageCount.subtract(successCount).longValue() : 0);
+            categoryInfo.put("categoryName", category); // 直接使用protocol_name作为显示名称
+            categoryInfo.put("protocolCount", protocolCount != null ? protocolCount.longValue() : 0);
             
             categoryData.add(categoryInfo);
-            totalUsageCount += usageCount != null ? usageCount.longValue() : 0;
-            totalSuccessCount += successCount != null ? successCount.longValue() : 0;
+            totalProtocolCount += protocolCount != null ? protocolCount.longValue() : 0;
         }
         
         reportData.put("categoryData", categoryData);
-        reportData.put("totalUsageCount", totalUsageCount);
-        reportData.put("totalSuccessCount", totalSuccessCount);
-        reportData.put("overallSuccessRate", totalUsageCount > 0 ? (double) totalSuccessCount / totalUsageCount * 100 : 0);
+        reportData.put("totalProtocolCount", totalProtocolCount);
         reportData.put("reportType", "CATEGORY");
         reportData.put("reportTypeName", "按协议分类");
-        reportData.put("startDate", startDate.format(DateTimeFormatter.ISO_DATE));
-        reportData.put("endDate", endDate.format(DateTimeFormatter.ISO_DATE));
         reportData.put("generateTime", LocalDate.now().format(DateTimeFormatter.ISO_DATE));
         
         return reportData;
@@ -1320,6 +1341,148 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
         }
     }
 
+    /**
+     * 将失败记录转换为FailureTimelineDTO
+     */
+    private FailureTimelineDTO convertToFailureTimelineDTO(Map<String, Object> record) {
+        if (record == null || record.isEmpty()) {
+            return null;
+        }
+        
+        FailureTimelineDTO dto = new FailureTimelineDTO();
+        
+        // 设置基本字段
+        if (record.get("create_time") != null) {
+            dto.setTimestamp((LocalDateTime) record.get("create_time"));
+        }
+        if (record.get("template_name") != null) {
+            dto.setTemplateName((String) record.get("template_name"));
+        }
+        if (record.get("duration_ms") != null) {
+            dto.setDurationMs(((Number) record.get("duration_ms")).longValue());
+        }
+        
+        // 解析execute_result JSON字段
+        if (record.get("execute_result") != null) {
+            try {
+                String jsonStr = (String) record.get("execute_result");
+                if (jsonStr != null && !jsonStr.trim().isEmpty()) {
+                    JSONObject jsonResult = JSONObject.parseObject(jsonStr);
+                    
+                    // 提取失败原因和错误信息
+                    if (jsonResult.containsKey("message")) {
+                        dto.setFailureReason(jsonResult.getString("message"));
+                    }
+                    if (jsonResult.containsKey("statusCode")) {
+                        dto.setErrorCode(jsonResult.getString("statusCode"));
+                    }
+                    
+                    // 提取响应信息
+                    if (jsonResult.containsKey("response")) {
+                        JSONObject response = jsonResult.getJSONObject("response");
+                        if (response != null) {
+                            if (response.containsKey("statusCode")) {
+                                dto.setResponseStatusCode(response.getInteger("statusCode"));
+                            }
+                            if (response.containsKey("body")) {
+                                dto.setResponseMessage(response.getString("body"));
+                            }
+                        }
+                    }
+                    
+                    // 提取请求信息
+                    if (jsonResult.containsKey("request")) {
+                        JSONObject request = jsonResult.getJSONObject("request");
+                        if (request != null && request.containsKey("url")) {
+                            dto.setRequestUrl(request.getString("url"));
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("解析execute_result JSON失败: {}", record.get("execute_result"), e);
+            }
+        }
+        
+        return dto;
+    }
+
+    @Override
+    public java.util.List<FailureTimelineDTO> getFailureTimelineData(Long templateId, LocalDateTime startTime, LocalDateTime endTime) {
+        try {
+            // 查询失败记录
+            List<Map<String, Object>> failureRecords = templateStatisticsMapper.getFailureTimelineData(
+                templateId, startTime, endTime);
+            
+            // 转换为FailureTimelineDTO列表
+            List<FailureTimelineDTO> timeline = new java.util.ArrayList<>();
+            if (failureRecords != null) {
+                for (Map<String, Object> record : failureRecords) {
+                    FailureTimelineDTO dto = convertToFailureTimelineDTO(record);
+                    if (dto != null) {
+                        timeline.add(dto);
+                    }
+                }
+            }
+            
+            return timeline;
+        } catch (Exception e) {
+            log.error("获取失败时间线数据失败 - templateId: {}, startTime: {}, endTime: {}", 
+                templateId, startTime, endTime, e);
+            return new java.util.ArrayList<>();
+        }
+    }
+
+    @Override
+    public List<Map<String, Object>> getTopFailureReasonsReportSimple(String startDate, String endDate, String dataSource) {
+        try {
+            // 参数验证
+            if (startDate == null || endDate == null) {
+                throw new IllegalArgumentException("开始日期和结束日期不能为空");
+            }
+            
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+            
+            if (start.isAfter(end)) {
+                throw new IllegalArgumentException("开始日期不能晚于结束日期");
+            }
+            
+            LocalDateTime startTime = start.atStartOfDay();
+            LocalDateTime endTime = end.atTime(23, 59, 59);
+            
+            // 根据数据源获取前5的失败原因统计
+            List<Map<String, Object>> failureReasons;
+            switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
+                case "BATCH":
+                    failureReasons = templateStatisticsMapper.getBatchTopFailureReasons(startTime, endTime);
+                    break;
+                case "UNIFIED":
+                case "JOB_LOG":
+                default:
+                    failureReasons = templateStatisticsMapper.getTopFailureReasons(startTime, endTime);
+                    break;
+            }
+            
+            // 构建简化格式的数据
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (Map<String, Object> reason : failureReasons) {
+                String failureReason = safeGetString(reason, "failure_reason");
+                BigDecimal failureCount = safeGetBigDecimal(reason, "failure_count");
+                
+                Map<String, Object> item = new HashMap<>();
+                item.put("name", failureReason);
+                item.put("value", failureCount != null ? failureCount.longValue() : 0);
+                
+                result.add(item);
+            }
+            
+            return result;
+        } catch (Exception e) {
+            log.error("获取前5失败原因分析报告（简化格式）失败", e);
+            throw new RuntimeException("获取前5失败原因分析报告（简化格式）失败：" + e.getMessage(), e);
+        }
+    }
+
     @Override
     public StatisticsReportDTO getTopFailureReasonsReport(String startDate, String endDate, String dataSource) {
         try {
@@ -1384,20 +1547,23 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
         List<Map<String, Object>> failureData = new ArrayList<>();
         int totalFailureCount = 0;
         
+        // 计算总失败次数
+        for (Map<String, Object> reason : failureReasons) {
+            BigDecimal failureCount = safeGetBigDecimal(reason, "failure_count");
+            totalFailureCount += failureCount != null ? failureCount.longValue() : 0;
+        }
+        
         for (Map<String, Object> reason : failureReasons) {
             String failureReason = safeGetString(reason, "failure_reason");
             BigDecimal failureCount = safeGetBigDecimal(reason, "failure_count");
             String errorCode = safeGetString(reason, "error_code");
-            BigDecimal protocolId = safeGetBigDecimal(reason, "protocol_id");
-            String protocolName = safeGetString(reason, "protocol_name");
             
             Map<String, Object> failureInfo = new HashMap<>();
             failureInfo.put("failureReason", failureReason);
             failureInfo.put("failureCount", failureCount != null ? failureCount.longValue() : 0);
             failureInfo.put("errorCode", errorCode);
-            failureInfo.put("protocolId", protocolId != null ? protocolId.longValue() : null);
-            failureInfo.put("protocolName", protocolName);
-            failureInfo.put("percentage", 0); // 将在后续计算
+            failureInfo.put("percentage", totalFailureCount > 0 ? 
+                (double) (failureCount != null ? failureCount.longValue() : 0) / totalFailureCount * 100 : 0);
             
             failureData.add(failureInfo);
             totalFailureCount += failureCount != null ? failureCount.longValue() : 0;

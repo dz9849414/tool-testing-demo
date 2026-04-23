@@ -1,5 +1,8 @@
 package com.example.tooltestingdemo.service.impl.report;
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.common.PageResult;
@@ -9,6 +12,7 @@ import com.example.tooltestingdemo.entity.template.TemplateJobLog;
 import com.example.tooltestingdemo.mapper.report.ReportMapper;
 import com.example.tooltestingdemo.mapper.template.TemplateJobLogMapper;
 import com.example.tooltestingdemo.service.report.IReportService;
+import com.example.tooltestingdemo.service.report.ITemplateStatisticsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
@@ -44,6 +48,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
 
     private final ReportMapper reportMapper;
     private final TemplateJobLogMapper templateJobLogMapper;
+    private final ITemplateStatisticsService templateStatisticsService;
 
     @Override
     public Long createReport(ReportDTO reportDTO) {
@@ -119,17 +124,138 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     }
 
     @Override
+    public java.util.List<FailureTimelineDTO> getFailureTimeline(Long templateId, String timeRange) {
+        try {
+            // 根据时间范围计算开始时间
+            LocalDateTime startTime = calculateStartTime(timeRange);
+            LocalDateTime endTime = LocalDateTime.now();
+            
+            // 查询失败记录
+            List<FailureTimelineDTO> timeline = templateStatisticsService.getFailureTimelineData(templateId, startTime, endTime);
+            
+            return timeline != null ? timeline : new java.util.ArrayList<>();
+        } catch (Exception e) {
+            log.error("获取失败时间线失败 - templateId: {}, timeRange: {}", templateId, timeRange, e);
+            return new java.util.ArrayList<>();
+        }
+    }
+
+    @Override
     public Long autoGenerateReport(String reportType, String dataSourceIds) {
-        // 实现自动生成报告的逻辑
-        ReportDTO reportDTO = new ReportDTO();
-        reportDTO.setName("自动生成报告 - " + LocalDateTime.now());
-        reportDTO.setDescription("基于数据源自动生成的报告");
-        reportDTO.setReportType(reportType);
-        reportDTO.setGenerateType("AUTO");
-        reportDTO.setDataSourceIds(dataSourceIds);
-        reportDTO.setStatus("DRAFT");
+        try {
+            // 根据reportType从pdm_tool_template_execute_log表获取最近的测试数据
+            Object statisticsData = getRecentTestDataFromExecuteLog(reportType, dataSourceIds);
+            
+            // 构建报告DTO
+            ReportDTO reportDTO = new ReportDTO();
+            reportDTO.setName("自动生成报告 - " + reportType + " - " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            reportDTO.setDescription("基于最近测试数据自动生成的" + reportType + "报告");
+            reportDTO.setReportType(reportType);
+            reportDTO.setGenerateType("AUTO");
+            reportDTO.setDataSourceIds(dataSourceIds);
+            reportDTO.setStatus("DRAFT");
+            
+            // 将统计数据转换为JSON字符串
+            if (statisticsData != null) {
+                if (statisticsData instanceof StatisticsReportDTO) {
+                    StatisticsReportDTO statsReport = (StatisticsReportDTO) statisticsData;
+                    reportDTO.setContent(statsReport.getContent() != null ? 
+                        statsReport.getContent().toString() : "{}");
+                } else if (statisticsData instanceof List) {
+                    // 简化格式的数据
+                    reportDTO.setContent(new JSONArray((List) statisticsData).toString());
+                } else {
+                    reportDTO.setContent("{}");
+                }
+            } else {
+                reportDTO.setContent("{}");
+            }
+            
+            return createReport(reportDTO);
+            
+        } catch (Exception e) {
+            log.error("自动生成报告失败", e);
+            throw new RuntimeException("自动生成报告失败：" + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 从pdm_tool_template_execute_log表获取最近的测试数据
+     * 
+     * @param reportType 报告类型（支持数字和字符串）
+     * @param dataSourceIds 数据源ID
+     * @return 统计数据
+     */
+    private Object getRecentTestDataFromExecuteLog(String reportType, String dataSourceIds) {
+        try {
+            // 获取最近7天的数据
+            LocalDateTime endTime = LocalDateTime.now();
+            LocalDateTime startTime = endTime.minusDays(7);
+            
+            // 根据reportType调用不同的统计方法（支持数字和字符串）
+            String normalizedReportType = normalizeReportType(reportType);
+            
+            switch (normalizedReportType) {
+                case "PROTOCOL_DISTRIBUTION":
+                case "1":
+                    return templateStatisticsService.getProtocolDistributionReport(
+                        startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                        endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 
+                        "CATEGORY");
+                case "RESPONSE_TIME":
+                case "2":
+                    return templateStatisticsService.getHourlyResponseTimeReportSimple(
+                        startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                        endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 
+                        "UNIFIED");
+                case "FAILURE_REASONS":
+                case "3":
+                    return templateStatisticsService.getTopFailureReasonsReportSimple(
+                        startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                        endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 
+                        "UNIFIED");
+                case "WEEKLY_EXECUTION":
+                case "4":
+                    return templateStatisticsService.getWeeklyExecutionReport(
+                        startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                        endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 
+                        "UNIFIED");
+                case "SUCCESS_RATE":
+                case "5":
+                    return templateStatisticsService.getSuccessRateReport(
+                        startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                        endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 
+                        "UNIFIED");
+                default:
+                    // 默认返回空数据
+                    return null;
+            }
+        } catch (Exception e) {
+            log.error("获取最近测试数据失败", e);
+            return null;
+        }
+    }
+    
+    /**
+     * 标准化报告类型参数
+     * 
+     * @param reportType 原始报告类型参数
+     * @return 标准化的报告类型
+     */
+    private String normalizeReportType(String reportType) {
+        if (reportType == null) {
+            return "UNKNOWN";
+        }
         
-        return createReport(reportDTO);
+        // 数字映射
+        switch (reportType) {
+            case "1": return "PROTOCOL_DISTRIBUTION";
+            case "2": return "RESPONSE_TIME";
+            case "3": return "FAILURE_REASONS";
+            case "4": return "WEEKLY_EXECUTION";
+            case "5": return "SUCCESS_RATE";
+            default: return reportType.toUpperCase();
+        }
     }
 
     @Override
@@ -182,7 +308,8 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             // 生成文件名
             String filename = "report_" + id + "_" + System.currentTimeMillis() + "." + format.toLowerCase();
             File exportFile = new File(exportDir, filename);
-            
+
+            try {
             // 根据格式生成文件
             switch (format.toLowerCase()) {
                 case "pdf":
@@ -203,7 +330,10 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 default:
                     throw new IllegalArgumentException("不支持的导出格式：" + format);
             }
-            
+            }catch (Exception e) {
+                throw new RuntimeException("导出报告文件失败：" + e.getMessage(), e);
+            }
+
             // 更新导出统计
             report.setExportCount(report.getExportCount() + 1);
             report.setLastExportTime(LocalDateTime.now());
@@ -223,7 +353,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     /**
      * 生成 PDF 报告（支持中文，不乱码）
      */
-    private void generatePdfReport(Report report, File exportFile, String pageRange) throws Exception {
+    public void generatePdfReport(Report report, File exportFile, String pageRange) {
         try (PDDocument document = new PDDocument()) {
             PDPage page = new PDPage();
             document.addPage(page);
@@ -232,36 +362,56 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 // ========= 关键：加载支持中文的字体 =========
                 PDType0Font font = PDType0Font.load(document, getClass().getResourceAsStream("/fonts/simhei.ttf"));
 
-                // 开始写内容
+                // ========= 报告标题 =========
                 contentStream.beginText();
-                contentStream.setFont(font, 12); // 必须用支持中文的字体
+                contentStream.setFont(font, 16); // 标题字体大小
                 contentStream.newLineAtOffset(50, 750);
+                contentStream.showText("测试报告详情");
+                contentStream.endText();
 
-                // 你的报告内容（这里可以写任意中文！）使用Report对象的内容
-                contentStream.showText("报告名称：" + report.getName());
-                contentStream.newLineAtOffset(0, -20);
-                contentStream.showText("生成时间：" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-                contentStream.newLineAtOffset(0, -20);
-                contentStream.showText("数据范围：" + pageRange);
-                contentStream.newLineAtOffset(0, -20);
+                // ========= 报告基本信息 =========
+                contentStream.beginText();
+                contentStream.setFont(font, 12); // 正文字体大小
+                contentStream.newLineAtOffset(50, 720);
                 
+                // 报告名称（加粗效果）
+                contentStream.setFont(font, 14);
+                contentStream.showText("报告名称：");
+                contentStream.setFont(font, 12);
+                contentStream.showText(report.getName() != null ? report.getName() : "未命名");
+                contentStream.newLineAtOffset(0, -25);
+                
+                // 生成时间
+                contentStream.showText("生成时间：" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                contentStream.newLineAtOffset(0, -25);
+                
+                // 数据范围
+                contentStream.showText("数据范围：" + pageRange);
+                contentStream.newLineAtOffset(0, -25);
+                
+                // 报告描述
                 if (report.getDescription() != null && !report.getDescription().trim().isEmpty()) {
                     contentStream.showText("报告描述：" + report.getDescription());
-                    contentStream.newLineAtOffset(0, -20);
+                    contentStream.newLineAtOffset(0, -25);
                 }
                 
-                if (report.getReportType() != null) {
-                    contentStream.showText("报告类型：" + report.getReportType());
-                    contentStream.newLineAtOffset(0, -20);
-                }
+                // 报告类型（中文翻译）
+                contentStream.setFont(font, 14);
+                contentStream.showText("报告类型：");
+                contentStream.setFont(font, 12);
+                contentStream.showText(report.getReportType() != null ? getReadableReportType(report.getReportType()) : "未知类型");
+                contentStream.newLineAtOffset(0, -25);
                 
-                if (report.getStatus() != null) {
-                    contentStream.showText("报告状态：" + report.getStatus());
-                    contentStream.newLineAtOffset(0, -20);
-                }
+                // 报告状态（中文翻译）
+                contentStream.setFont(font, 14);
+                contentStream.showText("报告状态：");
+                contentStream.setFont(font, 12);
+                contentStream.showText(report.getStatus() != null ? getReadableReportStatus(report.getStatus()) : "未知状态");
+                contentStream.newLineAtOffset(0, -25);
                 
+                // 报告ID
                 contentStream.showText("报告ID：" + report.getId());
-                contentStream.newLineAtOffset(0, -20);
+                contentStream.newLineAtOffset(0, -25);
                 
                 // 分隔线
                 contentStream.endText();
@@ -278,12 +428,13 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 
                 String reportContent = buildReportContent(report, pageRange);
                 if (reportContent != null && !reportContent.trim().isEmpty()) {
-                    String[] lines = wrapText(reportContent, 80);
+                    String[] allLines = reportContent.split("\\r?\\n");
                     int y = 560;
-                    for (String line : lines) {
-                        if (y < 50) break;  // 页面底部限制
+                    for (String line : allLines) {
+                        if (y < 50) break;
+                        if (line.trim().isEmpty()) continue;
                         contentStream.newLineAtOffset(0, -15);
-                        contentStream.showText(line);
+                        contentStream.showText(line.trim());
                         y -= 15;
                     }
                 } else {
@@ -292,10 +443,14 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 }
 
                 contentStream.endText();
+            }catch (Exception e) {
+                throw new RuntimeException("导出报告文件失败：" + e.getMessage(), e);
             }
 
             // 输出文件
             document.save(new FileOutputStream(exportFile));
+        }catch (Exception e) {
+            throw new RuntimeException("导出报告文件失败：" + e.getMessage(), e);
         }
     }
 
@@ -553,20 +708,396 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             writer.write("}\n");
         }
     }
+
+    private String buildReportContent(Report report, String pageRange) {
+        StringBuilder readableContent = new StringBuilder();
+
+        // 1. 报告基本信息（全部中文，一行一句话）
+        readableContent.append("=== 报告基本信息 ===\n");
+        readableContent.append("报告名称：").append(report.getName() != null ? report.getName() : "未命名").append("\n");
+        readableContent.append("报告描述：").append(report.getDescription() != null ? report.getDescription() : "无描述").append("\n");
+        readableContent.append("报告类型：").append(getReadableReportType(report.getReportType())).append("\n");
+        readableContent.append("报告状态：").append(getReadableReportStatus(report.getStatus())).append("\n");
+        readableContent.append("生成方式：").append(getReadableGenerateType(report.getGenerateType())).append("\n");
+        readableContent.append("创建时间：").append(report.getCreateTime() != null ?
+                report.getCreateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "未知").append("\n");
+        readableContent.append("导出次数：").append(report.getExportCount() != null ? report.getExportCount() : 0).append("\n");
+        readableContent.append("\n");
+
+        // 2. 报告内容（JSON解析为易读格式，一行一句话）
+        String content = report.getContent();
+        if (content != null && !content.trim().isEmpty()) {
+            readableContent.append("=== 报告统计内容 ===\n");
+            try {
+                // 尝试解析JSON内容
+                Object jsonContent = parseJsonContent(content);
+                String formattedContent = formatJsonToReadable(jsonContent);
+                // 将内容按句子分行，一行一句话
+                readableContent.append(formatContentToSentences(formattedContent));
+            } catch (Exception e) {
+                // 如果JSON解析失败，显示原始内容
+                readableContent.append("原始JSON内容：\n");
+                readableContent.append(content);
+            }
+        } else {
+            readableContent.append("=== 报告统计内容 ===\n");
+            readableContent.append("报告内容为空\n");
+        }
+
+        return readableContent.toString();
+    }
+
+    // ===================== 核心：JSON 字段名 自动 转 中文 =====================
+    private void appendFlatJson(com.alibaba.fastjson2.JSONObject json, StringBuilder sb, String prefix) {
+        for (String key : json.keySet()) {
+            Object val = json.get(key);
+            String fullKey = prefix.isEmpty() ? key : prefix + "." + key;
+
+            if (val instanceof com.alibaba.fastjson2.JSONObject) {
+                appendFlatJson((com.alibaba.fastjson2.JSONObject) val, sb, fullKey);
+            } else if (val instanceof com.alibaba.fastjson2.JSONArray) {
+                com.alibaba.fastjson2.JSONArray array = (com.alibaba.fastjson2.JSONArray) val;
+                for (int i = 0; i < array.size(); i++) {
+                    Object item = array.get(i);
+                    if (item instanceof com.alibaba.fastjson2.JSONObject) {
+                        appendFlatJson((com.alibaba.fastjson2.JSONObject) item, sb, fullKey + "[" + i + "]");
+                    }
+                }
+            } else {
+                // 👇👇👇 这里自动把英文key转换成中文 👇👇👇
+                String chineseKey = convertToChineseKey(key);
+                sb.append(chineseKey).append("：").append(val).append("\n");
+            }
+        }
+    }
+
+    // ===================== 字段名映射：英文 → 中文（你要的全部在这里） =====================
+    private String convertToChineseKey(String key) {
+        switch (key) {
+            case "minDuration": return "最小耗时";
+            case "totalExecutions": return "总执行次数";
+            case "endDate": return "结束日期";
+            case "startDate": return "开始日期";
+            case "generateTime": return "生成时间";
+            case "overallAvgDuration": return "平均耗时";
+            case "maxDuration": return "最大耗时";
+            case "dataSource": return "数据源";
+            case "dataSourceName": return "数据源名称";
+            case "timeSlot": return "统计时段";
+            case "hourGroup": return "小时分组";
+            case "executionCount": return "执行次数";
+            case "avgDuration": return "平均耗时";
+            default: return key; // 没有匹配的返回原key
+        }
+    }
     
     /**
-     * 构建报告内容
+     * 获取可读的报告类型
      */
-    private String buildReportContent(Report report, String pageRange) {
-        // 根据页面范围过滤内容
-        String content = report.getContent();
-        if (content == null) {
-            return "报告内容为空";
+    private String getReadableReportType(String reportType) {
+        if (reportType == null) return "未知类型";
+        
+        switch (reportType.toUpperCase()) {
+            case "PROTOCOL_DISTRIBUTION": return "协议类型分布统计";
+            case "RESPONSE_TIME": return "响应时间分析";
+            case "FAILURE_REASONS": return "失败原因分析";
+            case "WEEKLY_EXECUTION": return "周执行量统计";
+            case "SUCCESS_RATE": return "成功率分析";
+            case "AUTO_GENERATED": return "自动生成报告";
+            default: return reportType;
+        }
+    }
+    
+
+    /**
+     * 根据时间范围计算开始时间
+     */
+    private LocalDateTime calculateStartTime(String timeRange) {
+        LocalDateTime now = LocalDateTime.now();
+        switch (timeRange.toUpperCase()) {
+            case "TODAY":
+                return now.withHour(0).withMinute(0).withSecond(0).withNano(0);
+            case "WEEK":
+                return now.minusWeeks(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
+            case "MONTH":
+                return now.minusMonths(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
+            default:
+                return now.minusDays(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
+        }
+    }
+
+    /**
+     * 获取可读的报告状态
+     */
+    private String getReadableReportStatus(String status) {
+        if (status == null) return "未知状态";
+        switch (status.toUpperCase()) {
+            case "DRAFT": return "草稿";
+            case "PUBLISHED": return "已发布";
+            case "ARCHIVED": return "已归档";
+            case "SCHEDULED": return "定时任务";
+            default: return status;
+        }
+    }
+    
+    /**
+     * 获取可读的生成方式
+     */
+    private String getReadableGenerateType(String generateType) {
+        if (generateType == null) return "未知方式";
+        
+        switch (generateType.toUpperCase()) {
+            case "AUTO": return "自动生成";
+            case "MANUAL": return "手动创建";
+            default: return generateType;
+        }
+    }
+    
+
+
+    /**
+     * 解析JSON内容（FastJSON版）
+     */
+    private Object parseJsonContent(String content) {
+        try {
+            if (content.trim().startsWith("{")) {
+                return JSON.parseObject(content);
+            } else if (content.trim().startsWith("[")) {
+                return JSON.parseArray(content);
+            } else {
+                throw new RuntimeException("不是标准JSON格式");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("JSON解析失败", e);
+        }
+    }
+
+    /**
+     * 将JSON格式化为易读的文本（FastJSON版）
+     */
+    private String formatJsonToReadable(Object jsonContent) {
+        StringBuilder result = new StringBuilder();
+
+        if (jsonContent instanceof JSONObject) {
+            // 检查是否为周执行量统计数据
+            if (isWeeklyExecutionData(jsonContent)) {
+                // 周执行量数据特殊处理
+                String weeklyData = formatWeeklyExecutionData((JSONObject) jsonContent);
+                if (!weeklyData.trim().isEmpty()) {
+                    result.append(weeklyData);
+                } else {
+                    // 如果没有周执行量数据，使用默认格式化
+                    formatJsonObject((JSONObject) jsonContent, result, 0);
+                }
+            } else {
+                // 其他数据使用默认格式化
+                formatJsonObject((JSONObject) jsonContent, result, 0);
+            }
+        } else if (jsonContent instanceof JSONArray) {
+            formatJsonArray((JSONArray) jsonContent, result, 0);
+        }
+
+        return result.toString();
+    }
+
+    /**
+     * 检查是否为周执行量统计数据
+     */
+    private boolean isWeeklyExecutionData(Object jsonContent) {
+        if (jsonContent instanceof JSONObject) {
+            JSONObject obj = (JSONObject) jsonContent;
+            // 检查是否包含dayNameCn字段
+            for (String key : obj.keySet()) {
+                if (key.contains("dayNameCn")) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 格式化周执行量数据（中文周几、执行次数，然后换行）
+     */
+    private String formatWeeklyExecutionData(Object jsonContent) {
+        if (!(jsonContent instanceof JSONObject)) {
+            return "";
         }
         
-        // 这里可以实现更复杂的内容过滤逻辑
-        // 目前简单返回所有内容
-        return content;
+        JSONObject obj = (JSONObject) jsonContent;
+        StringBuilder result = new StringBuilder();
+        
+        // 检查数据结构，可能是包含dayNameCn和executionCount的数组
+        if (obj.containsKey("dayNameCn") && obj.containsKey("执行次数")) {
+            // 直接使用dayNameCn和执行次数
+            String dayNameCn = obj.getString("dayNameCn");
+            Integer executionCount = obj.getInteger("执行次数");
+            
+            if (dayNameCn != null) {
+                result.append(dayNameCn).append(" 执行次数 ").append(executionCount != null ? executionCount : 0).append("\n");
+            }
+        } else {
+            // 遍历所有字段，查找dayNameCn和对应的执行次数
+            for (String key : obj.keySet()) {
+                if (key.contains("dayNameCn")) {
+                    String dayNameCn = obj.getString(key);
+                    if (dayNameCn != null) {
+                        // 查找对应的执行次数字段
+                        String countKey = key.replace("dayNameCn", "执行次数");
+                        Integer executionCount = obj.getInteger(countKey);
+                        
+                        result.append(dayNameCn).append(" 执行次数 ").append(executionCount != null ? executionCount : 0).append("\n");
+                    }
+                }
+            }
+        }
+        
+        return result.toString();
+    }
+
+    /**
+     * 将英文周几转换为中文
+     */
+    private String getChineseWeekDay(String weekDay) {
+        if (weekDay == null) return "未知";
+        
+        switch (weekDay.toUpperCase()) {
+            case "MONDAY": return "周一";
+            case "TUESDAY": return "周二";
+            case "WEDNESDAY": return "周三";
+            case "THURSDAY": return "周四";
+            case "FRIDAY": return "周五";
+            case "SATURDAY": return "周六";
+            case "SUNDAY": return "周日";
+            default: return weekDay;
+        }
+    }
+
+    /**
+     * 将内容按句子分行，一行一句话
+     */
+    private String formatContentToSentences(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return "";
+        }
+        
+        StringBuilder result = new StringBuilder();
+        
+        // 按句子分割：句号、问号、感叹号、冒号、分号、换行符
+        String[] sentences = content.split("([。！？：；]|\\n)");
+        
+        for (String sentence : sentences) {
+            String trimmedSentence = sentence.trim();
+            if (!trimmedSentence.isEmpty()) {
+                // 移除多余的空白字符
+                String cleanSentence = trimmedSentence.replaceAll("\\s+", " ");
+                result.append(cleanSentence).append("\n");
+            }
+        }
+        
+        // 如果没有找到句子分隔符，按逗号分割
+        if (result.length() == 0) {
+            String[] phrases = content.split("，");
+            for (String phrase : phrases) {
+                String trimmedPhrase = phrase.trim();
+                if (!trimmedPhrase.isEmpty()) {
+                    String cleanPhrase = trimmedPhrase.replaceAll("\\s+", " ");
+                    result.append(cleanPhrase).append("\n");
+                }
+            }
+        }
+        
+        // 如果还是没有内容，按原样返回
+        if (result.length() == 0) {
+            return content;
+        }
+        
+        return result.toString();
+    }
+
+    /**
+     * 格式化JSON对象（FastJSON）
+     */
+    private void formatJsonObject(JSONObject jsonObject, StringBuilder result, int indent) {
+        String indentStr = "  ".repeat(indent);
+
+        for (String key : jsonObject.keySet()) {
+            Object value = jsonObject.get(key);
+            String readableKey = getReadableKey(key);
+
+            if (value instanceof JSONObject) {
+                result.append(indentStr).append(readableKey).append(":\n");
+                formatJsonObject((JSONObject) value, result, indent + 1);
+            } else if (value instanceof JSONArray) {
+                result.append(indentStr).append(readableKey).append(":\n");
+                formatJsonArray((JSONArray) value, result, indent + 1);
+            } else {
+                result.append(indentStr).append(readableKey).append(": ").append(formatValue(value)).append("\n");
+            }
+        }
+    }
+
+    /**
+     * 格式化JSON数组（FastJSON）
+     */
+    private void formatJsonArray(JSONArray jsonArray, StringBuilder result, int indent) {
+        String indentStr = "  ".repeat(indent);
+
+        for (int i = 0; i < jsonArray.size(); i++) {
+            Object value = jsonArray.get(i);
+
+            if (value instanceof JSONObject) {
+                result.append(indentStr).append("[").append(i + 1).append("]\n");
+                formatJsonObject((JSONObject) value, result, indent + 1);
+            } else if (value instanceof JSONArray) {
+                result.append(indentStr).append("[").append(i + 1).append("]\n");
+                formatJsonArray((JSONArray) value, result, indent + 1);
+            } else {
+                result.append(indentStr).append("[").append(i + 1).append("] ").append(formatValue(value)).append("\n");
+            }
+        }
+    }
+    
+    /**
+     * 获取可读的键名
+     */
+    private String getReadableKey(String key) {
+        switch (key.toLowerCase()) {
+            case "categorydata": return "分类数据";
+            case "category": return "分类";
+            case "categoryname": return "分类名称";
+            case "protocolcount": return "协议数量";
+            case "totalprotocolcount": return "总协议数量";
+            case "avgduration": return "平均响应时间(ms)";
+            case "maxduration": return "最大响应时间(ms)";
+            case "minduration": return "最小响应时间(ms)";
+            case "executioncount": return "执行次数";
+            case "failurereason": return "失败原因";
+            case "failurecount": return "失败次数";
+            case "errorcode": return "错误代码";
+            case "successrate": return "成功率(%)";
+            case "failurerate": return "失败率(%)";
+            case "timeslot": return "时间区间";
+            case "hourgroup": return "小时分组";
+            default: return key;
+        }
+    }
+    
+    /**
+     * 格式化值
+     */
+    private String formatValue(Object value) {
+        if (value == null) return "空";
+        if (value instanceof Number) {
+            // 数字格式化
+            Number number = (Number) value;
+            if (number.doubleValue() == number.intValue()) {
+                return String.valueOf(number.intValue());
+            } else {
+                return String.format("%.2f", number.doubleValue());
+            }
+        }
+        return value.toString();
     }
     
     /**

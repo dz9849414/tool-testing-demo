@@ -17,31 +17,31 @@ public interface SysPermissionMapper extends BaseMapper<SysPermission> {
     /**
      * 根据权限编码查找权限
      */
-    @Select("SELECT * FROM sys_permission WHERE code = #{code}")
+    @Select("SELECT * FROM pdm_tool_sys_permission WHERE code = #{code}")
     SysPermission selectByCode(@Param("code") String code);
     
     /**
      * 根据模块名称查找权限列表
      */
-    @Select("SELECT * FROM sys_permission WHERE module = #{module}")
+    @Select("SELECT * FROM pdm_tool_sys_permission WHERE module = #{module}")
     List<SysPermission> selectByModule(@Param("module") String module);
     
     /**
      * 根据权限类型查找权限列表
      */
-    @Select("SELECT * FROM sys_permission WHERE type = #{type}")
+    @Select("SELECT * FROM pdm_tool_sys_permission WHERE type = #{type}")
     List<SysPermission> selectByType(@Param("type") String type);
     
     /**
      * 根据父权限ID查找权限列表
      */
-    @Select("SELECT * FROM sys_permission WHERE parent_id = #{parentId}")
+    @Select("SELECT * FROM pdm_tool_sys_permission WHERE parent_id = #{parentId}")
     List<SysPermission> selectByParentId(@Param("parentId") String parentId);
     
     /**
      * 根据权限层级查找权限列表
      */
-    @Select("SELECT * FROM sys_permission WHERE level = #{level}")
+    @Select("SELECT * FROM pdm_tool_sys_permission WHERE level = #{level}")
     List<SysPermission> selectByLevel(@Param("level") Integer level);
     
     /**

@@ -2,11 +2,7 @@ package com.example.tooltestingdemo.service.report;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.dto.common.PageResult;
-import com.example.tooltestingdemo.dto.report.AutoReportConfigDTO;
-import com.example.tooltestingdemo.dto.report.ReportDTO;
-import com.example.tooltestingdemo.dto.report.ReportPreviewDTO;
-import com.example.tooltestingdemo.dto.report.TestResultTableDTO;
-import com.example.tooltestingdemo.dto.report.TimelineNodeDTO;
+import com.example.tooltestingdemo.dto.report.*;
 import com.example.tooltestingdemo.entity.report.Report;
 
 import java.io.File;
@@ -41,11 +37,26 @@ public interface IReportService extends IService<Report> {
      * 获取报告详情
      */
     ReportDTO getReportDetail(Long id);
-    
+
+     void generatePdfReport(Report report, File exportFile, String pageRange);
+
     /**
-     * 自动生成报告
+     * 自动生成统计报告
+     * 
+     * @return 报告ID
      */
     Long autoGenerateReport(String reportType, String dataSourceIds);
+
+
+
+    /**
+     * 获取失败时间线
+     * 
+     * @param templateId 模板ID
+     * @param timeRange 时间范围：TODAY/WEEK/MONTH
+     * @return 失败时间线数据
+     */
+    java.util.List<FailureTimelineDTO> getFailureTimeline(Long templateId, String timeRange);
     
     /**
      * 预览报告

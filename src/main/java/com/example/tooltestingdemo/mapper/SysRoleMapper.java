@@ -17,26 +17,26 @@ public interface SysRoleMapper extends BaseMapper<SysRole> {
     /**
      * 根据角色名称查找角色
      */
-    @Select("SELECT * FROM sys_role WHERE name = #{name}")
+    @Select("SELECT * FROM pdm_tool_sys_role WHERE name = #{name}")
     SysRole selectByName(@Param("name") String name);
     
     /**
      * 根据角色类型查找角色列表
      */
-    @Select("SELECT * FROM sys_role WHERE type = #{type}")
+    @Select("SELECT * FROM pdm_tool_sys_role WHERE type = #{type}")
     List<SysRole> selectByType(@Param("type") String type);
     
     /**
      * 根据作用域ID查找角色列表
      */
-    @Select("SELECT * FROM sys_role WHERE scope_id = #{scopeId}")
+    @Select("SELECT * FROM pdm_tool_sys_role WHERE scope_id = #{scopeId}")
     List<SysRole> selectByScopeId(@Param("scopeId") String scopeId);
     
     /**
      * 根据角色名称和作用域ID查找角色列表
      */
     @Select({"<script>",
-            "SELECT * FROM sys_role WHERE name = #{name}",
+            "SELECT * FROM pdm_tool_sys_role WHERE name = #{name}",
             "<if test='scopeId != null'>",
             "AND scope_id = #{scopeId}",
             "</if>",

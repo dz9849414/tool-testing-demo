@@ -23,7 +23,7 @@ public interface TemplateStatisticsMapper {
     @Select("SELECT template_id, COUNT(*) as usage_count, " +
             "SUM(success) as success_count, " +
             "AVG(duration_ms) as avg_duration " +
-            "FROM template_job_log " +
+            "FROM pdm_tool_template_job_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "GROUP BY template_id")
     List<Map<String, Object>> getTemplateUsageStats(@Param("startTime") LocalDateTime startTime,
@@ -38,7 +38,7 @@ public interface TemplateStatisticsMapper {
             "AVG(duration_ms) as avg_duration, " +
             "MAX(duration_ms) as max_duration, " +
             "MIN(duration_ms) as min_duration " +
-            "FROM template_job_log " +
+            "FROM pdm_tool_template_job_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "GROUP BY DATE(create_time) " +
             "ORDER BY date")
@@ -54,7 +54,7 @@ public interface TemplateStatisticsMapper {
             "AVG(duration_ms) as avg_duration, " +
             "MAX(duration_ms) as max_duration, " +
             "MIN(duration_ms) as min_duration " +
-            "FROM template_job_log " +
+            "FROM pdm_tool_template_job_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "AND template_id = #{templateId} " +
             "GROUP BY DATE(create_time) " +
@@ -70,7 +70,7 @@ public interface TemplateStatisticsMapper {
             "COUNT(*) as total_count, " +
             "SUM(success) as success_count, " +
             "ROUND(SUM(success) * 100.0 / COUNT(*), 2) as success_rate " +
-            "FROM template_job_log " +
+            "FROM pdm_tool_template_job_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "GROUP BY job_id")
     List<Map<String, Object>> getJobSuccessRateStats(@Param("startTime") LocalDateTime startTime,
@@ -81,7 +81,7 @@ public interface TemplateStatisticsMapper {
      */
     @Select("SELECT DATE(create_time) as date, " +
             "AVG(duration_ms) as avg_duration " +
-            "FROM template_job_log " +
+            "FROM pdm_tool_template_job_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "AND success = 1 " +
             "GROUP BY DATE(create_time) " +
@@ -98,7 +98,7 @@ public interface TemplateStatisticsMapper {
             "COUNT(*) as batch_count, " +
             "SUM(CASE WHEN status = 'SUCCESS' THEN 1 ELSE 0 END) as success_count, " +
             "ROUND(SUM(CASE WHEN status = 'SUCCESS' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as success_rate " +
-            "FROM template_job_batch " +
+            "FROM pdm_tool_template_job_batch " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "GROUP BY DATE(create_time) " +
             "ORDER BY date")
@@ -109,7 +109,7 @@ public interface TemplateStatisticsMapper {
      * 获取批量任务执行详情
      */
     @Select("SELECT id, status, create_time, update_time " +
-            "FROM template_job_batch " +
+            "FROM pdm_tool_template_job_batch " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "ORDER BY create_time DESC")
     List<Map<String, Object>> getBatchJobDetails(@Param("startTime") LocalDateTime startTime,
@@ -127,7 +127,7 @@ public interface TemplateStatisticsMapper {
             "AVG(duration_ms) as avg_duration, " +
             "MAX(duration_ms) as max_duration, " +
             "MIN(duration_ms) as min_duration " +
-            "FROM template_execute_log " +
+            "FROM pdm_tool_template_execute_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "GROUP BY execute_type")
     List<Map<String, Object>> getUnifiedExecutionStats(@Param("startTime") LocalDateTime startTime,
@@ -141,7 +141,7 @@ public interface TemplateStatisticsMapper {
             "COUNT(*) as total_count, " +
             "SUM(success) as success_count, " +
             "AVG(duration_ms) as avg_duration " +
-            "FROM template_execute_log " +
+            "FROM pdm_tool_template_execute_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "GROUP BY DATE(create_time), execute_type " +
             "ORDER BY date, execute_type")
@@ -155,7 +155,7 @@ public interface TemplateStatisticsMapper {
             "COUNT(*) as total_count, " +
             "SUM(success) as success_count, " +
             "AVG(duration_ms) as avg_duration " +
-            "FROM template_execute_log " +
+            "FROM pdm_tool_template_execute_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "AND template_id = #{templateId} " +
             "GROUP BY execute_type")
@@ -169,10 +169,10 @@ public interface TemplateStatisticsMapper {
      * 根据任务ID列表获取每个任务的最新日志记录
      */
     @Select("<script>" +
-            "SELECT t1.* FROM template_job_log t1 " +
+            "SELECT t1.* FROM pdm_tool_template_job_log t1 " +
             "INNER JOIN (" +
             "    SELECT job_id, MAX(create_time) as max_create_time " +
-            "    FROM template_job_log " +
+            "    FROM pdm_tool_template_job_log " +
             "    WHERE job_id IN " +
             "    <foreach collection='jobIds' item='jobId' open='(' separator=',' close=')'>" +
             "        #{jobId}" +
@@ -186,7 +186,7 @@ public interface TemplateStatisticsMapper {
     /**
      * 根据任务ID获取最近的日志记录
      */
-    @Select("SELECT * FROM template_job_log " +
+    @Select("SELECT * FROM pdm_tool_template_job_log " +
             "WHERE job_id = #{jobId} " +
             "ORDER BY create_time DESC " +
             "LIMIT #{limit}")
@@ -201,7 +201,7 @@ public interface TemplateStatisticsMapper {
             "AVG(duration_ms) as avg_duration, " +
             "MAX(duration_ms) as max_duration, " +
             "MIN(duration_ms) as min_duration " +
-            "FROM template_job_log " +
+            "FROM pdm_tool_template_job_log " +
             "WHERE job_id = #{jobId} " +
             "AND create_time BETWEEN #{startTime} AND #{endTime}")
     Map<String, Object> getJobExecutionStats(@Param("jobId") Long jobId,
@@ -215,7 +215,7 @@ public interface TemplateStatisticsMapper {
             "COUNT(*) as total_count, " +
             "SUM(success) as success_count, " +
             "AVG(duration_ms) as avg_duration " +
-            "FROM template_job_log " +
+            "FROM pdm_tool_template_job_log " +
             "WHERE template_id = #{templateId} " +
             "AND create_time BETWEEN #{startTime} AND #{endTime}")
     Map<String, Object> getTemplateExecutionStats(@Param("templateId") Long templateId,
@@ -234,9 +234,8 @@ public interface TemplateStatisticsMapper {
             "AVG(duration_ms) as avg_duration, " +
             "MAX(duration_ms) as max_duration, " +
             "MIN(duration_ms) as min_duration " +
-            "FROM template_job_log " +
-            "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
-            "AND success = 1 " +
+            "FROM pdm_tool_template_job_log " +
+
             "GROUP BY DATE(create_time), FLOOR(HOUR(create_time) / 2) * 2, time_slot " +
             "ORDER BY time_slot")
     List<Map<String, Object>> getHourlyResponseTimeStats(@Param("startTime") LocalDateTime startTime,
@@ -253,7 +252,7 @@ public interface TemplateStatisticsMapper {
             "AVG(duration_ms) as avg_duration, " +
             "MAX(duration_ms) as max_duration, " +
             "MIN(duration_ms) as min_duration " +
-            "FROM template_execute_log " +
+            "FROM pdm_tool_template_execute_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "AND success = 1 " +
             "GROUP BY DATE(create_time), FLOOR(HOUR(create_time) / 2) * 2, execute_type, time_slot " +
@@ -270,7 +269,7 @@ public interface TemplateStatisticsMapper {
             "batch_type, " +
             "COUNT(*) as execution_count, " +
             "AVG(response_time) as avg_response_time " +
-            "FROM template_job_batch " +
+            "FROM pdm_tool_template_job_batch " +
             "WHERE create_time BETWEEN ? AND ? " +
             "AND is_deleted = 0 " +
             "AND response_time IS NOT NULL " +
@@ -288,7 +287,7 @@ public interface TemplateStatisticsMapper {
             "DAYNAME(create_time) as day_name, " +
             "DAYOFWEEK(create_time) as day_of_week, " +
             "COUNT(*) as execution_count " +
-            "FROM template_job_log " +
+            "FROM pdm_tool_template_job_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "AND success = 1 " +
             "GROUP BY DAYNAME(create_time), DAYOFWEEK(create_time) " +
@@ -304,7 +303,7 @@ public interface TemplateStatisticsMapper {
             "DAYOFWEEK(create_time) as day_of_week, " +
             "execute_type, " +
             "COUNT(*) as execution_count " +
-            "FROM template_execute_log " +
+            "FROM pdm_tool_template_execute_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
             "AND success = 1 " +
             "GROUP BY DAYNAME(create_time), DAYOFWEEK(create_time), execute_type " +
@@ -322,7 +321,7 @@ public interface TemplateStatisticsMapper {
             "SUM(success) as success_count, " +
             "COUNT(*) - SUM(success) as failure_count, " +
             "ROUND(SUM(success) * 100.0 / COUNT(*), 2) as success_rate " +
-            "FROM template_job_log " +
+            "FROM pdm_tool_template_job_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime}")
     Map<String, Object> getSuccessRateStats(@Param("startTime") LocalDateTime startTime,
                                            @Param("endTime") LocalDateTime endTime);
@@ -335,7 +334,7 @@ public interface TemplateStatisticsMapper {
             "SUM(success) as success_count, " +
             "COUNT(*) - SUM(success) as failure_count, " +
             "ROUND(SUM(success) * 100.0 / COUNT(*), 2) as success_rate " +
-            "FROM template_execute_log " +
+            "FROM pdm_tool_template_execute_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime}")
     Map<String, Object> getUnifiedSuccessRateStats(@Param("startTime") LocalDateTime startTime,
                                                   @Param("endTime") LocalDateTime endTime);
@@ -348,7 +347,7 @@ public interface TemplateStatisticsMapper {
             "SUM(CASE WHEN status = 'SUCCESS' THEN 1 ELSE 0 END) as success_count, " +
             "COUNT(*) - SUM(CASE WHEN status = 'SUCCESS' THEN 1 ELSE 0 END) as failure_count, " +
             "ROUND(SUM(CASE WHEN status = 'SUCCESS' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as success_rate " +
-            "FROM template_job_batch " +
+            "FROM pdm_tool_template_job_batch " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime}")
     Map<String, Object> getBatchSuccessRateStats(@Param("startTime") LocalDateTime startTime,
                                                 @Param("endTime") LocalDateTime endTime);
@@ -359,15 +358,12 @@ public interface TemplateStatisticsMapper {
      * 获取协议类型分布统计（按协议分类）
      */
     @Select("SELECT " +
-            "pt.protocol_name as category, " +
-            "COUNT(*) as usage_count, " +
-            "SUM(CASE WHEN ptr.error_code = '200' THEN 1 ELSE 0 END) as success_count " +
-            "FROM protocol_test_record ptr " +
-            "INNER JOIN protocol_type pt ON ptr.protocol_id = pt.id " +
-            "WHERE ptr.create_time BETWEEN #{startTime} AND #{endTime} " +
-            "AND ptr.is_deleted = 0 AND pt.is_deleted = 0 " +
-            "GROUP BY pt.protocol_name " +
-            "ORDER BY usage_count DESC")
+            "protocol_name as category, " +
+            "COUNT(*) as protocol_count " +
+            "FROM pdm_tool_protocol_type " +
+            "WHERE is_deleted = 0 " +
+            "GROUP BY protocol_name " +
+            "ORDER BY protocol_count DESC")
     List<Map<String, Object>> getProtocolCategoryStats(@Param("startTime") LocalDateTime startTime,
                                                       @Param("endTime") LocalDateTime endTime);
 
@@ -380,8 +376,8 @@ public interface TemplateStatisticsMapper {
             "pt.protocol_name as category, " +
             "COUNT(*) as usage_count, " +
             "SUM(CASE WHEN ptr.response_code = '200' THEN 1 ELSE 0 END) as success_count " +
-            "FROM protocol_test_record ptr " +
-            "INNER JOIN protocol_type pt ON ptr.protocol_id = pt.id " +
+            "FROM pdm_tool_protocol_test_record ptr " +
+            "INNER JOIN pdm_tool_protocol_type pt ON ptr.protocol_id = pt.id " +
             "WHERE ptr.create_time BETWEEN #{startTime} AND #{endTime} " +
             "AND ptr.is_deleted = 0 AND pt.is_deleted = 0 " +
             "GROUP BY pt.protocol_code, pt.protocol_name " +
@@ -396,7 +392,7 @@ public interface TemplateStatisticsMapper {
             "ptr.test_type as test_type, " +
             "COUNT(*) as test_count, " +
             "SUM(CASE WHEN ptr.response_code = '200' THEN 1 ELSE 0 END) as success_count " +
-            "FROM protocol_test_record ptr " +
+            "FROM pdm_tool_protocol_test_record ptr " +
             "WHERE ptr.create_time BETWEEN #{startTime} AND #{endTime} " +
             "AND ptr.is_deleted = 0 " +
             "GROUP BY ptr.test_type " +
@@ -408,22 +404,38 @@ public interface TemplateStatisticsMapper {
      * 获取前5的失败原因统计
      */
     @Select("SELECT " +
-            "error_message as failure_reason, " +
-            "COUNT(*) as failure_count, " +
-            "error_code as error_code, " +
-            "protocol_id, " +
-            "(SELECT protocol_name FROM protocol_type WHERE id = ptr.protocol_id) as protocol_name " +
-            "FROM protocol_test_record ptr " +
-            "WHERE ptr.create_time BETWEEN #{startTime} AND #{endTime} " +
-            "AND ptr.is_deleted = 0 " +
-            "AND ptr.error_code != '200' " +
-            "AND error_message IS NOT NULL " +
-            "AND error_message != '' " +
-            "GROUP BY error_message, error_code, protocol_id " +
+            "CASE " +
+            "WHEN JSON_EXTRACT(execute_result, '$.message') IS NOT NULL THEN JSON_UNQUOTE(JSON_EXTRACT(execute_result, '$.message')) " +
+            "ELSE '未知错误' " +
+            "END as failure_reason, " +
+            "COUNT(*) AS failure_count, " +
+            "CASE " +
+            "WHEN JSON_EXTRACT(execute_result, '$.statusCode') IS NOT NULL THEN JSON_UNQUOTE(JSON_EXTRACT(execute_result, '$.statusCode')) " +
+            "ELSE '0' " +
+            "END as error_code " +
+            "FROM pdm_tool_template_execute_log " +
+            "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
+            "AND is_deleted = 0 " +
+            "AND success = 0 " +
+            "AND execute_result IS NOT NULL " +
+            "AND JSON_EXTRACT(execute_result, '$.message') IS NOT NULL " +
+            "GROUP BY error_code, failure_reason " +
             "ORDER BY failure_count DESC " +
             "LIMIT 5")
     List<Map<String, Object>> getTopFailureReasons(@Param("startTime") LocalDateTime startTime,
                                                   @Param("endTime") LocalDateTime endTime);
+
+    /**
+     * 获取失败时间线数据
+     */
+    List<Map<String, Object>> getFailureTimelineData(@Param("templateId") Long templateId, 
+                                                     @Param("startTime") LocalDateTime startTime, 
+                                                     @Param("endTime") LocalDateTime endTime);
+
+    /**
+     * 获取失败原因统计报告（简化格式）
+     */
+    List<Map<String, Object>> getTopFailureReasonsReportSimple(@Param("startTime") String startTime, @Param("endTime") String endTime);
 
     /**
      * 获取批量任务的前5失败原因统计
@@ -444,7 +456,7 @@ public interface TemplateStatisticsMapper {
             "END as error_code, " +
             "NULL as protocol_id, " +
             "'批量任务' as protocol_name " +
-            "FROM template_job_batch tjb " +
+            "FROM pdm_tool_template_job_batch tjb " +
             "WHERE tjb.create_time BETWEEN #{startTime} AND #{endTime} " +
             "AND tjb.status = 'FAILED' " +
             "AND tjb.result IS NOT NULL " +

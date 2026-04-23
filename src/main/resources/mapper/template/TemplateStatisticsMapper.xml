@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateStatisticsMapper">
+
+    <!-- 获取失败时间线数据 -->
+    <select id="getFailureTimelineData" resultType="java.util.HashMap">
+        SELECT 
+            tel.create_time,
+            tel.template_name,
+            tel.duration_ms,
+            tel.execute_result
+        FROM pdm_tool_template_execute_log tel
+        WHERE tel.template_id = #{templateId}
+          AND tel.success = false
+          AND tel.create_time BETWEEN #{startTime} AND #{endTime}
+        ORDER BY tel.create_time ASC
+    </select>
+
+</mapper>
