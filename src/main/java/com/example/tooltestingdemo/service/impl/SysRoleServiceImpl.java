@@ -48,7 +48,23 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         queryWrapper.eq(SysRole::getType, type);
         return roleMapper.selectPage(page, queryWrapper);
     }
-    
+
+    @Override
+    public Page<SysRole> getRolesByPageWithSearch(Page<SysRole> page, String name) {
+        LambdaQueryWrapper<SysRole> queryWrapper = new LambdaQueryWrapper<>();
+        
+        // 如果提供了名称参数，进行模糊查询
+        if (name != null && !name.trim().isEmpty()) {
+            queryWrapper.like(SysRole::getName, name.trim());
+        }
+        
+        // 按创建时间倒序排列
+        queryWrapper.orderByDesc(SysRole::getCreateTime);
+        
+        // 执行分页查询
+        return this.page(page, queryWrapper);
+    }
+
     @Override
     public List<SysRole> findByScopeId(String scopeId) {
         return roleMapper.selectByScopeId(scopeId);

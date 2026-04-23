@@ -23,9 +23,14 @@ public interface SysRoleService extends IService<SysRole> {
     List<SysRole> findByType(String type);
     
     /**
-     * 分页根据类型获取角色列表
+     * 根据类型分页查询角色
      */
     Page<SysRole> findByType(Page<SysRole> page, String type);
+
+    /**
+     * 分页查询角色列表（支持模糊查询）
+     */
+    Page<SysRole> getRolesByPageWithSearch(Page<SysRole> page, String name);
     
     /**
      * 根据作用域ID查找角色列表

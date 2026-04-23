@@ -34,17 +34,21 @@ public class SysRoleController {
     private final SysUserService userService;
     
     /**
-     * 获取所有角色列表
+     * 分页获取角色列表（支持模糊查询）
      */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:api')")
-    public Result<List<SysRole>> getAllRoles() {
-        List<SysRole> roles = roleService.list();
+    public Result<Page<SysRole>> getRolesByPage(
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String name) {
+        Page<SysRole> pageParam = new Page<>(pageNum, pageSize);
+        Page<SysRole> roles = roleService.getRolesByPageWithSearch(pageParam, name);
         return Result.success("获取角色列表成功", roles);
     }
     
     /**
-     * 分页获取角色列表
+     * 分页获取角色列表（支持模糊查询）
      */
     @GetMapping("/page")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:api')")
