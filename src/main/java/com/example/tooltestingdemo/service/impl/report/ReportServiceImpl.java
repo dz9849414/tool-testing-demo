@@ -439,8 +439,10 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                     // 先把原始内容处理一遍，过滤、替换、清洗
                     String cleanContent = cleanAndTranslateContent(reportContent);
                     // 保留successCount、totalCount等统计字段，只过滤不需要的字段
-                    cleanContent = cleanContent.replaceAll("(?m)^.*(名称|数值|dataSource).*$", "");
-                    String formattedContent = formatRateReportLines(cleanContent);
+                    cleanContent = cleanContent.replaceAll("(?m)^.*(占比|value:|name:|名称|数值|dataSource).*$", "");
+                    cleanContent = cleanContent.replace("totalCount:", "总执行次数:");
+                    cleanContent = cleanContent.replace("successCount:", "成功次数:");
+//                    String formattedContent = formatRateReportLines(cleanContent);
                     String[] allLines = cleanContent.split("\\r?\\n");
 
                     int y = 560;
@@ -521,15 +523,12 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
      */
     private String cleanAndTranslateContent(String content) {
         if (content == null) return "";
-        // 1. 过滤掉不需要的字段
-        content = content.replaceAll("(?m)^失败次数:.*$", "");
-        content = content.replaceAll("(?m)^failCount\\(%\\):.*$", "");
-        content = content.replaceAll("dayOfWeek: \\d+", "");
-        content = content.replaceAll("dayName: \\w+", "");
-        content = content.replaceAll("\\[\\d+\\]", ""); // 过滤掉 [1] [2] 这种序号
-        content = content.replaceAll("(?m)^.*(successCount|color|summary:|rateData:|percentage:|名称:|数值:|dataSource:).*$", "");
 
-        // 2. 替换英文key为中文
+        // 1. 过滤掉所有不需要的行
+        content = content.replaceAll("(?m)^.*(color|summary|rateData|percentage|名称:|数值:|dataSource:|dayOfWeek|dayName).*$", "");
+        content = content.replaceAll("\\[\\d+\\]", ""); // 去掉序号
+
+        // 2. 英文KEY → 中文（保留 totalCount / successCount / failCount 用于后面提取）
         content = content.replace("endDate:", "结束日期：");
         content = content.replace("startDate:", "开始日期：");
         content = content.replace("weekData:", "周数据：");
@@ -541,49 +540,60 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         content = content.replace("generateTime:", "生成时间：");
         content = content.replace("failRate:", "失败率(%)：");
         content = content.replace("successRate:", "成功率(%)：");
-        content = content.replace("failCount:", "失败次数：");
-        content = content.replace("successCount:", "成功次数：");
-        content = content.replace("totalCount:", "总次数：");
-        content = content.replace("percentage:", "占比(%)：");
-        content = content.replace("name:", "名称：");
-        content = content.replace("value:", "数值：");
 
-        // 3. 去掉多余空格和换行
+        // 3. 清除多余空行
         content = content.replaceAll("\\n\\s*\\n+", "\n").trim();
+
         return formatSuccessRateReport(content);
     }
 
-    /**
-     * 成功率报告专用格式处理：自动插入成功次数/失败次数
-     */
     private String formatSuccessRateReport(String content) {
-        if (!content.contains("成功率(%):") || !content.contains("失败率(%):")) {
-            return content; // 不是成功率报告，直接返回
+        if (!content.contains("成功率(%)：") || !content.contains("失败率(%)：")) {
+            return content;
         }
 
         String[] lines = content.split("\\r?\\n");
         StringBuilder sb = new StringBuilder();
-        int successRate = 0;
-        int failRate = 0;
 
-        // 先提取成功率和失败率的值
+        String totalCount = "0";
+        String successCount = "0";
+        String failCount = "0";
+
+        // ======================================
+        // 动态提取：总次数、成功次数、失败次数
+        // ======================================
         for (String line : lines) {
-            if (line.startsWith("成功率(%):")) {
-                successRate = Integer.parseInt(line.split(":")[1].trim());
-            } else if (line.startsWith("失败率(%):")) {
-                failRate = Integer.parseInt(line.split(":")[1].trim());
+            if (line.startsWith("总次数：")) {
+                totalCount = line.split("：")[1].trim();
+            }
+            if (line.startsWith("成功次数：")) {
+                successCount = line.split("：")[1].trim();
+            }
+            if (line.startsWith("失败次数：")) {
+                failCount = line.split("：")[1].trim();
             }
         }
 
-        // 再重组内容，把次数插入到对应百分比后面
+        // ======================================
+        // 重新组装内容（只保留需要的）
+        // ======================================
         for (String line : lines) {
+            // 过滤掉原始的次数行，避免重复
+            if (line.startsWith("总次数：") || line.startsWith("成功次数：") || line.startsWith("失败次数：")) {
+                continue;
+            }
+
             sb.append(line).append("\n");
-            if (line.startsWith("成功率(%):")) {
-                // 成功率后面插入成功次数
-                sb.append("成功次数:").append(successRate == 100 ? "10" : "0").append("\n");
-            } else if (line.startsWith("失败率(%):")) {
-                // 失败率后面插入失败次数
-                sb.append("失败次数:").append(failRate == 100 ? "10" : "0").append("\n");
+
+            // 在失败率下面显示：失败次数 + 总次数
+            if (line.startsWith("失败率(%)：")) {
+                sb.append("失败次数：").append(failCount).append("\n");
+                sb.append("总次数：").append(totalCount).append("\n");
+            }
+
+            // 在成功率下面显示：成功次数
+            if (line.startsWith("成功率(%)：")) {
+                sb.append("成功次数：").append(successCount).append("\n");
             }
         }
 
