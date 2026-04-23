@@ -97,7 +97,7 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         ProtocolConfig updateEntity = new ProtocolConfig();
         updateEntity.setId(existing.getId());
         updateEntity.setProtocolId(dto.getProtocolId() == null ? existing.getProtocolId() : dto.getProtocolId());
-        updateEntity.setProtocolName(dto.getConfigName() == null ? existing.getConfigName() : dto.getConfigName());
+        updateEntity.setProtocolName(dto.getProtocolName() == null ? existing.getProtocolName() : dto.getProtocolName());
         updateEntity.setConfigName(resolveNullableText(dto.getConfigName(), existing.getConfigName()));
         updateEntity.setTimeoutConnect(dto.getTimeoutConnect() == null ? existing.getTimeoutConnect() : dto.getTimeoutConnect());
         updateEntity.setTimeoutRead(dto.getTimeoutRead() == null ? existing.getTimeoutRead() : dto.getTimeoutRead());
