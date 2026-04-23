@@ -1446,8 +1446,6 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         // 转换为TestResultTableDTO
         List<TestResultTableDTO> testResults = jobLogs.stream()
             .map(this::convertToTestResultTableDTO)
-            .filter(result -> testType == null || testType.equals(result.getTestType()))
-            .filter(result -> status == null || status.equals(result.getStatus()))
             .collect(Collectors.toList());
 
         // 分页处理
