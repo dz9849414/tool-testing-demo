@@ -8,12 +8,17 @@ import com.example.tooltestingdemo.dto.ProtocolConfigQueryDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigStatusUpdateDTO;
 import com.example.tooltestingdemo.entity.protocol.ProtocolConfig;
 import com.example.tooltestingdemo.service.protocol.IProtocolConfigService;
+import com.example.tooltestingdemo.vo.ProtocolConfigImportResultVO;
 import com.example.tooltestingdemo.vo.ProtocolConfigVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 /**
  * <p>
@@ -48,6 +53,46 @@ public class ProtocolConfigController {
     public Result<IPage<ProtocolConfigVO>> list(@ModelAttribute ProtocolConfigQueryDTO dto) {
         IPage<ProtocolConfigVO> page = protocolConfigService.getProtocolConfigList(dto);
         return Result.success(page);
+    }
+
+    /**
+     * 下载协议配置导入模板
+     */
+    @GetMapping("/import/template")
+    @Operation(summary = "下载协议配置导入模板")
+    public void downloadImportTemplate(HttpServletResponse response) throws IOException {
+        protocolConfigService.downloadImportTemplate(response);
+    }
+
+    /**
+     * 导入协议配置
+     */
+    @PostMapping("/import")
+    @Operation(summary = "导入协议配置", description = "按导入模板批量导入，失败时可下载失败原因文件")
+    public Result<ProtocolConfigImportResultVO> importProtocolConfigs(@RequestParam("file") MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            return Result.error("导入文件不能为空");
+        }
+        ProtocolConfigImportResultVO result = protocolConfigService.importProtocolConfigs(file);
+        return Result.success(result.getMessage(), result);
+    }
+
+    /**
+     * 下载导入失败原因文件
+     */
+    @GetMapping("/import/failures/{reportId}")
+    @Operation(summary = "下载导入失败原因文件")
+    public void downloadImportFailureReport(@PathVariable String reportId, HttpServletResponse response) throws IOException {
+        protocolConfigService.downloadImportFailureReport(reportId, response);
+    }
+
+    /**
+     * 导出协议配置
+     */
+    @GetMapping("/export")
+    @Operation(summary = "导出协议配置", description = "按查询条件导出全部协议配置，导出字段与导入字段一致")
+    public void exportProtocolConfigs(@ModelAttribute ProtocolConfigQueryDTO dto, HttpServletResponse response) throws IOException {
+        protocolConfigService.exportProtocolConfigs(dto, response);
     }
 
     /**

@@ -7,7 +7,12 @@ import com.example.tooltestingdemo.dto.ProtocolConfigModifyDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigQueryDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigStatusUpdateDTO;
 import com.example.tooltestingdemo.entity.protocol.ProtocolConfig;
+import com.example.tooltestingdemo.vo.ProtocolConfigImportResultVO;
 import com.example.tooltestingdemo.vo.ProtocolConfigVO;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 /**
  * <p>
@@ -48,4 +53,24 @@ public interface IProtocolConfigService extends IService<ProtocolConfig> {
      * 逻辑删除协议配置。
      */
     void deleteProtocolConfig(Long id);
+
+    /**
+     * 下载协议配置导入模板。
+     */
+    void downloadImportTemplate(HttpServletResponse response) throws IOException;
+
+    /**
+     * 导入协议配置。
+     */
+    ProtocolConfigImportResultVO importProtocolConfigs(MultipartFile file) throws IOException;
+
+    /**
+     * 下载导入失败原因文件。
+     */
+    void downloadImportFailureReport(String reportId, HttpServletResponse response) throws IOException;
+
+    /**
+     * 导出协议配置。
+     */
+    void exportProtocolConfigs(ProtocolConfigQueryDTO dto, HttpServletResponse response) throws IOException;
 }
