@@ -5,6 +5,7 @@
     <select id="selectByJobId" resultType="com.example.tooltestingdemo.entity.template.TemplateJobItem">
         SELECT * FROM pdm_tool_template_job_item
         WHERE job_id = #{jobId}
+        AND (is_deleted = 0 OR is_deleted IS NULL)
         AND (status IS NULL OR status = 1)
         ORDER BY sort_order ASC, id ASC
     </select>

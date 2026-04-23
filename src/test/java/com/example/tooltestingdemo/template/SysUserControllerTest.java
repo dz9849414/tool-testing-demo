@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -48,7 +49,7 @@ class SysUserControllerTest {
     @BeforeEach
     void setUp() {
         testUser1 = new SysUser();
-        testUser1.setId("user_001");
+        testUser1.setId(Long.valueOf("user_001"));
         testUser1.setUsername("zhangsan");
         testUser1.setPassword("$2a$10$encoded_password");
         testUser1.setEmail("zhangsan@example.com");
@@ -61,7 +62,7 @@ class SysUserControllerTest {
         testUser1.setUpdateTime(LocalDateTime.now());
 
         testUser2 = new SysUser();
-        testUser2.setId("user_002");
+        testUser2.setId(Long.valueOf("user_002"));
         testUser2.setUsername("lisi");
         testUser2.setPassword("$2a$10$encoded_password");
         testUser2.setEmail("lisi@example.com");
@@ -74,7 +75,7 @@ class SysUserControllerTest {
         testUser2.setUpdateTime(LocalDateTime.now());
 
         adminUser = new SysUser();
-        adminUser.setId("admin");
+        adminUser.setId(Long.valueOf("admin"));
         adminUser.setUsername("admin");
         adminUser.setPassword("$2a$10$encoded_admin_password");
         adminUser.setEmail("admin@example.com");
@@ -167,7 +168,7 @@ class SysUserControllerTest {
     @WithMockUser(roles = {"ADMIN"})
     @DisplayName("根据ID获取用户信息 - 成功")
     void testGetUserById_Success() throws Exception {
-        when(userService.findById("user_001")).thenReturn(testUser1);
+        when(userService.findById(Long.valueOf("user_001"))).thenReturn(testUser1);
 
         mockMvc.perform(get("/api/users/user_001"))
                 .andExpect(status().isOk())
@@ -181,7 +182,7 @@ class SysUserControllerTest {
     @WithMockUser(username = "user_001")
     @DisplayName("当前用户访问自己的信息 - 成功")
     void testCurrentUserAccessOwnInfo_Success() throws Exception {
-        when(userService.findById("user_001")).thenReturn(testUser1);
+        when(userService.findById(Long.valueOf("user_001"))).thenReturn(testUser1);
 
         mockMvc.perform(get("/api/users/user_001"))
                 .andExpect(status().isOk())
@@ -192,7 +193,7 @@ class SysUserControllerTest {
     @WithMockUser(roles = {"ADMIN"})
     @DisplayName("根据ID获取用户信息 - 用户不存在")
     void testGetUserById_NotFound() throws Exception {
-        when(userService.findById("nonexistent")).thenReturn(null);
+        when(userService.findById(Long.valueOf("nonexistent"))).thenReturn(null);
 
         mockMvc.perform(get("/api/users/nonexistent"))
                 .andExpect(status().isOk())
@@ -208,7 +209,7 @@ class SysUserControllerTest {
         when(userService.existsByEmail("newuser@example.com")).thenReturn(false);
         when(userService.save(any(SysUser.class))).thenAnswer(invocation -> {
             SysUser user = invocation.getArgument(0);
-            user.setId("user_new_001");
+            user.setId(Long.valueOf("user_new_001"));
             return user;
         });
 
@@ -336,7 +337,7 @@ class SysUserControllerTest {
     @DisplayName("更新用户信息 - 邮箱已存在")
     void testUpdateUser_EmailExists() throws Exception {
         SysUser existingUser = new SysUser();
-        existingUser.setId("user_002");
+        existingUser.setId(Long.valueOf("user_002"));
         existingUser.setEmail("updated@example.com");
 
         when(userService.findByEmail("updated@example.com")).thenReturn(existingUser);
@@ -369,8 +370,8 @@ class SysUserControllerTest {
     @WithMockUser(roles = {"ADMIN"})
     @DisplayName("删除用户 - 成功")
     void testDeleteUser_Success() throws Exception {
-        when(userService.findById("user_001")).thenReturn(testUser1);
-        doNothing().when(userService).deleteById("user_001");
+        when(userService.findById(Long.valueOf("user_001"))).thenReturn(testUser1);
+        doNothing().when(userService).deleteById(Long.valueOf("user_001"));
 
         mockMvc.perform(delete("/api/users/user_001")
                         .with(csrf()))
@@ -383,7 +384,7 @@ class SysUserControllerTest {
     @WithMockUser(roles = {"ADMIN"})
     @DisplayName("删除用户 - 用户不存在")
     void testDeleteUser_NotFound() throws Exception {
-        when(userService.findById("nonexistent")).thenReturn(null);
+        when(userService.findById(Long.valueOf("nonexistent"))).thenReturn(null);
 
         mockMvc.perform(delete("/api/users/nonexistent")
                         .with(csrf()))
@@ -501,8 +502,8 @@ class SysUserControllerTest {
     @DisplayName("审批用户注册 - 通过")
     void testApproveUser_Approve() throws Exception {
         when(userService.findByUsername("admin")).thenReturn(adminUser);
-        when(userService.findById("user_001")).thenReturn(testUser1);
-        doNothing().when(userService).updateUserStatusWithApproval(eq("user_001"), eq(1), eq("admin"));
+        when(userService.findById(Long.valueOf("user_001"))).thenReturn(testUser1);
+        doNothing().when(userService).updateUserStatusWithApproval(Long.valueOf(ArgumentMatchers.eq("user_001")), eq(1), Long.valueOf(ArgumentMatchers.eq("admin")));
 
         mockMvc.perform(put("/api/users/user_001/approve")
                         .with(csrf())
@@ -517,8 +518,8 @@ class SysUserControllerTest {
     @DisplayName("审批用户注册 - 拒绝")
     void testApproveUser_Reject() throws Exception {
         when(userService.findByUsername("admin")).thenReturn(adminUser);
-        when(userService.findById("user_001")).thenReturn(testUser1);
-        doNothing().when(userService).updateUserStatusWithApproval(eq("user_001"), eq(0), eq("admin"));
+        when(userService.findById(Long.valueOf("user_001"))).thenReturn(testUser1);
+        doNothing().when(userService).updateUserStatusWithApproval(Long.valueOf(ArgumentMatchers.eq("user_001")), eq(0), Long.valueOf(ArgumentMatchers.eq("admin")));
 
         mockMvc.perform(put("/api/users/user_001/approve")
                         .with(csrf())
@@ -547,7 +548,7 @@ class SysUserControllerTest {
     @DisplayName("审批用户注册 - 用户不存在")
     void testApproveUser_UserNotFound() throws Exception {
         when(userService.findByUsername("admin")).thenReturn(adminUser);
-        when(userService.findById("nonexistent")).thenReturn(null);
+        when(userService.findById(Long.valueOf("nonexistent"))).thenReturn(null);
 
         mockMvc.perform(put("/api/users/nonexistent/approve")
                         .with(csrf())
@@ -561,7 +562,7 @@ class SysUserControllerTest {
     @WithMockUser(username = "user_001")
     @DisplayName("修改用户密码 - 成功")
     void testChangePassword_Success() throws Exception {
-        when(userService.changePassword(eq("user_001"), eq("oldpass"), eq("newpass"))).thenReturn(true);
+        when(userService.changePassword(Long.valueOf(ArgumentMatchers.eq("user_001")), eq("oldpass"), eq("newpass"))).thenReturn(true);
 
         Map<String, String> passwordRequest = new HashMap<>();
         passwordRequest.put("oldPassword", "oldpass");
@@ -580,7 +581,7 @@ class SysUserControllerTest {
     @WithMockUser(username = "user_001")
     @DisplayName("修改用户密码 - 旧密码错误")
     void testChangePassword_WrongOldPassword() throws Exception {
-        when(userService.changePassword(eq("user_001"), eq("wrongpass"), eq("newpass"))).thenReturn(false);
+        when(userService.changePassword(Long.valueOf(ArgumentMatchers.eq("user_001")), eq("wrongpass"), eq("newpass"))).thenReturn(false);
 
         Map<String, String> passwordRequest = new HashMap<>();
         passwordRequest.put("oldPassword", "wrongpass");
@@ -601,9 +602,9 @@ class SysUserControllerTest {
     void testGetUserPermissions_Success() throws Exception {
         Map<String, List<String>> permissions = new HashMap<>();
         permissions.put("用户管理", Arrays.asList("user:view", "user:edit"));
-        permissions.put("系统管理", Arrays.asList("system:config"));
+        permissions.put("系统管理", List.of("system:config"));
 
-        when(userService.getPermissionsByUserIdGrouped("user_001")).thenReturn(permissions);
+        when(userService.getPermissionsByUserIdGrouped(Long.valueOf("user_001"))).thenReturn(permissions);
 
         mockMvc.perform(get("/api/users/user_001/permissions"))
                 .andExpect(status().isOk())
@@ -617,7 +618,7 @@ class SysUserControllerTest {
     void testAssignRoles_Success() throws Exception {
         when(userService.findByUsername("admin")).thenReturn(adminUser);
         List<String> roleIds = Arrays.asList("role_001", "role_002");
-        doNothing().when(userService).assignRoles(eq("user_001"), eq(roleIds), eq("admin"));
+        doNothing().when(userService).assignRoles(Long.valueOf(ArgumentMatchers.eq("user_001")), eq(roleIds), Long.valueOf(ArgumentMatchers.eq("admin")));
 
         mockMvc.perform(post("/api/users/user_001/roles")
                         .with(csrf())
@@ -663,7 +664,7 @@ class SysUserControllerTest {
     @WithMockUser(roles = {"ADMIN"})
     @DisplayName("更新用户状态 - 启用成功")
     void testUpdateUserStatus_Enable_Success() throws Exception {
-        when(userService.findById("user_001")).thenReturn(testUser1);
+        when(userService.findById(Long.valueOf("user_001"))).thenReturn(testUser1);
         when(userService.update(any(SysUser.class))).thenReturn(testUser1);
 
         mockMvc.perform(put("/api/users/user_001/status")
@@ -678,7 +679,7 @@ class SysUserControllerTest {
     @WithMockUser(roles = {"ADMIN"})
     @DisplayName("更新用户状态 - 禁用成功")
     void testUpdateUserStatus_Disable_Success() throws Exception {
-        when(userService.findById("user_001")).thenReturn(testUser1);
+        when(userService.findById(Long.valueOf("user_001"))).thenReturn(testUser1);
         when(userService.update(any(SysUser.class))).thenReturn(testUser1);
 
         mockMvc.perform(put("/api/users/user_001/status")
@@ -693,7 +694,7 @@ class SysUserControllerTest {
     @WithMockUser(roles = {"ADMIN"})
     @DisplayName("更新用户状态 - 锁定成功")
     void testUpdateUserStatus_Lock_Success() throws Exception {
-        when(userService.findById("user_001")).thenReturn(testUser1);
+        when(userService.findById(Long.valueOf("user_001"))).thenReturn(testUser1);
         when(userService.update(any(SysUser.class))).thenReturn(testUser1);
 
         mockMvc.perform(put("/api/users/user_001/status")
@@ -732,7 +733,7 @@ class SysUserControllerTest {
     @WithMockUser(roles = {"ADMIN"})
     @DisplayName("更新用户状态 - 用户不存在")
     void testUpdateUserStatus_UserNotFound() throws Exception {
-        when(userService.findById("nonexistent")).thenReturn(null);
+        when(userService.findById(Long.valueOf("nonexistent"))).thenReturn(null);
 
         mockMvc.perform(put("/api/users/nonexistent/status")
                         .with(csrf())
