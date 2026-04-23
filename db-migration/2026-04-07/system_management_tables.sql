@@ -27,7 +27,7 @@ CREATE TABLE `pdm_tool_sys_user` (
     `approver_id` VARCHAR(50) COMMENT '审批人ID',
     `approve_time` DATETIME COMMENT '审批时间',
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_username` (`username`),
+    UNIQUE INDEX uk_username_deleted (username, is_deleted),
     UNIQUE KEY `uk_email` (`email`),
     KEY `idx_status` (`status`),
     KEY `idx_create_time` (`create_time`),
