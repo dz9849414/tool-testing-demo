@@ -19,15 +19,18 @@ public interface ProtocolTypeMapper extends BaseMapper<ProtocolType> {
             SELECT COUNT(*)
             FROM pdm_tool_protocol_project
             WHERE protocol_id = #{protocolId}
-              AND (is_deleted = 0 OR is_deleted IS NULL)
+              AND is_deleted = 0
             """)
     Long countRelatedProjects(@Param("protocolId") Long protocolId);
 
     @Select("""
             SELECT COUNT(*)
-            FROM pdm_tool_interface_template
-            WHERE protocol_id = #{protocolId}
-              AND (is_deleted = 0 OR is_deleted IS NULL)
+            FROM pdm_tool_protocol_config ptpc
+            INNER JOIN pdm_tool_interface_template ptit
+            ON ptpc.id = ptit.protocol_id
+            WHERE ptpc.protocol_id = #{protocolId}
+              AND ptpc.is_deleted = 0
+              AND ptit.is_deleted = 0
             """)
     Long countRelatedTemplates(@Param("protocolId") Long protocolId);
 
