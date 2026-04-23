@@ -3,6 +3,7 @@ package com.example.tooltestingdemo.service.protocol.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.ProtocolConfigCreateDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigModifyDTO;
@@ -288,8 +289,18 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         if (dto.getStatus() != null) {
             queryWrapper.eq(ProtocolConfig::getStatus, dto.getStatus());
         }
+        applyDateTimeRange(queryWrapper, dto.getCreateTimeStart(), dto.getCreateTimeEnd(), ProtocolConfig::getCreateTime);
+        applyDateTimeRange(queryWrapper, dto.getUpdateTimeStart(), dto.getUpdateTimeEnd(), ProtocolConfig::getUpdateTime);
         queryWrapper.orderByDesc(ProtocolConfig::getCreateTime).orderByDesc(ProtocolConfig::getId);
         return queryWrapper;
+    }
+
+    private void applyDateTimeRange(LambdaQueryWrapper<ProtocolConfig> queryWrapper,
+                                    LocalDateTime start,
+                                    LocalDateTime end,
+                                    SFunction<ProtocolConfig, ?> column) {
+        Optional.ofNullable(start).ifPresent(value -> queryWrapper.ge(column, value));
+        Optional.ofNullable(end).ifPresent(value -> queryWrapper.le(column, value));
     }
 
     private ProtocolConfigVO toVO(ProtocolConfig entity) {

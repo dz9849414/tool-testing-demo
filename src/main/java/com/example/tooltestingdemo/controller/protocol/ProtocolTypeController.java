@@ -5,10 +5,11 @@ import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.dto.*;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.service.protocol.IProtocolTypeService;
-import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
 import com.example.tooltestingdemo.vo.ProtocolTypeBatchStatusChangeVO;
+import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
 import com.example.tooltestingdemo.vo.ProtocolTypeImportResultVO;
 import com.example.tooltestingdemo.vo.ProtocolTypeStatusChangeVO;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -47,6 +48,7 @@ public class ProtocolTypeController {
      * 查询协议类型分页列表
      */
     @GetMapping("/list")
+    @Operation(summary = "协议类型分页列表", description = "支持按协议编码、名称、分类、系统类型、状态以及创建/修改时间范围筛选")
     public Result<IPage<ProtocolType>> getProtocolTypeList(@ModelAttribute ProtocolTypeQueryDTO dto) {
         IPage<ProtocolType> protocolTypePage = protocolTypeService.getProtocolTypeList(dto);
         return Result.success(protocolTypePage);

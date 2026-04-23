@@ -44,7 +44,7 @@ public class ProtocolConfigController {
      * 协议配置分页列表
      */
     @GetMapping("/list")
-    @Operation(summary = "协议配置分页列表", description = "支持按协议ID、配置名称、状态筛选")
+    @Operation(summary = "协议配置分页列表", description = "支持按协议ID、配置名称、状态以及创建/修改时间范围筛选")
     public Result<IPage<ProtocolConfigVO>> list(@ModelAttribute ProtocolConfigQueryDTO dto) {
         IPage<ProtocolConfigVO> page = protocolConfigService.getProtocolConfigList(dto);
         return Result.success(page);

@@ -3,6 +3,7 @@ package com.example.tooltestingdemo.service.protocol.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.*;
 import com.example.tooltestingdemo.entity.SysUser;
@@ -721,10 +722,20 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
             if (protocolType.getStatus() != null) {
                 lambdaQuery.eq(ProtocolType::getStatus, resolveStatus(protocolType.getStatus(), null));
             }
+            applyDateTimeRange(lambdaQuery, protocolType.getCreateTimeStart(), protocolType.getCreateTimeEnd(), ProtocolType::getCreateTime);
+            applyDateTimeRange(lambdaQuery, protocolType.getUpdateTimeStart(), protocolType.getUpdateTimeEnd(), ProtocolType::getUpdateTime);
         }
 
         lambdaQuery.orderByDesc(ProtocolType::getCreateTime).orderByDesc(ProtocolType::getId);
         return lambdaQuery;
+    }
+
+    private void applyDateTimeRange(LambdaQueryWrapper<ProtocolType> queryWrapper,
+                                    LocalDateTime start,
+                                    LocalDateTime end,
+                                    SFunction<ProtocolType, ?> column) {
+        Optional.ofNullable(start).ifPresent(value -> queryWrapper.ge(column, value));
+        Optional.ofNullable(end).ifPresent(value -> queryWrapper.le(column, value));
     }
 
     private List<ProtocolTypeExportVO> buildExportRows(List<ProtocolType> protocolTypes) {
