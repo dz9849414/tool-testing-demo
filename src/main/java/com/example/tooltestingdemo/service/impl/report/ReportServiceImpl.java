@@ -428,7 +428,10 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 
                 String reportContent = buildReportContent(report, pageRange);
                 if (reportContent != null && !reportContent.trim().isEmpty()) {
-                    String[] allLines = reportContent.split("\\r?\\n");
+                    // 先把原始内容处理一遍，过滤、替换、清洗
+                    String cleanContent = cleanAndTranslateContent(reportContent);
+                    String[] allLines = cleanContent.split("\\r?\\n");
+
                     int y = 560;
                     for (String line : allLines) {
                         if (y < 50) break;
@@ -452,6 +455,41 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         }catch (Exception e) {
             throw new RuntimeException("导出报告文件失败：" + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 清洗报告内容：替换英文key为中文、过滤不需要的字段
+     */
+    private String cleanAndTranslateContent(String content) {
+        if (content == null) return "";
+        // 1. 过滤掉不需要的字段
+        content = content.replaceAll("dayOfWeek: \\d+", "");
+        content = content.replaceAll("dayName: \\w+", "");
+        content = content.replaceAll("\\[\\d+\\]", ""); // 过滤掉 [1] [2] 这种序号
+        content = content.replaceAll("(?m)^.*(successCount|totalCount|color|summary:|rateData:|percentage:).*$", "");
+
+        // 2. 替换英文key为中文
+        content = content.replace("endDate:", "结束日期：");
+        content = content.replace("startDate:", "开始日期：");
+        content = content.replace("weekData:", "周数据：");
+        content = content.replace("dayNameCn:", "星期：");
+        content = content.replace("executionCount:", "执行次数：");
+        content = content.replace("avgDailyExecutions:", "日均执行次数：");
+        content = content.replace("totalExecutions:", "总执行次数：");
+        content = content.replace("dataSourceName:", "数据源名称：");
+        content = content.replace("generateTime:", "生成时间：");
+        content = content.replace("failRate:", "失败率(%)：");
+        content = content.replace("successRate:", "成功率(%)：");
+        content = content.replace("failCount:", "失败次数：");
+        content = content.replace("successCount:", "成功次数：");
+        content = content.replace("totalCount:", "总次数：");
+        content = content.replace("percentage:", "占比(%)：");
+        content = content.replace("name:", "名称：");
+        content = content.replace("value:", "数值：");
+
+        // 3. 去掉多余空格和换行
+        content = content.replaceAll("\\n\\s*\\n", "\n");
+        return content.trim();
     }
 
     /**
