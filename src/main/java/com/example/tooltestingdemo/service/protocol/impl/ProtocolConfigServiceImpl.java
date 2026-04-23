@@ -351,7 +351,7 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
     }
 
     private static String defaultString(String v, String defaultValue) {
-        if (v == null || v.trim().isEmpty()) {
+        if (v == null || "[]".equals(v) || v.trim().isEmpty()) {
             return defaultValue;
         }
         return v;
@@ -604,7 +604,7 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
             if (StringUtils.isBlank(trimmed)) {
                 continue;
             }
-            if (!Arrays.asList("1", "2", "3").contains(trimmed)) {
+            if (!Arrays.asList("0", "1", "2", "3").contains(trimmed)) {
                 throw new RuntimeException("重试触发条件仅支持 1，2，3（可用中文逗号分隔）");
             }
             validSet.add(trimmed);
@@ -662,8 +662,8 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
             setCellValue(row, 0, config.getConfigName(), dataStyle);
             setCellValue(row, 1, config.getProtocolId() == null ? "" : String.valueOf(config.getProtocolId()), dataStyle);
             setCellValue(row, 2, config.getProtocolName(), dataStyle);
-            setCellValue(row, 3, defaultString(config.getUrlConfig(), "[]"), dataStyle);
-            setCellValue(row, 4, defaultString(config.getAuthConfig(), "[]"), dataStyle);
+            setCellValue(row, 3, defaultString(config.getUrlConfig(), ""), dataStyle);
+            setCellValue(row, 4, defaultString(config.getAuthConfig(), ""), dataStyle);
             setCellValue(row, 5, config.getTimeoutConnect() == null ? "" : String.valueOf(config.getTimeoutConnect()), dataStyle);
             setCellValue(row, 6, config.getTimeoutRead() == null ? "" : String.valueOf(config.getTimeoutRead()), dataStyle);
             setCellValue(row, 7, config.getRetryCount() == null ? "" : String.valueOf(config.getRetryCount()), dataStyle);
