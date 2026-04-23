@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * 模板校验异常
- * 
+ *
  * 用于返回具体的校验错误信息
  */
 @Getter
@@ -16,7 +16,7 @@ public class TemplateValidationException extends RuntimeException {
      * 错误类型
      */
     private final ErrorType errorType;
-    
+
     /**
      * 详细错误信息列表
      */
@@ -52,6 +52,7 @@ public class TemplateValidationException extends RuntimeException {
         NOT_FOUND(1006, "数据不存在"),
         OPERATION_NOT_ALLOWED(1007, "操作不允许"),
         ALREADY_EXISTS(1008, "数据已存在"),
+        RWEMARK_EXISTS(1010, "缺少remark字段"),
         CONVERT_ERROR(1009, "对象转换失败");
 
         private final Integer code;

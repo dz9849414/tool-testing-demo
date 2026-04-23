@@ -1,13 +1,16 @@
 package com.example.tooltestingdemo.service.impl.mock;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.example.tooltestingdemo.dto.MockPdmJsonInsertRequest;
 import com.example.tooltestingdemo.entity.mock.MockPdmJsonData;
+import com.example.tooltestingdemo.exception.TemplateValidationException;
 import com.example.tooltestingdemo.mapper.mock.MockPdmJsonDataMapper;
 import com.example.tooltestingdemo.service.mock.MockPdmJsonDataService;
 import com.example.tooltestingdemo.vo.MockPdmJsonDataVO;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -17,6 +20,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+
+import static com.example.tooltestingdemo.exception.TemplateValidationException.ErrorType.RWEMARK_EXISTS;
 
 /**
  * PDM 模拟 JSON 数据服务实现。
@@ -32,9 +37,13 @@ public class MockPdmJsonDataServiceImpl implements MockPdmJsonDataService {
     private final ObjectMapper objectMapper;
 
     @Override
-    public MockPdmJsonDataVO insert(Object dataJson) {
+    public MockPdmJsonDataVO insert(Object dataJson, MockPdmJsonInsertRequest request) {
+        if (StringUtils.isBlank(request.getRemark())) {
+            throw new TemplateValidationException(RWEMARK_EXISTS,"缺少remark字段");
+        }
         MockPdmJsonData entity = new MockPdmJsonData();
         entity.setDataJson(toJson(dataJson != null ? dataJson : buildSampleData()));
+        entity.setRemark(request.getRemark());
         mockPdmJsonDataMapper.insert(entity);
         return toVO(entity);
     }
@@ -61,6 +70,7 @@ public class MockPdmJsonDataServiceImpl implements MockPdmJsonDataService {
         MockPdmJsonDataVO vo = new MockPdmJsonDataVO();
         vo.setId(entity.getId());
         vo.setDataJson(parseJson(entity.getDataJson()));
+        vo.setRemark(entity.getRemark());
         return vo;
     }
 
@@ -74,7 +84,8 @@ public class MockPdmJsonDataServiceImpl implements MockPdmJsonDataService {
 
     private Object parseJson(String dataJson) {
         try {
-            return objectMapper.readValue(dataJson, new TypeReference<Object>() {});
+            return objectMapper.readValue(dataJson, new TypeReference<Object>() {
+            });
         } catch (Exception e) {
             return dataJson;
         }

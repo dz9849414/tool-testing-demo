@@ -1,5 +1,6 @@
 package com.example.tooltestingdemo.service.template.engine.executor;
 
+import com.alibaba.fastjson2.JSON;
 import com.example.tooltestingdemo.entity.template.InterfaceTemplate;
 import com.example.tooltestingdemo.enums.TemplateEnums;
 import com.example.tooltestingdemo.service.template.InterfaceTemplateService;
@@ -35,6 +36,7 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -77,9 +79,9 @@ public class HttpExecutor implements TemplateExecutor {
             .build();
 
         boolean success = responseData.getStatusCode() != null
-            && responseData.getStatusCode() >= 200
-            && responseData.getStatusCode() < 300;
-
+            && responseData.getStatusCode() == 200
+            && responseData.getBody() != null
+            && JSON.parseObject(responseData.getBody()).getInteger("code") == 200;
         return ExecutionResult.builder()
             .success(success)
             .statusCode(String.valueOf(responseData.getStatusCode()))
@@ -320,7 +322,7 @@ public class HttpExecutor implements TemplateExecutor {
                     if (!Integer.valueOf(1).equals(parameter.getIsEnabled())) {
                         continue;
                     }
-                    String paramValue = replaceVariables(parameter.getParamValue());
+                    String paramValue = resolveParameterValue(parameter.getParamName(), parameter.getParamValue());
                     if ("PATH".equalsIgnoreCase(parameter.getParamType())) {
                         url = replacePathParameter(url, parameter.getParamName(), paramValue);
                     } else if ("QUERY".equalsIgnoreCase(parameter.getParamType())) {
@@ -682,13 +684,26 @@ public class HttpExecutor implements TemplateExecutor {
                 if (value instanceof String text && StringUtils.hasText(text)) {
                     return replaceVariables(text);
                 }
+                if (value != null) {
+                    try {
+                        return objectMapper.writeValueAsString(value);
+                    } catch (Exception e) {
+                        log.warn("Failed to build request body from variable: {}", key, e);
+                    }
+                }
             }
             Object dataJson = templateVariables.get("dataJson");
             if (dataJson != null) {
                 try {
-                    return objectMapper.writeValueAsString(Collections.singletonMap("dataJson", dataJson));
+                    Map<String, Object> requestBody = new LinkedHashMap<>();
+                    requestBody.put("dataJson", dataJson);
+                    Object remark = templateVariables.get("remark");
+                    if (remark != null) {
+                        requestBody.put("remark", remark);
+                    }
+                    return objectMapper.writeValueAsString(requestBody);
                 } catch (Exception e) {
-                    log.warn("构建任务请求体失败: dataJson", e);
+                    log.warn("Failed to build request body from dataJson", e);
                 }
             }
             return null;
@@ -722,6 +737,14 @@ public class HttpExecutor implements TemplateExecutor {
                 result = result.replace(shorthandPlaceholder, value);
             }
             return result;
+        }
+
+        private String resolveParameterValue(String paramName, String configuredValue) {
+            if (StringUtils.hasText(paramName) && variables != null && variables.containsKey(paramName.trim())) {
+                Object variableValue = variables.get(paramName.trim());
+                return variableValue == null ? "" : String.valueOf(variableValue);
+            }
+            return replaceVariables(configuredValue);
         }
 
         private String replacePathParameter(String url, String paramName, String paramValue) {

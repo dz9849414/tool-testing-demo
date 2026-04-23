@@ -1,5 +1,6 @@
 package com.example.tooltestingdemo.service.mock;
 
+import com.example.tooltestingdemo.dto.MockPdmJsonInsertRequest;
 import com.example.tooltestingdemo.vo.MockPdmJsonDataVO;
 
 import java.util.List;
@@ -15,7 +16,7 @@ public interface MockPdmJsonDataService {
      * @param dataJson 自定义 JSON 数据；为空时自动生成样例数据
      * @return 插入后的数据
      */
-    MockPdmJsonDataVO insert(Object dataJson);
+    MockPdmJsonDataVO insert(Object dataJson, MockPdmJsonInsertRequest request);
 
     /**
      * 根据 ID 查询数据。

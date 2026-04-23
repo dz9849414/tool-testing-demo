@@ -27,9 +27,9 @@ public class MockPdmJsonDataController {
      * <p>如果不传 {@code dataJson}，则自动生成一条船舶 PDM 样例数据。</p>
      */
     @PostMapping
-    public Result<MockPdmJsonDataVO> insert(@RequestBody(required = false) MockPdmJsonInsertRequest request) {
+    public Result<MockPdmJsonDataVO> insert(@RequestBody(required = true) MockPdmJsonInsertRequest request) {
         Object dataJson = request == null ? null : request.getDataJson();
-        return Result.success("插入成功", mockPdmJsonDataService.insert(dataJson));
+        return Result.success("插入成功", mockPdmJsonDataService.insert(dataJson,request));
     }
 
     /**
