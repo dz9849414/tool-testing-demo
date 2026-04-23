@@ -4,10 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.example.tooltestingdemo.dto.ProtocolTypeCreateDTO;
-import com.example.tooltestingdemo.dto.ProtocolTypeModifyDTO;
-import com.example.tooltestingdemo.dto.ProtocolTypeQueryDTO;
-import com.example.tooltestingdemo.dto.ProtocolTypeStatusUpdateDTO;
+import com.example.tooltestingdemo.dto.*;
 import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.enums.ProtocolTypeImportStrategy;
@@ -17,10 +14,7 @@ import com.example.tooltestingdemo.service.SecurityService;
 import com.example.tooltestingdemo.service.protocol.IProtocolTypeService;
 import com.example.tooltestingdemo.service.protocol.support.ProtocolTypeImportFailureReportStore;
 import com.example.tooltestingdemo.util.LocalDateUtil;
-import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
-import com.example.tooltestingdemo.vo.ProtocolTypeExportVO;
-import com.example.tooltestingdemo.vo.ProtocolTypeImportResultVO;
-import com.example.tooltestingdemo.vo.ProtocolTypeStatusChangeVO;
+import com.example.tooltestingdemo.vo.*;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.Getter;
 import lombok.Setter;
@@ -132,6 +126,77 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         log.info("协议类型状态更新成功: id={}, fromStatus={}, toStatus={}, operatorId={}",
                 id, existing.getStatus(), targetStatus, getCurrentOperatorId());
         return buildStatusChangeVO(updated, existing.getStatus(), targetStatus, true, false, "状态更新成功", relationStats);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ProtocolTypeBatchStatusChangeVO batchUpdateProtocolTypeStatus(ProtocolTypeBatchStatusUpdateDTO dto) {
+        LinkedHashSet<Long> uniqueIds = Arrays.stream(dto.getIds())
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (uniqueIds.isEmpty()) {
+            throw new RuntimeException("协议类型ID列表不能为空");
+        }
+
+        Integer targetStatus = resolveStatus(dto.getStatus(), null);
+        List<ProtocolTypeBatchStatusChangeVO.BlockedItem> blockedItems = new ArrayList<>();
+        List<ProtocolType> existingItems = new ArrayList<>();
+
+        for (Long id : uniqueIds) {
+            ProtocolType existing = protocolTypeMapper.selectById(id);
+            if (existing == null) {
+                blockedItems.add(buildBlockedStatusItem(id, null, 0L, 0L, "协议类型不存在"));
+                continue;
+            }
+            existingItems.add(existing);
+
+            if (Integer.valueOf(0).equals(targetStatus)) {
+                RelationStats relationStats = getRelationStats(id);
+                if (relationStats.hasRelatedData()) {
+                    blockedItems.add(buildBlockedStatusItem(
+                            existing.getId(),
+                            existing.getProtocolName(),
+                            relationStats.relatedProjectCount(),
+                            relationStats.relatedTemplateCount(),
+                            buildDisableConfirmMessage(relationStats)
+                    ));
+                }
+            }
+        }
+
+        ProtocolTypeBatchStatusChangeVO result = new ProtocolTypeBatchStatusChangeVO();
+        result.setBlockedItems(blockedItems);
+        result.setBlockedCount(blockedItems.size());
+
+        if (!blockedItems.isEmpty()) {
+            result.setSuccess(false);
+            result.setStatusChangedCount(0);
+            result.setUnchangedCount(0);
+            result.setMessage(String.format("批量状态更新失败，共 %d 条存在关联或异常数据", blockedItems.size()));
+            return result;
+        }
+
+        int statusChangedCount = 0;
+        int unchangedCount = 0;
+        for (ProtocolType existing : existingItems) {
+            if (Objects.equals(existing.getStatus(), targetStatus)) {
+                unchangedCount++;
+                continue;
+            }
+            ProtocolType updateEntity = new ProtocolType();
+            updateEntity.setId(existing.getId());
+            updateEntity.setStatus(targetStatus);
+            if (protocolTypeMapper.updateById(updateEntity) <= 0) {
+                throw new RuntimeException("批量状态更新失败");
+            }
+            statusChangedCount++;
+        }
+
+        result.setSuccess(true);
+        result.setStatusChangedCount(statusChangedCount);
+        result.setUnchangedCount(unchangedCount);
+        result.setMessage(String.format("批量状态更新成功：变更 %d 条，未变更 %d 条", statusChangedCount, unchangedCount));
+        return result;
     }
 
     @Override
@@ -859,6 +924,20 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
                                                                             long relatedTemplateCount,
                                                                             String reason) {
         ProtocolTypeDeleteResultVO.UndeletableItem item = new ProtocolTypeDeleteResultVO.UndeletableItem();
+        item.setId(id);
+        item.setProtocolName(protocolName);
+        item.setRelatedProjectCount(relatedProjectCount);
+        item.setRelatedTemplateCount(relatedTemplateCount);
+        item.setReason(reason);
+        return item;
+    }
+
+    private ProtocolTypeBatchStatusChangeVO.BlockedItem buildBlockedStatusItem(Long id,
+                                                                               String protocolName,
+                                                                               long relatedProjectCount,
+                                                                               long relatedTemplateCount,
+                                                                               String reason) {
+        ProtocolTypeBatchStatusChangeVO.BlockedItem item = new ProtocolTypeBatchStatusChangeVO.BlockedItem();
         item.setId(id);
         item.setProtocolName(protocolName);
         item.setRelatedProjectCount(relatedProjectCount);

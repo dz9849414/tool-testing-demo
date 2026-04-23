@@ -6,6 +6,7 @@ import com.example.tooltestingdemo.dto.*;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.service.protocol.IProtocolTypeService;
 import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
+import com.example.tooltestingdemo.vo.ProtocolTypeBatchStatusChangeVO;
 import com.example.tooltestingdemo.vo.ProtocolTypeImportResultVO;
 import com.example.tooltestingdemo.vo.ProtocolTypeStatusChangeVO;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -91,6 +92,19 @@ public class ProtocolTypeController {
     public void exportProtocolTypes(@ModelAttribute ProtocolTypeQueryDTO dto,
                                     HttpServletResponse response) throws IOException {
         protocolTypeService.exportProtocolTypes(dto, response);
+    }
+
+    /**
+     * 批量变更协议类型状态
+     */
+    @PostMapping("/batch/status")
+    public Result<ProtocolTypeBatchStatusChangeVO> batchUpdateProtocolTypeStatus(
+            @RequestBody @Valid ProtocolTypeBatchStatusUpdateDTO dto) {
+        if (dto.getIds() == null || dto.getIds().length == 0) {
+            return Result.error("协议类型ID列表不能为空");
+        }
+        ProtocolTypeBatchStatusChangeVO result = protocolTypeService.batchUpdateProtocolTypeStatus(dto);
+        return Result.success(result.getMessage(), result);
     }
 
     /**

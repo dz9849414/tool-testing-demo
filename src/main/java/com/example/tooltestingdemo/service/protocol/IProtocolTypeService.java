@@ -3,12 +3,14 @@ package com.example.tooltestingdemo.service.protocol;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.dto.ProtocolTypeCreateDTO;
+import com.example.tooltestingdemo.dto.ProtocolTypeBatchStatusUpdateDTO;
 import com.example.tooltestingdemo.dto.ProtocolTypeQueryDTO;
 import com.example.tooltestingdemo.dto.ProtocolTypeModifyDTO;
 import com.example.tooltestingdemo.dto.ProtocolTypeStatusUpdateDTO;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.vo.ProtocolTypeDeleteResultVO;
 import com.example.tooltestingdemo.vo.ProtocolTypeImportResultVO;
+import com.example.tooltestingdemo.vo.ProtocolTypeBatchStatusChangeVO;
 import com.example.tooltestingdemo.vo.ProtocolTypeStatusChangeVO;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,6 +34,8 @@ public interface IProtocolTypeService extends IService<ProtocolType> {
     ProtocolTypeImportResultVO importProtocolTypes(MultipartFile file, String strategy) throws IOException;
 
     ProtocolTypeStatusChangeVO updateProtocolTypeStatus(ProtocolTypeStatusUpdateDTO dto);
+
+    ProtocolTypeBatchStatusChangeVO batchUpdateProtocolTypeStatus(ProtocolTypeBatchStatusUpdateDTO dto);
 
     ProtocolType modifyProtocolType(ProtocolTypeModifyDTO dto);
 
