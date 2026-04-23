@@ -767,3 +767,94 @@ INSERT IGNORE INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_
 ('report_rp_25', 'admin', 'report_api_25', NOW(), 'admin'),
 ('report_rp_26', 'admin', 'report_api_26', NOW(), 'admin'),
 ('report_rp_27', 'admin', 'report_api_27', NOW(), 'admin');
+
+-- ===========================================
+-- 新增角色和权限分配
+-- ===========================================
+
+-- 插入新的角色
+INSERT IGNORE INTO `pdm_tool_sys_role` (`id`, `name`, `description`, `type`, `status`) VALUES
+('1001', '项目经理', '项目管理部各业务事业部 - 创建并管理项目、规划迭代、跟踪项目进度与风险、组织评审', 'SYSTEM', 1),
+('1002', '产品经理', '产品部 - 创建和管理产品需求、编写需求文档、定义需求优先级、跟踪需求实现状态', 'SYSTEM', 1),
+('1003', '开发人员', '研发中心 - 领取开发任务、编写代码、提交代码至代码库、修复缺陷、进行代码评审', 'SYSTEM', 1),
+('1004', '测试人员', '质量保障部 - 编写测试用例、执行测试任务、提交并跟踪缺陷、生成测试报告', 'SYSTEM', 1),
+('1005', '运维人员', '运维部 - 管理生产环境、查看系统运行状态、管理部署流程', 'SYSTEM', 1),
+('1006', '系统管理员', '信息技术部 - 管理平台用户、配置组织架构、分配全局权限、进行系统配置与维护', 'SYSTEM', 1);
+
+-- 为项目经理分配权限
+INSERT IGNORE INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
+('rp_1001_1', '1001', 'protocol:search:basic', NOW(), 'admin'),
+('rp_1001_2', '1001', 'protocol:search:time', NOW(), 'admin'),
+('rp_1001_3', '1001', 'protocol:search:complex', NOW(), 'admin'),
+('rp_1001_4', '1001', 'test:template:search:name', NOW(), 'admin'),
+('rp_1001_5', '1001', 'test:template:search:status', NOW(), 'admin'),
+('rp_1001_6', '1001', 'test:template:search:relate', NOW(), 'admin'),
+('rp_1001_7', '1001', 'test:template:search:complex', NOW(), 'admin'),
+('rp_1001_8', '1001', 'report:view', NOW(), 'admin'),
+('rp_1001_9', '1001', 'report:statistics', NOW(), 'admin');
+
+-- 为产品经理分配权限
+INSERT IGNORE INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
+('rp_1002_1', '1002', 'protocol:search:basic', NOW(), 'admin'),
+('rp_1002_2', '1002', 'protocol:search:time', NOW(), 'admin'),
+('rp_1002_3', '1002', 'protocol:search:complex', NOW(), 'admin'),
+('rp_1002_4', '1002', 'test:template:search:name', NOW(), 'admin'),
+('rp_1002_5', '1002', 'test:template:search:status', NOW(), 'admin'),
+('rp_1002_6', '1002', 'test:template:search:relate', NOW(), 'admin'),
+('rp_1002_7', '1002', 'test:template:search:complex', NOW(), 'admin'),
+('rp_1002_8', '1002', 'report:view', NOW(), 'admin'),
+('rp_1002_9', '1002', 'report:statistics', NOW(), 'admin');
+
+-- 为开发人员分配权限
+INSERT IGNORE INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
+('rp_1003_1', '1003', 'protocol:search:basic', NOW(), 'admin'),
+('rp_1003_2', '1003', 'protocol:search:time', NOW(), 'admin'),
+('rp_1003_3', '1003', 'protocol:search:complex', NOW(), 'admin'),
+('rp_1003_4', '1003', 'test:template:search:name', NOW(), 'admin'),
+('rp_1003_5', '1003', 'test:template:search:status', NOW(), 'admin'),
+('rp_1003_6', '1003', 'test:template:search:relate', NOW(), 'admin'),
+('rp_1003_7', '1003', 'test:template:search:complex', NOW(), 'admin'),
+('rp_1003_8', '1003', 'report:view', NOW(), 'admin'),
+('rp_1003_9', '1003', 'report:statistics', NOW(), 'admin');
+
+-- 为测试人员分配权限
+INSERT IGNORE INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
+('rp_1004_1', '1004', 'protocol:search:basic', NOW(), 'admin'),
+('rp_1004_2', '1004', 'protocol:search:time', NOW(), 'admin'),
+('rp_1004_3', '1004', 'protocol:search:complex', NOW(), 'admin'),
+('rp_1004_4', '1004', 'test:template:search:name', NOW(), 'admin'),
+('rp_1004_5', '1004', 'test:template:search:status', NOW(), 'admin'),
+('rp_1004_6', '1004', 'test:template:search:relate', NOW(), 'admin'),
+('rp_1004_7', '1004', 'test:template:search:complex', NOW(), 'admin'),
+('rp_1004_8', '1004', 'report:view', NOW(), 'admin'),
+('rp_1004_9', '1004', 'report:statistics', NOW(), 'admin'),
+('rp_1004_10', '1004', 'test:template:create:add', NOW(), 'admin'),
+('rp_1004_11', '1004', 'test:template:edit:content', NOW(), 'admin'),
+('rp_1004_12', '1004', 'test:template:delete:single', NOW(), 'admin');
+
+-- 为运维人员分配权限
+INSERT IGNORE INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
+('rp_1005_1', '1005', 'protocol:search:basic', NOW(), 'admin'),
+('rp_1005_2', '1005', 'protocol:search:time', NOW(), 'admin'),
+('rp_1005_3', '1005', 'protocol:search:complex', NOW(), 'admin'),
+('rp_1005_4', '1005', 'test:template:search:name', NOW(), 'admin'),
+('rp_1005_5', '1005', 'test:template:search:status', NOW(), 'admin'),
+('rp_1005_6', '1005', 'test:template:search:relate', NOW(), 'admin'),
+('rp_1005_7', '1005', 'test:template:search:complex', NOW(), 'admin'),
+('rp_1005_8', '1005', 'report:view', NOW(), 'admin'),
+('rp_1005_9', '1005', 'report:statistics', NOW(), 'admin'),
+('rp_1005_10', '1005', 'system:user:view', NOW(), 'admin'),
+('rp_1005_11', '1005', 'system:role:view', NOW(), 'admin');
+
+-- ===========================================
+-- 新增组织部门数据
+-- ===========================================
+
+-- 插入组织部门数据
+INSERT INTO `pdm_tool_sys_organization` (`id`, `name`, `description`, `parent_id`, `level`, `sort`, `status`) VALUES 
+('org_1001', '项目管理部各业务事业部', '负责项目管理和各业务事业部的协调工作', '0', 1, 1, 1),
+('org_1002', '产品部', '负责产品需求管理和产品规划', '0', 1, 2, 1),
+('org_1003', '研发中心', '负责软件开发和代码实现', '0', 1, 3, 1),
+('org_1004', '质量保障部', '负责软件测试和质量保证', '0', 1, 4, 1),
+('org_1005', '运维部', '负责生产环境管理和系统运维', '0', 1, 5, 1),
+('org_1006', '信息技术部', '负责系统管理和技术支持', '0', 1, 6, 1);
