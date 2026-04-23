@@ -413,6 +413,14 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 contentStream.showText("报告ID：" + report.getId());
                 contentStream.newLineAtOffset(0, -25);
                 
+                // 总执行次数（从报告内容中提取）
+                if (report.getContent() != null && report.getContent().contains("totalCount:")) {
+                    String content = report.getContent();
+                    int totalCount = extractTotalCount(content);
+                    contentStream.showText("总执行次数：" + totalCount);
+                    contentStream.newLineAtOffset(0, -25);
+                }
+                
                 // 分隔线
                 contentStream.endText();
                 contentStream.moveTo(50, 600);
@@ -430,7 +438,8 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 if (reportContent != null && !reportContent.trim().isEmpty()) {
                     // 先把原始内容处理一遍，过滤、替换、清洗
                     String cleanContent = cleanAndTranslateContent(reportContent);
-                    cleanContent = cleanContent.replaceAll("(?m)^.*(successCount|名称|数值|dataSource).*$", "");
+                    // 保留successCount、totalCount等统计字段，只过滤不需要的字段
+                    cleanContent = cleanContent.replaceAll("(?m)^.*(名称|数值|dataSource).*$", "");
                     String formattedContent = formatRateReportLines(cleanContent);
                     String[] allLines = cleanContent.split("\\r?\\n");
 
@@ -518,7 +527,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         content = content.replaceAll("dayOfWeek: \\d+", "");
         content = content.replaceAll("dayName: \\w+", "");
         content = content.replaceAll("\\[\\d+\\]", ""); // 过滤掉 [1] [2] 这种序号
-        content = content.replaceAll("(?m)^.*(successCount|totalCount|color|summary:|rateData:|percentage:|名称:|数值:|dataSource:).*$", "");
+        content = content.replaceAll("(?m)^.*(successCount|color|summary:|rateData:|percentage:|名称:|数值:|dataSource:).*$", "");
 
         // 2. 替换英文key为中文
         content = content.replace("endDate:", "结束日期：");
@@ -1081,6 +1090,32 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         }
         
         return result.toString();
+    }
+
+    /**
+     * 从报告内容中提取总执行次数
+     */
+    private int extractTotalCount(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return 0;
+        }
+        
+        try {
+            // 查找totalCount字段
+            String[] lines = content.split("\\r?\\n");
+            for (String line : lines) {
+                if (line.contains("totalCount:")) {
+                    String[] parts = line.split(":");
+                    if (parts.length >= 2) {
+                        return Integer.parseInt(parts[1].trim());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("提取总执行次数失败: {}", e.getMessage());
+        }
+        
+        return 0;
     }
 
     /**
