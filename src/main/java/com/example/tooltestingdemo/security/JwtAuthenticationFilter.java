@@ -34,8 +34,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String uri = request.getRequestURI();
-        return uri.startsWith("/api/template/")
-                || uri.startsWith("/api/auth/")
+        return
+                 uri.startsWith("/api/auth/")
                 || uri.startsWith("/api/protocol/")
                 || uri.startsWith("/swagger-ui/")
                 || uri.startsWith("/v3/api-docs/")
@@ -48,8 +48,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
         String uri = request.getRequestURI();
-        if (uri.startsWith("/api/template/")
-                || uri.startsWith("/api/auth/")
+        if ( uri.startsWith("/api/auth/")
                 || uri.startsWith("/api/protocol/")
                 || uri.startsWith("/swagger-ui/")
                 || uri.startsWith("/v3/api-docs/")

@@ -34,7 +34,7 @@ public interface SysOperationLogService {
     /**
      * 分页查询操作日志
      */
-    Page<SysOperationLog> getOperationLogsByPage(Page<SysOperationLog> page, String userId, LocalDateTime startTime, LocalDateTime endTime, String module);
+    Page<SysOperationLog> getOperationLogsByPage(Page<SysOperationLog> page, String userId, String username, String operation, Integer status, LocalDateTime startTime, LocalDateTime endTime, String module);
 
     /**
      * 根据模块查询操作日志
@@ -59,5 +59,5 @@ public interface SysOperationLogService {
     /**
      * 分页查询角色操作日志
      */
-    Page<SysOperationLog> getOperationLogsByRoleIdAndPage(Page<SysOperationLog> page, String roleId, LocalDateTime startTime, LocalDateTime endTime, String module);
+    Page<SysOperationLog> getOperationLogsByRoleIdAndPage(Page<SysOperationLog> page, String roleId, String username, String operation, Integer status, LocalDateTime startTime, LocalDateTime endTime, String module);
 }
