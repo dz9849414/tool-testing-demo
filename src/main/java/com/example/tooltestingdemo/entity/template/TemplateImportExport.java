@@ -73,6 +73,7 @@ public class TemplateImportExport {
     private LocalDateTime updateTime;
 
     @TableField(value = "is_deleted")
+    @TableLogic(value = "0", delval = "1")
     private Integer isDeleted;
 
     @TableField(value = "deleted_by")

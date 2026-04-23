@@ -27,6 +27,7 @@
     <select id="selectByTemplateId" resultMap="BaseResultMap">
         SELECT * FROM pdm_tool_template_header
         WHERE template_id = #{templateId}
+        AND (is_deleted = 0 OR is_deleted IS NULL)
         AND is_enabled = 1
         ORDER BY sort_order ASC
     </select>

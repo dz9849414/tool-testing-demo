@@ -31,6 +31,7 @@
     <select id="selectByTemplateId" resultMap="BaseResultMap">
         SELECT * FROM pdm_tool_template_parameter
         WHERE template_id = #{templateId}
+        AND (is_deleted = 0 OR is_deleted IS NULL)
 --         AND is_enabled = 1
         ORDER BY sort_order ASC
     </select>
@@ -40,6 +41,7 @@
         SELECT * FROM pdm_tool_template_parameter
         WHERE template_id = #{templateId}
         AND param_type = #{paramType}
+        AND (is_deleted = 0 OR is_deleted IS NULL)
         AND is_enabled = 1
         ORDER BY sort_order ASC
     </select>

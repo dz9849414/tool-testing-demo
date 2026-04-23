@@ -81,7 +81,10 @@
         <if test="keyword != null and keyword != ''">
             AND (name LIKE CONCAT('%', #{keyword}, '%')
                 OR description LIKE CONCAT('%', #{keyword}, '%')
-                OR tags LIKE CONCAT('%', #{keyword}, '%'))
+                OR ext_field1 LIKE CONCAT('%', #{keyword}, '%')
+                OR ext_field2 LIKE CONCAT('%', #{keyword}, '%')
+                OR ext_field3 LIKE CONCAT('%', #{keyword}, '%')
+                )
 
         </if>
         <if test="protocolType != null and protocolType != ''">

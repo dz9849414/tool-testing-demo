@@ -48,4 +48,8 @@ public class TemplateJobItem {
      */
     @TableField(value = "status")
     private Integer status;
+
+    @TableField(value = "is_deleted")
+    @TableLogic(value = "0", delval = "1")
+    private Integer isDeleted;
 }

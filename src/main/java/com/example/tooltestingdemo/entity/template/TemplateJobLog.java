@@ -68,4 +68,8 @@ public class TemplateJobLog {
 
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+
+    @TableField(value = "is_deleted")
+    @TableLogic(value = "0", delval = "1")
+    private Integer isDeleted;
 }
