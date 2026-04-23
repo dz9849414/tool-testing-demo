@@ -47,10 +47,18 @@ public interface SysRoleMapper extends BaseMapper<SysRole> {
     List<SysRole> selectByNameAndScopeId(@Param("name") String name, @Param("scopeId") String scopeId);
     
     /**
-     * 根据用户ID查找角色列表
+     * 根据用户ID查询角色列表
      */
-    @Select("SELECT r.* FROM pdm_tool_sys_role r JOIN pdm_tool_sys_user_role ur ON r.id = ur.role_id WHERE ur.user_id = #{userId} AND r.status = 1")
+    @Select("SELECT r.* FROM pdm_tool_sys_role r JOIN pdm_tool_sys_user_role ur ON r.id = ur.role_id WHERE ur.user_id = #{userId} AND r.is_deleted = 0")
     List<SysRole> selectByUserId(@Param("userId") String userId);
+    
+    /**
+     * 获取当前最大的角色ID
+     */
+    @Select("SELECT COALESCE(MAX(CAST(id AS UNSIGNED)), 0) \n" +
+            "FROM pdm_tool_sys_role\n" +
+            "WHERE id REGEXP '^[0-9]+$'")
+    Long selectMaxId();
     
     /**
      * 根据角色状态查找角色列表

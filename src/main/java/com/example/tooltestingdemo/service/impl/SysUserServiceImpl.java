@@ -246,7 +246,7 @@ public class SysUserServiceImpl implements SysUserService {
             // 设置删除时间
             user.setDeletedTime(java.time.LocalDateTime.now());
             
-            userMapper.updateById(user);
+            userMapper.deleteById(user);
         }
     }
     

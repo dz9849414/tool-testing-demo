@@ -126,8 +126,9 @@ public class SysRoleController {
                 return Result.error(ErrorStatus.BAD_REQUEST, "角色编码已存在");
             }
         } else {
-            // 如果id没传入，系统自动生成
-            role.setId("role_" + IdGenerator.generateSnowflakeId());
+            // 如果id没传入，系统自动生成：获取当前最大ID + 1
+            Long maxId = roleService.getMaxRoleId();
+            role.setId(String.valueOf(maxId + 1));
         }
         
         Boolean savedRole = roleService.save(role);
@@ -153,14 +154,14 @@ public class SysRoleController {
         }
         
         SysRole role = new SysRole();
-        role.setId(id);
+        roleDTO.setId(id);
         
         try {
             BeanUtils.copyProperties(role, roleDTO);
         } catch (Exception e) {
             return Result.error(ErrorStatus.BAD_REQUEST, "参数转换失败");
         }
-        
+
         // 确保当scopeId为null或者没传时，将角色的scopeId设为null
         if (role.getScopeId() != null && role.getScopeId().isEmpty()) {
             role.setScopeId(null);

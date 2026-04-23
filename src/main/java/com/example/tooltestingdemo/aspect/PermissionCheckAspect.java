@@ -10,11 +10,16 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.lang.reflect.Method;
 import java.util.List;
 
 /**
@@ -52,6 +57,9 @@ public class PermissionCheckAspect {
         // 获取方法参数
         java.util.Map<String, Object> params = getMethodParams(joinPoint);
         
+        // 获取当前请求路径
+        String requestPath = getRequestPath(joinPoint);
+        
         // 检查是否是当前用户查看自己的信息
         if (allowCurrentUser && isCurrentUser(params.get(targetUserIdParam))) {
             // 当前用户查看自己的信息，允许通过
@@ -59,7 +67,7 @@ public class PermissionCheckAspect {
         }
         
         // 检查类型权限
-        Result<?> typeErrorResponse = checkPermission(type, params, targetUserIdParam, roleIdsParam);
+        Result<?> typeErrorResponse = checkPermission(type, params, targetUserIdParam, roleIdsParam, requestPath);
         
         // 检查编码权限
         Result<?> permErrorResponse = null;
@@ -144,24 +152,48 @@ public class PermissionCheckAspect {
      */
     private java.util.Map<String, Object> getMethodParams(ProceedingJoinPoint joinPoint) {
         java.util.Map<String, Object> params = new java.util.HashMap<>();
-        // 这里简化处理，实际项目中可以通过反射获取方法参数名
-        // 或者使用Spring的MethodParameterNameDiscoverer
+        
+        // 使用Spring的MethodParameterNameDiscoverer获取参数名称
+        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+        Method method = signature.getMethod();
+        
+        // 获取参数名称
+        org.springframework.core.DefaultParameterNameDiscoverer discoverer = new org.springframework.core.DefaultParameterNameDiscoverer();
+        String[] parameterNames = discoverer.getParameterNames(method);
+        
         Object[] args = joinPoint.getArgs();
-        // 假设参数顺序为：id, roleIds, 等
-        // 实际项目中需要根据具体方法调整
-        if (args.length > 0) {
-            params.put("id", args[0]);
+        
+        // 将参数名称和值对应起来
+        if (parameterNames != null && args != null) {
+            for (int i = 0; i < parameterNames.length && i < args.length; i++) {
+                params.put(parameterNames[i], args[i]);
+            }
         }
-        if (args.length > 1) {
-            params.put("roleIds", args[1]);
-        }
+        
         return params;
+    }
+    
+    /**
+     * 获取当前请求路径
+     */
+    private String getRequestPath(ProceedingJoinPoint joinPoint) {
+        try {
+            // 获取HttpServletRequest
+            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attributes != null) {
+                HttpServletRequest request = attributes.getRequest();
+                return request.getRequestURI();
+            }
+        } catch (Exception e) {
+            // 如果无法获取请求路径，返回空字符串
+        }
+        return "";
     }
     
     /**
      * 检查权限
      */
-    private Result<?> checkPermission(String type, java.util.Map<String, Object> params, String targetUserIdParam, String roleIdsParam) {
+    private Result<?> checkPermission(String type, java.util.Map<String, Object> params, String targetUserIdParam, String roleIdsParam, String requestPath) {
         switch (type) {
             case "view":
                 // 对于view类型，如果指定了perm，则跳过角色检查，只检查权限编码
@@ -170,7 +202,22 @@ public class PermissionCheckAspect {
             case "update":
             case "delete":
             case "approve":
-                return checkUpdatePermission(params.get(targetUserIdParam).toString());
+                // 根据请求路径区分用户相关和角色相关的权限检查
+                Object targetId = params.get(targetUserIdParam);
+                if (targetId == null) {
+                    return createErrorResponse("目标ID不能为空");
+                }
+                
+                if (requestPath.startsWith("/api/users/")) {
+                    // 用户相关接口，检查用户权限
+                    return checkUserPermission(targetId.toString());
+                } else if (requestPath.startsWith("/api/roles/")) {
+                    // 角色相关接口，检查角色权限
+                    return checkRolePermission(targetId.toString());
+                } else {
+                    // 其他接口，使用默认的权限检查
+                    return checkUpdatePermission(targetId.toString());
+                }
             case "assignRoles":
                 String targetUserId = params.get(targetUserIdParam).toString();
                 List<String> roleIds = (List<String>) params.get(roleIdsParam);
@@ -338,6 +385,116 @@ public class PermissionCheckAspect {
 
         // 普通用户只能操作自己
         return createErrorResponse("无权限操作该用户");
+    }
+    
+    /**
+     * 检查用户权限，防止越级操作
+     */
+    private Result<?> checkUserPermission(String targetUserId) {
+        // 获取当前登录用户
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        // 获取当前用户信息
+        com.example.tooltestingdemo.entity.SysUser currentUser = userService.findByUsername(currentUsername);
+        if (currentUser == null) {
+            return createErrorResponse("用户不存在");
+        }
+
+        // 如果是当前用户自己，允许操作
+        if (currentUser.getId().equals(targetUserId)) {
+            return null;
+        }
+
+        // 获取目标用户信息
+        com.example.tooltestingdemo.entity.SysUser targetUser = userService.findById(Long.valueOf(targetUserId));
+        if (targetUser == null) {
+            return createErrorResponse("目标用户不存在");
+        }
+
+        // 获取当前用户的角色列表
+        List<String> currentRoles = userService.getRolesByUserId(currentUser.getId());
+        
+        // 获取目标用户的角色列表
+        List<String> targetRoles = userService.getRolesByUserId(targetUser.getId());
+
+        // 检查当前用户是否有权限操作目标用户
+        if (canUpdateUser(currentRoles, targetRoles)) {
+            return null;
+        }
+
+        return createErrorResponse("没有权限操作该用户");
+    }
+    
+    /**
+     * 检查角色权限，防止越级操作
+     */
+    private Result<?> checkRolePermission(String targetRoleId) {
+        // 获取当前登录用户
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        // 获取当前用户信息
+        com.example.tooltestingdemo.entity.SysUser currentUser = userService.findByUsername(currentUsername);
+        if (currentUser == null) {
+            return createErrorResponse("用户不存在");
+        }
+
+        // 获取当前用户的角色列表
+        List<String> currentRoles = userService.getRolesByUserId(currentUser.getId());
+        
+        // 检查当前用户是否有权限操作该角色
+        if (canUpdateRole(currentRoles, targetRoleId)) {
+            return null;
+        }
+
+        return createErrorResponse("没有权限操作该角色");
+    }
+    
+    /**
+     * 检查当前用户是否有权限更新目标用户
+     */
+    private boolean canUpdateUser(List<String> currentUserRoles, List<String> targetUserRoles) {
+        // 如果当前用户是系统管理员，允许操作任何用户
+        if (currentUserRoles.contains("admin")) {
+            return true;
+        }
+        
+        // 如果目标用户是系统管理员，只有系统管理员可以操作
+        if (targetUserRoles.contains("admin")) {
+            return false;
+        }
+        
+        // 如果当前用户是部门经理，可以操作普通用户
+        if (currentUserRoles.contains("manager") && targetUserRoles.contains("user")) {
+            return true;
+        }
+        
+        // 默认情况下，不允许越级操作
+        return false;
+    }
+    
+    /**
+     * 检查当前用户是否有权限更新目标角色
+     */
+    private boolean canUpdateRole(List<String> currentUserRoles, String targetRoleId) {
+        // 如果当前用户是系统管理员，允许操作任何角色
+        if (currentUserRoles.contains("admin")) {
+            return true;
+        }
+        
+        // 如果目标角色是系统管理员角色，只有系统管理员可以操作
+        if ("admin".equals(targetRoleId)) {
+            return false;
+        }
+        
+        // 如果当前用户是部门经理，可以操作普通用户角色
+        if (currentUserRoles.contains("manager") && "user".equals(targetRoleId)) {
+            return true;
+        }
+        
+        // 默认情况下，不允许越级操作
+        return false;
     }
     
     /**

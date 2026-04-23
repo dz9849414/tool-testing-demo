@@ -250,4 +250,9 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         // 最后删除角色本身
         return baseMapper.deleteById(id) > 0;
     }
+    
+    @Override
+    public Long getMaxRoleId() {
+        return roleMapper.selectMaxId();
+    }
 }

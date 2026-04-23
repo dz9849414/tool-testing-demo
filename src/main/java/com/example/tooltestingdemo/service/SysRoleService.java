@@ -121,4 +121,9 @@ public interface SysRoleService extends IService<SysRole> {
      * 批量更新角色状态
      */
     void batchUpdateRoleStatus(List<String> roleIds, Integer status);
+    
+    /**
+     * 获取当前最大的角色ID
+     */
+    Long getMaxRoleId();
 }
