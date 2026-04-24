@@ -14,7 +14,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -33,6 +35,7 @@ import java.io.IOException;
 @RequestMapping("/api/protocol/protocolConfig")
 @RequiredArgsConstructor
 @Tag(name = "协议配置管理")
+@Validated
 public class ProtocolConfigController {
     private final IProtocolConfigService protocolConfigService;
 
@@ -88,7 +91,7 @@ public class ProtocolConfigController {
     @GetMapping("/import/failures/{reportId}")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:param:importExport')")
     @Operation(summary = "下载导入失败原因文件")
-    public void downloadImportFailureReport(@PathVariable String reportId, HttpServletResponse response) throws IOException {
+    public void downloadImportFailureReport(@PathVariable @NotBlank(message = "报告ID不能为空") String reportId, HttpServletResponse response) throws IOException {
         protocolConfigService.downloadImportFailureReport(reportId, response);
     }
 

@@ -13,7 +13,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,6 +34,7 @@ import java.io.IOException;
 @RequestMapping("/api/protocol/protocolType")
 @RequiredArgsConstructor
 @Tag(name = "协议类型管理")
+@Validated
 public class ProtocolTypeController {
 
     private final IProtocolTypeService protocolTypeService;
@@ -73,7 +76,7 @@ public class ProtocolTypeController {
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:type:import')")
     public Result<ProtocolTypeImportResultVO> importProtocolTypes(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "strategy", required = false, defaultValue = "INCREMENTAL") String strategy) throws IOException {
+            @RequestParam(value = "strategy", required = false, defaultValue = "INCREMENTAL") @NotBlank(message = "导入策略不能为空") String strategy) throws IOException {
         if (file == null || file.isEmpty()) {
             return Result.error("导入文件不能为空");
         }
