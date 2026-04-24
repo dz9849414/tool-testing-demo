@@ -37,6 +37,7 @@ CREATE TABLE `pdm_tool_protocol_config`
 (
     `id`                bigint                                  NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `protocol_id`       bigint                                  NOT NULL COMMENT '关联协议类型ID',
+    `protocol_name`     varchar(50) COLLATE utf8mb4_unicode_ci  NOT NULL COMMENT '协议类型名称',
     `config_name`       varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '配置名称',
     `url_config`        json                                                          DEFAULT NULL COMMENT 'URL配置（支持多个，JSON格式存储）',
     `auth_config`       json                                                          DEFAULT NULL COMMENT '认证配置（JSON格式，加密存储）',
@@ -118,8 +119,8 @@ CREATE TABLE `pdm_tool_protocol_test_record`
     `deleted_by`        bigint                                                       DEFAULT NULL COMMENT '删除人ID',
     `deleted_time`      datetime                                                     DEFAULT NULL COMMENT '删除时间',
     PRIMARY KEY (`id`),
-    KEY `idx_protocol_id` (`protocol_id`),
-    KEY `idx_config_id` (`config_id`)
+    KEY                 `idx_protocol_id` (`protocol_id`),
+    KEY                 `idx_config_id` (`config_id`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='协议测试记录表';

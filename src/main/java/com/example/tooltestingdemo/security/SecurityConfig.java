@@ -50,11 +50,13 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/template/**").permitAll()  // TODO: 调试用，生产环境删除
                 .requestMatchers("/swagger-ui/**").permitAll()
                 .requestMatchers("/v3/api-docs/**").permitAll()
                 .requestMatchers("/webjars/**").permitAll()
                 .requestMatchers("/api/protocol/**").permitAll()
+                .requestMatchers("/api/operation-logs/**").permitAll()
+                .requestMatchers("/api/logout/**").permitAll()
+                .requestMatchers("/api/mock/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated()
             )

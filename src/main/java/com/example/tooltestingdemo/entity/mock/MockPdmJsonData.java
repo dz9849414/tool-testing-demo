@@ -16,4 +16,5 @@ public class MockPdmJsonData {
     private Long id;
 
     private String dataJson;
+    private String remark;
 }

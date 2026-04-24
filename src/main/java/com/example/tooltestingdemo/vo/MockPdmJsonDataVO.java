@@ -11,4 +11,5 @@ public class MockPdmJsonDataVO {
     private Long id;
 
     private Object dataJson;
+    private String remark;
 }
