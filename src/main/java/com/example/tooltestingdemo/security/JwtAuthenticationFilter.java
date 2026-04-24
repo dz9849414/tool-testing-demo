@@ -40,7 +40,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String uri = request.getRequestURI();
         return
                  uri.startsWith("/api/auth/")
-                || uri.startsWith("/api/protocol/")
                 || uri.startsWith("/swagger-ui/")
                 || uri.startsWith("/v3/api-docs/")
                 || uri.startsWith("/webjars/");
@@ -53,7 +52,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String uri = request.getRequestURI();
         if ( uri.startsWith("/api/auth/")
-                || uri.startsWith("/api/protocol/")
                 || uri.startsWith("/swagger-ui/")
                 || uri.startsWith("/v3/api-docs/")
                 || uri.startsWith("/webjars/")) {

@@ -59,7 +59,7 @@ public class SecurityService {
      */
     public boolean isAdmin() {
         Long currentUserId = getCurrentUserId();
-        return 1L == currentUserId;
+        return 1L == (currentUserId == null?0:currentUserId);
     }
     
     /**
