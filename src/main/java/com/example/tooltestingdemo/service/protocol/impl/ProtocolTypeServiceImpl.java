@@ -455,9 +455,9 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
                         "协议分类", "分类", "protocolCategory"));
                 rowData.setSystemType(readCellValue(row, headerIndexMap, formatter, 3,
                         "系统类型", "适用系统", "systemType"));
-                rowData.setStatusText(readCellValue(row, headerIndexMap, formatter, 3,
+                rowData.setStatusText(readCellValue(row, headerIndexMap, formatter, 4,
                         "状态", "status"));
-                rowData.setDescription(readCellValue(row, headerIndexMap, formatter, 4,
+                rowData.setDescription(readCellValue(row, headerIndexMap, formatter, 5,
                         "描述", "备注", "description"));
                 rows.add(rowData);
             }
