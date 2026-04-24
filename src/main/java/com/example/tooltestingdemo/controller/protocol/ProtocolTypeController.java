@@ -16,6 +16,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.io.IOException;
 
@@ -39,6 +40,7 @@ public class ProtocolTypeController {
      * 新增协议类型
      */
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:type:add')")
     public Result<ProtocolType> createProtocolType(@RequestBody @Valid ProtocolTypeCreateDTO dto) {
         ProtocolType vo = protocolTypeService.createProtocolType(dto);
         return Result.success("创建成功", vo);
@@ -48,6 +50,7 @@ public class ProtocolTypeController {
      * 查询协议类型分页列表
      */
     @GetMapping("/list")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:type:query')")
     @Operation(summary = "协议类型分页列表", description = "支持按协议编码、名称、分类、系统类型、状态以及创建/修改时间范围筛选")
     public Result<IPage<ProtocolType>> getProtocolTypeList(@ModelAttribute ProtocolTypeQueryDTO dto) {
         IPage<ProtocolType> protocolTypePage = protocolTypeService.getProtocolTypeList(dto);
@@ -58,6 +61,7 @@ public class ProtocolTypeController {
      * 下载协议类型导入模板
      */
     @GetMapping("/import/template")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:type:export')")
     public void downloadImportTemplate(HttpServletResponse response) throws IOException {
         protocolTypeService.downloadImportTemplate(response);
     }
@@ -66,6 +70,7 @@ public class ProtocolTypeController {
      * 导入协议类型
      */
     @PostMapping("/import")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:type:import')")
     public Result<ProtocolTypeImportResultVO> importProtocolTypes(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "strategy", required = false, defaultValue = "INCREMENTAL") String strategy) throws IOException {
@@ -80,6 +85,7 @@ public class ProtocolTypeController {
      * 下载导入失败原因文件
      */
     @GetMapping("/import/failures/{reportId}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:type:import')")
     public void downloadImportFailureReport(@PathVariable String reportId, HttpServletResponse response) throws IOException {
         protocolTypeService.downloadImportFailureReport(reportId, response);
     }
@@ -91,6 +97,7 @@ public class ProtocolTypeController {
      *
      */
     @GetMapping("/export")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:type:export')")
     public void exportProtocolTypes(@ModelAttribute ProtocolTypeQueryDTO dto,
                                     HttpServletResponse response) throws IOException {
         protocolTypeService.exportProtocolTypes(dto, response);
@@ -100,6 +107,7 @@ public class ProtocolTypeController {
      * 批量变更协议类型状态
      */
     @PostMapping("/batch/status")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:type:status')")
     public Result<ProtocolTypeBatchStatusChangeVO> batchUpdateProtocolTypeStatus(
             @RequestBody @Valid ProtocolTypeBatchStatusUpdateDTO dto) {
         if (dto.getIds() == null || dto.getIds().length == 0) {
@@ -113,6 +121,7 @@ public class ProtocolTypeController {
      * 变更协议类型状态
      */
     @PostMapping("/status")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:type:status')")
     public Result<ProtocolTypeStatusChangeVO> updateProtocolTypeStatus(@RequestBody @Valid ProtocolTypeStatusUpdateDTO dto) {
         ProtocolTypeStatusChangeVO result = protocolTypeService.updateProtocolTypeStatus(dto);
         return Result.success(result.getMessage(), result);
@@ -122,6 +131,7 @@ public class ProtocolTypeController {
      * 编辑协议类型
      */
     @PostMapping("/modify")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:type:edit')")
     public Result<ProtocolType> modifyProtocolType(@RequestBody ProtocolTypeModifyDTO dto) {
         ProtocolType vo = protocolTypeService.modifyProtocolType(dto);
         return Result.success("编辑成功", vo);
@@ -134,6 +144,7 @@ public class ProtocolTypeController {
      *
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:type:delete')")
     public Result<Void> deleteProtocolType(@PathVariable Long id) {
         protocolTypeService.deleteProtocolType(id);
         return Result.success("删除成功");
@@ -146,6 +157,7 @@ public class ProtocolTypeController {
      *
      */
     @DeleteMapping("/batch")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:type:delete')")
     public Result<ProtocolTypeDeleteResultVO> batchDeleteProtocolTypes(@RequestBody ProtocolTypeBatchDeleteDTO dto) {
         if (dto == null || dto.getIds() == null || dto.getIds().length == 0) {
             return Result.error("协议类型ID列表不能为空");

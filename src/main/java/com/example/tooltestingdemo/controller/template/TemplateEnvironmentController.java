@@ -7,6 +7,7 @@ import com.example.tooltestingdemo.vo.TemplateEnvironmentVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -32,6 +33,7 @@ public class TemplateEnvironmentController {
      * @return 环境配置VO列表
      */
     @GetMapping("/list/{templateId}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:param')")
     public Result<List<TemplateEnvironmentVO>> getEnvironments(@PathVariable Long templateId) {
         List<TemplateEnvironmentVO> environments = environmentService.getEnvironmentsByTemplateId(templateId);
         return Result.success(environments);

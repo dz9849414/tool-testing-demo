@@ -45,7 +45,7 @@ public class SysOperationLogController {
     private final SysOperationLogService operationLogService;
 
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:log:api') or @securityService.isCurrentUser(#userId)")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:log:query') or @securityService.isCurrentUser(#userId)")
     public Result<Page<SysOperationLogVO>> getUserOperationLogs(
             @PathVariable String userId,
             @RequestParam(required = false) String startTime,

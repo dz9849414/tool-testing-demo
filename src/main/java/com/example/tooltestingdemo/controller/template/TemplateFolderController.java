@@ -7,6 +7,7 @@ import com.example.tooltestingdemo.vo.TemplateFolderVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -32,6 +33,7 @@ public class TemplateFolderController {
      * @return 文件夹VO列表
      */
     @GetMapping("/tree")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search')")
     public Result<List<TemplateFolderVO>> getFolderTree(@RequestParam(required = false) Long parentId) {
         List<TemplateFolderVO> folders = folderService.getFolderTree(parentId);
         return Result.success(folders);
@@ -46,6 +48,7 @@ public class TemplateFolderController {
      * @return 创建后的文件夹VO
      */
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:create')")
     public Result<TemplateFolderVO> createFolder(@RequestBody TemplateFolder folder) {
         TemplateFolderVO vo = folderService.createFolder(folder);
         return Result.success("创建成功", vo);
@@ -61,6 +64,7 @@ public class TemplateFolderController {
      * @return 是否成功
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:create')")
     public Result<String> updateFolder(@PathVariable Long id, @RequestBody TemplateFolder folder) {
         folder.setId(id);
         boolean success = folderService.updateFolder(folder);
@@ -79,6 +83,7 @@ public class TemplateFolderController {
      * @return 是否成功
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:create')")
     public Result<String> deleteFolder(@PathVariable Long id) {
         boolean success = folderService.deleteFolder(id);
         if (success) {
@@ -97,6 +102,7 @@ public class TemplateFolderController {
      * @return 是否成功
      */
     @PutMapping("/{id}/move")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:create')")
     public Result<String> moveFolder(@PathVariable Long id, @RequestParam Long targetParentId) {
         boolean success = folderService.moveFolder(id, targetParentId);
         if (success) {
@@ -114,6 +120,7 @@ public class TemplateFolderController {
      * @return 文件夹VO
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:create')")
     public Result<TemplateFolderVO> getFolderById(@PathVariable Long id) {
         TemplateFolderVO vo = folderService.getFolderDetail(id);
         if (vo != null) {

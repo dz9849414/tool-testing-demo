@@ -6,6 +6,7 @@ import com.example.tooltestingdemo.vo.TemplateFavoriteVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -33,6 +34,7 @@ public class TemplateFavoriteController {
      * @return 收藏记录VO
      */
     @PostMapping("/{templateId}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search')")
     public Result<TemplateFavoriteVO> favoriteTemplate(@PathVariable Long templateId,
                                                       @RequestAttribute("userId") Long userId,
                                                       @RequestParam(required = false) String remark) {
@@ -68,6 +70,7 @@ public class TemplateFavoriteController {
      * @param userId 用户ID
      * @return 关注记录VO
      */
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search') or @securityService.isCurrentUser(#userId)")
     @PostMapping("/follow/{templateId}")
     public Result<TemplateFavoriteVO> followTemplate(@PathVariable Long templateId,
                                                     @RequestAttribute("userId") Long userId) {
@@ -103,6 +106,7 @@ public class TemplateFavoriteController {
      * @return 收藏VO列表
      */
     @GetMapping("/my-favorites")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search') or @securityService.isCurrentUser(#userId)")
     public Result<List<TemplateFavoriteVO>> getMyFavorites(@RequestAttribute("userId") Long userId) {
         List<TemplateFavoriteVO> favorites = favoriteService.getUserFavorites(userId);
         return Result.success(favorites);
@@ -117,6 +121,7 @@ public class TemplateFavoriteController {
      * @return 关注VO列表
      */
     @GetMapping("/my-follows")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search') or @securityService.isCurrentUser(#userId)")
     public Result<List<TemplateFavoriteVO>> getMyFollows(@RequestAttribute("userId") Long userId) {
         List<TemplateFavoriteVO> follows = favoriteService.getUserFollows(userId);
         return Result.success(follows);

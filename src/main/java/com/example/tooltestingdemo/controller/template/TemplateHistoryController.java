@@ -9,6 +9,7 @@ import com.example.tooltestingdemo.vo.TemplateHistoryVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -34,6 +35,7 @@ public class TemplateHistoryController {
      * @return 历史版本VO列表
      */
     @GetMapping("/list/{templateId}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search')")
     public Result<List<TemplateHistoryVO>> getHistories(@PathVariable Long templateId) {
         List<TemplateHistoryVO> histories = historyService.getHistoriesByTemplateId(templateId);
         return Result.success(histories);
@@ -51,6 +53,7 @@ public class TemplateHistoryController {
      * @return 分页历史版本VO列表
      */
     @GetMapping("/page/{templateId}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search')")
     public Result<IPage<TemplateHistoryVO>> pageHistories(
             @PathVariable Long templateId,
             @RequestParam(defaultValue = "1") Long current,
@@ -71,6 +74,7 @@ public class TemplateHistoryController {
      * @return 历史版本详情VO
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search')")
     public Result<TemplateHistoryVO> getHistoryDetail(@PathVariable Long id) {
         TemplateHistoryVO vo = historyService.getHistoryDetail(id);
         if (vo != null) {
@@ -88,6 +92,7 @@ public class TemplateHistoryController {
      * @return 是否成功
      */
     @PostMapping("/{id}/rollback")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:edit')")
     public Result<String> rollbackToVersion(@PathVariable Long id) {
         boolean success = historyService.rollbackToVersion(id);
         if (success) {
@@ -106,6 +111,7 @@ public class TemplateHistoryController {
      * @return 清理数量
      */
     @DeleteMapping("/clean/{templateId}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:edit')")
     public Result<Integer> cleanOldHistories(@PathVariable Long templateId, 
                                               @RequestParam(defaultValue = "10") int keepCount) {
         int count = historyService.cleanOldHistories(templateId, keepCount);

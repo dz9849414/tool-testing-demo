@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.io.IOException;
 
@@ -34,6 +35,7 @@ public class TemplateImportController {
      * @return 导入结果
      */
     @PostMapping("/import")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:create')")
     public Result<TemplateImportResultVO> importTemplates(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "format", required = false) String format,
@@ -72,6 +74,7 @@ public class TemplateImportController {
      * @return 验证结果
      */
     @PostMapping("/validate")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:create')")
     public Result<TemplateImportResultVO> validateImport(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "format", required = false) String format) {
@@ -100,6 +103,7 @@ public class TemplateImportController {
      * @param response    HTTP响应
      */
     @GetMapping("/export/json")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search')")
     public void exportToJson(@RequestParam("templateIds") Long[] templateIds, 
                              HttpServletResponse response) throws IOException {
         
@@ -120,6 +124,7 @@ public class TemplateImportController {
      * @param response    HTTP响应
      */
     @GetMapping("/export/postman")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search')")
     public void exportToPostman(@RequestParam("templateIds") Long[] templateIds,
                                 HttpServletResponse response) throws IOException {
         

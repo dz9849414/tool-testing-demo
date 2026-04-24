@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.time.LocalDateTime;
 
@@ -32,6 +33,7 @@ public class TemplateExecuteLogController {
      * 分页查询模板执行日志。
      */
     @GetMapping("/page")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search')")
     public Result<IPage<TemplateExecuteLog>> pageLogs(
             @RequestParam(defaultValue = "1") Long current,
             @RequestParam(defaultValue = "10") Long size,
@@ -51,6 +53,7 @@ public class TemplateExecuteLogController {
      * 获取单条执行日志详情。
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search')")
     public Result<TemplateExecuteLog> getLogById(@PathVariable Long id) {
         TemplateExecuteLog log = executeLogService.getById(id);
         return log != null ? Result.success(log) : Result.error("日志不存在");
@@ -60,6 +63,7 @@ public class TemplateExecuteLogController {
      * 根据 traceId 查询完整链路信息。
      */
     @GetMapping("/trace/{traceId}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search')")
     public Result<TraceChainDetailVO> getTraceChainDetail(@PathVariable String traceId) {
         if (!StringUtils.hasText(traceId)) {
             return Result.error("traceId 不能为空");
@@ -78,6 +82,7 @@ public class TemplateExecuteLogController {
      * 根据 traceId 查询当前进程内采集到的运行时日志。
      */
     @GetMapping("/trace/{traceId}/runtime-logs")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search')")
     public Result<TraceRuntimeLogVO> getTraceRuntimeLogs(@PathVariable String traceId) {
         if (!StringUtils.hasText(traceId)) {
             return Result.error("traceId 不能为空");

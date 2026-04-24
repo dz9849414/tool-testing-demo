@@ -130,7 +130,7 @@ public class SysDictionaryController {
      */
     @GetMapping("/check-code")
     @Operation(summary = "检查字典键唯一性", description = "实时校验字典键唯一性，重复则给出提示")
-    @PreAuthorize("@securityService.hasPermission('system:dictionary:api')")
+    @PreAuthorize("@securityService.hasPermission('system:dictionary:query')")
     public Result<?> checkCodeUnique(
             @Parameter(description = "字典键") @RequestParam String code,
             @Parameter(description = "字典类型") @RequestParam String type,
@@ -144,7 +144,7 @@ public class SysDictionaryController {
      */
     @GetMapping
     @Operation(summary = "分页查询数据字典", description = "支持按类型筛选、分页、搜索")
-    @PreAuthorize("@securityService.hasPermission('system:dictionary:api')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:dictionary:query')")
     public Result<?> getDictionaries(
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size,
@@ -161,7 +161,7 @@ public class SysDictionaryController {
      */
     @GetMapping("/type/{type}")
     @Operation(summary = "根据类型查询数据字典", description = "根据类型查询启用状态的数据字典")
-    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:dictionary:api')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:dictionary:query')")
     public Result<?> getDictionariesByType(@Parameter(description = "字典类型") @PathVariable String type) {
         List<SysDictionary> dictionaries = dictionaryService.getDictionariesByType(type);
         return Result.success("根据类型查询数据字典成功", dictionaries);
@@ -172,7 +172,7 @@ public class SysDictionaryController {
      */
     @GetMapping("/{id}")
     @Operation(summary = "根据ID查询数据字典详情", description = "根据字典ID查询数据字典的详细信息")
-    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:dictionary:api')")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:dictionary:query')")
     public Result<?> getDictionaryById(@Parameter(description = "字典ID") @PathVariable String id) {
         SysDictionary dictionary = dictionaryService.getById(id);
         if (dictionary == null) {

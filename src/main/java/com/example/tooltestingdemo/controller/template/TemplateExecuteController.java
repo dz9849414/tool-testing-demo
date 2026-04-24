@@ -5,6 +5,7 @@ import com.example.tooltestingdemo.service.template.TemplateExecuteService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.Map;
 
@@ -35,6 +36,7 @@ public class TemplateExecuteController {
      * @return 执行结果
      */
     @PostMapping("/{templateId}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
     public Result<Map<String, Object>> executeTemplate(
             @PathVariable Long templateId,
             @RequestBody(required = false) ExecuteRequest request) {
@@ -66,6 +68,7 @@ public class TemplateExecuteController {
      * @return 验证结果
      */
     @GetMapping("/{templateId}/validate")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
     public Result<Map<String, Object>> validateTemplate(@PathVariable Long templateId) {
         log.info("收到验证模板请求: templateId={}", templateId);
 

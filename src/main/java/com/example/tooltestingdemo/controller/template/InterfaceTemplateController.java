@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -52,6 +53,7 @@ public class InterfaceTemplateController {
      * @return 分页结果VO
      */
     @GetMapping("/page")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search')")
     public Result<IPage<InterfaceTemplateVO>> pageTemplates(
             @RequestParam(defaultValue = "1") Long current,
             @RequestParam(defaultValue = "10") Long size,
@@ -74,6 +76,7 @@ public class InterfaceTemplateController {
      * @return 模板详情VO
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search')")
     public Result<InterfaceTemplateVO> getTemplateById(@PathVariable Long id) {
         InterfaceTemplateVO vo = templateService.getTemplateDetail(id);
         if (vo != null) {
@@ -91,6 +94,7 @@ public class InterfaceTemplateController {
      * @return 创建后的模板VO（状态为草稿）
      */
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:create')")
     public Result<InterfaceTemplateVO> createTemplate(@RequestBody InterfaceTemplateDTO dto) {
         InterfaceTemplateVO vo = templateService.createTemplate(dto);
         return Result.success("草稿创建成功", vo);
@@ -106,6 +110,7 @@ public class InterfaceTemplateController {
      * @return 是否成功
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:edit')")
     public Result<String> updateTemplate(@PathVariable Long id, @RequestBody InterfaceTemplateDTO dto) {
         boolean success = templateService.updateTemplate(id, dto);
         if (success) {
@@ -123,6 +128,7 @@ public class InterfaceTemplateController {
      * @return 是否成功
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:delete')")
     public Result<String> deleteTemplate(@PathVariable Long id) {
         boolean success = templateService.deleteTemplate(id);
         if (success) {
@@ -140,6 +146,7 @@ public class InterfaceTemplateController {
      * @return 删除结果，包含成功和失败的ID列表
      */
     @DeleteMapping("/batch")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:delete')")
     public Result<Map<String, Object>> batchDeleteTemplates(@RequestBody Long[] ids) {
         if (ids == null || ids.length == 0) {
             return Result.error("模板ID列表不能为空");
@@ -170,6 +177,7 @@ public class InterfaceTemplateController {
      * @return 新模板VO
      */
     @PostMapping("/{id}/copy")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:edit')")
     public Result<InterfaceTemplateVO> copyTemplate(@PathVariable Long id, @RequestParam String newName) {
         InterfaceTemplateVO vo = templateService.copyTemplate(id, newName);
         return Result.success("复制成功", vo);
@@ -184,6 +192,7 @@ public class InterfaceTemplateController {
      * @return 是否成功
      */
     @PutMapping("/{id}/publish")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:edit')")
     public Result<String> publishTemplate(@PathVariable Long id) {
         boolean success = templateService.publishTemplate(id);
         if (success) {
@@ -201,6 +210,7 @@ public class InterfaceTemplateController {
      * @return 是否成功
      */
     @PutMapping("/{id}/archive")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:version')")
     public Result<String> archiveTemplate(@PathVariable Long id) {
         boolean success = templateService.archiveTemplate(id);
         if (success) {
@@ -219,6 +229,7 @@ public class InterfaceTemplateController {
      * @return 是否成功
      */
     @PutMapping("/{id}/move")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:edit')")
     public Result<String> moveTemplate(@PathVariable Long id, @RequestParam Long folderId) {
         boolean success = templateService.moveTemplate(id, folderId);
         if (success) {
@@ -238,6 +249,7 @@ public class InterfaceTemplateController {
      * @return 保存后的模板VO
      */
     @PostMapping("/draft")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:edit')")
     public Result<InterfaceTemplateVO> saveDraft(@RequestBody InterfaceTemplateDTO dto) {
         InterfaceTemplateVO vo = templateService.saveDraft(dto);
         return Result.success("草稿保存成功", vo);
@@ -253,6 +265,7 @@ public class InterfaceTemplateController {
      * @return 保存后的模板VO
      */
     @PutMapping("/{id}/draft")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:edit')")
     public Result<InterfaceTemplateVO> updateDraft(@PathVariable Long id, @RequestBody InterfaceTemplateDTO dto) {
         InterfaceTemplateVO vo = templateService.saveDraft(id, dto);
         return Result.success("草稿更新成功", vo);
@@ -268,6 +281,7 @@ public class InterfaceTemplateController {
      * @return 提交后的模板VO
      */
     @PostMapping("/{id}/submit")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:edit')")
     public Result<InterfaceTemplateVO> submitForReview(@PathVariable Long id, @RequestBody InterfaceTemplateDTO dto) {
         InterfaceTemplateVO vo = templateService.submitForReview(id, dto);
         return Result.success("提交审核成功", vo);
@@ -278,6 +292,7 @@ public class InterfaceTemplateController {
      * 接口地址：POST /api/template/{id}/submit/simple
      */
     @PostMapping("/submit/simple/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:edit')")
     public Result<InterfaceTemplateVO> submitForReviewById(@PathVariable Long id) {
         InterfaceTemplateVO current = templateService.getTemplateDetail(id);
         if (current == null) {
@@ -301,6 +316,7 @@ public class InterfaceTemplateController {
      * @return 是否成功
      */
     @PutMapping("/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:version')")
     public Result<String> approveTemplate(@PathVariable Long id) {
         boolean success = templateService.approveTemplate(id);
         if (success) {
@@ -319,6 +335,7 @@ public class InterfaceTemplateController {
      * @return 是否成功
      */
     @PutMapping("/{id}/reject")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:version')")
     public Result<String> rejectTemplate(@PathVariable Long id, @RequestParam(required = false) String reason) {
         boolean success = templateService.rejectTemplate(id, reason);
         if (success) {
@@ -372,6 +389,7 @@ public class InterfaceTemplateController {
      * 接口地址：GET /api/template/{id}/files
      */
     @GetMapping("/{id}/files")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:edit')")
     public Result<List<TemplateFile>> getFiles(@PathVariable Long id) {
         List<TemplateFile> files = fileService.getFilesByTemplateId(id);
         return Result.success(files);
@@ -383,6 +401,7 @@ public class InterfaceTemplateController {
      * 接口地址：DELETE /api/template/files/{fileId}
      */
     @DeleteMapping("/files/{fileId}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:edit')")
     public Result<String> deleteFile(@PathVariable Long fileId) {
         boolean success = fileService.deleteFile(fileId);
         if (success) {
@@ -397,6 +416,7 @@ public class InterfaceTemplateController {
      * 接口地址：GET /api/template/files/{fileId}/download
      */
     @GetMapping("/files/{fileId}/download")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:edit')")
     public ResponseEntity<byte[]> downloadFile(@PathVariable Long fileId) {
         TemplateFile file = fileService.getFileById(fileId);
         
@@ -422,6 +442,7 @@ public class InterfaceTemplateController {
      * 接口地址：GET /api/template/file/download/{filename}
      */
     @GetMapping("/file/download/{filename:.+}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:edit')")
     public ResponseEntity<byte[]> downloadFileByName(@PathVariable String filename) {
         // 根据文件名查找文件记录
         List<TemplateFile> files = fileService.getFilesByTemplateId(0L); // 这里需要从service层提供按文件名查询的方法

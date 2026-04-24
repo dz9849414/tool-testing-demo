@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -35,6 +36,7 @@ public class TemplateJobController {
      * 分页查询任务列表（附带最近一次执行状态，推荐管理页面使用）
      */
     @GetMapping("/page-with-last-log")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
     public Result<IPage<TemplateJobListVO>> pageJobsWithLastLog(
             @RequestParam(defaultValue = "1") Long current,
             @RequestParam(defaultValue = "10") Long size,
@@ -48,6 +50,7 @@ public class TemplateJobController {
      * 获取任务详情
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
     public Result<TemplateJob> getJobById(@PathVariable Long id) {
         TemplateJob job = jobService.getJobDetail(id);
         return job != null ? Result.success(job) : Result.error("任务不存在");
@@ -57,6 +60,7 @@ public class TemplateJobController {
      * 创建任务
      */
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
     public Result<TemplateJob> createJob(@RequestBody TemplateJob job) {
         return Result.success("创建成功", jobService.createJob(job));
     }
@@ -65,6 +69,7 @@ public class TemplateJobController {
      * 导出任务配置为 JSON
      */
     @GetMapping("/export/json")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
     public void exportJobs(@RequestParam("jobIds") String[] rawJobIds, HttpServletResponse response) throws IOException {
         Long[] jobIds = parseJobIds(rawJobIds);
         String content = jobService.exportJobs(jobIds);
@@ -80,6 +85,7 @@ public class TemplateJobController {
      * 导入任务配置
      */
     @PostMapping("/import")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
     public Result<Map<String, Object>> importJobs(@RequestParam("file") MultipartFile file) {
         if (file == null || file.isEmpty()) {
             return Result.error("导入文件不能为空");
@@ -96,6 +102,7 @@ public class TemplateJobController {
      * 更新任务
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
     public Result<TemplateJob> updateJob(@PathVariable Long id, @RequestBody TemplateJob job) {
         job.setId(id);
         return Result.success("更新成功", jobService.updateJob(job));
@@ -105,6 +112,7 @@ public class TemplateJobController {
      * 删除任务
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
     public Result<String> deleteJob(@PathVariable Long id) {
         return jobService.deleteJob(id) ? Result.success("删除成功") : Result.error("删除失败");
     }
@@ -113,6 +121,7 @@ public class TemplateJobController {
      * 批量停止任务（停用并取消调度）
      */
     @PostMapping("/batch/stop")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
     public Result<Map<String, Object>> batchStopJobs(@RequestBody Long[] ids) {
         if (ids == null || ids.length == 0) {
             return Result.error("任务ID列表不能为空");
@@ -124,6 +133,7 @@ public class TemplateJobController {
      * 异步批量触发（立即返回 batchId）
      */
     @PostMapping("/batch/trigger-async")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
     public Result<String> submitBatchTriggerAsync(@RequestBody Long[] ids) {
         if (ids == null || ids.length == 0) {
             return Result.error("任务ID列表不能为空");
@@ -136,6 +146,7 @@ public class TemplateJobController {
      * 查询异步批量触发状态
      */
     @GetMapping("/batch/{batchId}/status")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
     public Result<Map<String, Object>> getBatchTriggerResult(@PathVariable String batchId) {
         return Result.success(jobService.getBatchTriggerResult(batchId));
     }
@@ -144,6 +155,7 @@ public class TemplateJobController {
      * 手动触发执行（单个）
      */
     @PostMapping("/{id}/trigger")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
     public Result<Map<String, Object>> triggerJob(@PathVariable Long id) {
         Map<String, Object> result = jobService.triggerJob(id);
         Boolean success = (Boolean) result.get("success");
@@ -156,6 +168,7 @@ public class TemplateJobController {
      * 分页查询任务执行日志（结构化，适合管理页面展示）
      */
     @GetMapping("/logs/page")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
     public Result<IPage<TemplateJobLogVO>> pageJobLogs(
             @RequestParam(defaultValue = "1") Long current,
             @RequestParam(defaultValue = "10") Long size,
@@ -169,6 +182,7 @@ public class TemplateJobController {
      * 查询任务最近日志
      */
     @GetMapping("/{id}/logs")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
     public Result<List<TemplateJobLog>> getRecentLogs(
             @PathVariable Long id,
             @RequestParam(required = false, defaultValue = "10") Integer limit) {
