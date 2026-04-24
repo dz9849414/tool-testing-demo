@@ -727,7 +727,13 @@ INSERT IGNORE INTO `pdm_tool_sys_permission` (`id`, `name`, `code`, `description
 ('report_api_24', '导出图表API', 'report:chart:export', '导出图表接口权限', 'report', 'API', 'm152', 3, 180),
 ('report_api_25', '批量导出图表API', 'report:chart:batch-export', '批量导出图表接口权限', 'report', 'API', 'm152', 3, 181),
 ('report_api_26', '图表对比API', 'report:chart:compare', '图表对比接口权限', 'report', 'API', 'm153', 3, 182),
-('report_api_27', '图表数据分析API', 'report:chart:analyze', '图表数据分析接口权限', 'report', 'API', 'm154', 3, 183);
+('report_api_27', '图表数据分析API', 'report:chart:analyze', '图表数据分析接口权限', 'report', 'API', 'm154', 3, 183),
+
+-- ====================== 系统管理模块API权限 ======================
+('system_api_1', '系统配置查询API', 'system:config:query', '系统配置查询接口权限', 'system', 'API', 'm168', 3, 195),
+('system_api_2', '系统配置更新API', 'system:config:update', '系统配置更新接口权限', 'system', 'API', 'm168', 3, 196),
+('system_api_3', '数据字典查询API', 'system:dictionary:query', '数据字典查询接口权限', 'system', 'API', 'm168', 3, 197),
+('system_api_4', '操作日志查询API', 'system:log:query', '操作日志查询接口权限', 'system', 'API', 'm168', 3, 198);
 
 -- ===========================================
 -- 为管理员角色分配报告与分析管理模块的权限
@@ -766,7 +772,13 @@ INSERT IGNORE INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_
 ('report_rp_24', 'admin', 'report_api_24', NOW(), 'admin'),
 ('report_rp_25', 'admin', 'report_api_25', NOW(), 'admin'),
 ('report_rp_26', 'admin', 'report_api_26', NOW(), 'admin'),
-('report_rp_27', 'admin', 'report_api_27', NOW(), 'admin');
+('report_rp_27', 'admin', 'report_api_27', NOW(), 'admin'),
+
+-- 系统管理权限
+('system_rp_1', 'admin', 'system_api_1', NOW(), 'admin'),
+('system_rp_2', 'admin', 'system_api_2', NOW(), 'admin'),
+('system_rp_3', 'admin', 'system_api_3', NOW(), 'admin'),
+('system_rp_4', 'admin', 'system_api_4', NOW(), 'admin');
 
 -- ===========================================
 -- 新增角色和权限分配
