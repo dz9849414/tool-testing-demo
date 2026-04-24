@@ -89,7 +89,7 @@ public class ProtocolTypeController {
      */
     @GetMapping("/import/failures/{reportId}")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:type:import')")
-    public void downloadImportFailureReport(@PathVariable String reportId, HttpServletResponse response) throws IOException {
+    public void downloadImportFailureReport(@PathVariable @NotBlank(message = "报告ID不能为空") String reportId, HttpServletResponse response) throws IOException {
         protocolTypeService.downloadImportFailureReport(reportId, response);
     }
 
@@ -135,7 +135,7 @@ public class ProtocolTypeController {
      */
     @PostMapping("/modify")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:type:edit')")
-    public Result<ProtocolType> modifyProtocolType(@RequestBody ProtocolTypeModifyDTO dto) {
+    public Result<ProtocolType> modifyProtocolType(@RequestBody @Valid ProtocolTypeModifyDTO dto) {
         ProtocolType vo = protocolTypeService.modifyProtocolType(dto);
         return Result.success("编辑成功", vo);
     }
@@ -161,10 +161,7 @@ public class ProtocolTypeController {
      */
     @DeleteMapping("/batch")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:type:delete')")
-    public Result<ProtocolTypeDeleteResultVO> batchDeleteProtocolTypes(@RequestBody ProtocolTypeBatchDeleteDTO dto) {
-        if (dto == null || dto.getIds() == null || dto.getIds().length == 0) {
-            return Result.error("协议类型ID列表不能为空");
-        }
+    public Result<ProtocolTypeDeleteResultVO> batchDeleteProtocolTypes(@RequestBody @Valid ProtocolTypeBatchDeleteDTO dto) {
         ProtocolTypeDeleteResultVO result = protocolTypeService.batchDeleteProtocolTypes(dto.getIds());
         return Result.success(result.getSummaryMessage(), result);
     }
