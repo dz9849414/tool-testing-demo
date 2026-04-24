@@ -232,7 +232,7 @@ INSERT IGNORE INTO `pdm_tool_sys_role` (`id`, `name`, `description`, `type`, `st
 
 -- 插入用户角色关联
 INSERT IGNORE INTO `pdm_tool_sys_user_role` (`id`, `user_id`, `role_id`) VALUES
-('ur_admin', 'admin', 'admin');
+('ur_admin', '1', 'admin');
 
 -- 插入基础权限（示例）
 INSERT IGNORE INTO `pdm_tool_sys_permission` (`id`, `name`, `code`, `description`, `module`, `type`, `parent_id`, `level`, `sort`) VALUES
