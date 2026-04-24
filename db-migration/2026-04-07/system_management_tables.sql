@@ -221,21 +221,21 @@ CREATE TABLE `pdm_tool_sys_login_log` (
 -- ===========================================
 
 -- 插入默认管理员用户（密码：admin123，已加密）
-INSERT INTO `pdm_tool_sys_user` (`id`, `username`, `password`, `email`, `real_name`, `status`) VALUES 
-('admin', 'admin', '$2a$10$SOb6oIm5cYI5l.DLRJgWJelN8l.hxk7ZlB21I8PAIw8KwVJG6srZe', 'admin@example.com', '系统管理员', 1);
+INSERT IGNORE INTO `pdm_tool_sys_user` (`id`, `username`, `password`, `email`, `real_name`, `status`) VALUES
+(1, 'admin', '$2a$10$SOb6oIm5cYI5l.DLRJgWJelN8l.hxk7ZlB21I8PAIw8KwVJG6srZe', 'admin@example.com', '系统管理员', 1);
 
 -- 插入默认角色
-INSERT INTO `pdm_tool_sys_role` (`id`, `name`, `description`, `type`, `status`) VALUES 
+INSERT IGNORE INTO `pdm_tool_sys_role` (`id`, `name`, `description`, `type`, `status`) VALUES
 ('admin', '系统管理员', '系统管理员，拥有所有权限', 'SYSTEM', 1),
 ('manager', '部门经理', '部门经理，拥有部门权限', 'SYSTEM', 1),
 ('user', '普通用户', '普通用户，拥有基础权限', 'SYSTEM', 1);
 
 -- 插入用户角色关联
-INSERT INTO `pdm_tool_sys_user_role` (`id`, `user_id`, `role_id`) VALUES 
+INSERT IGNORE INTO `pdm_tool_sys_user_role` (`id`, `user_id`, `role_id`) VALUES
 ('ur_admin', 'admin', 'admin');
 
 -- 插入基础权限（示例）
-INSERT INTO `pdm_tool_sys_permission` (`id`, `name`, `code`, `description`, `module`, `type`, `parent_id`, `level`, `sort`) VALUES 
+INSERT IGNORE INTO `pdm_tool_sys_permission` (`id`, `name`, `code`, `description`, `module`, `type`, `parent_id`, `level`, `sort`) VALUES
 ('p1', '系统管理', 'system:management', '系统管理模块', 'system', 'MENU', '0', 1, 1),
 ('p2', '用户管理', 'system:user', '用户管理', 'system', 'MENU', 'p1', 2, 1),
 ('p3', '角色管理', 'system:role', '角色管理', 'system', 'MENU', 'p1', 2, 2),
@@ -252,14 +252,14 @@ INSERT INTO `pdm_tool_sys_permission` (`id`, `name`, `code`, `description`, `mod
 
 
 -- 插入角色权限关联
-INSERT INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_id`) VALUES 
+INSERT IGNORE INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_id`) VALUES
 ('rp1', 'admin', 'p1'),
 ('rp2', 'admin', 'p2'),
 ('rp3', 'admin', 'p3'),
 ('rp4', 'admin', 'p4');
 
 -- 插入默认配置
-INSERT INTO `pdm_tool_sys_config` (`id`, `config_key`, `config_value`, `config_name`, `description`, `is_built_in`, `status`) VALUES 
+INSERT IGNORE INTO `pdm_tool_sys_config` (`id`, `config_key`, `config_value`, `config_name`, `description`, `is_built_in`, `status`) VALUES
 ('config1', 'system.name', '工具测试平台', '系统名称', '系统显示名称', 1, 1),
 ('config2', 'system.version', '1.0.0', '系统版本', '系统版本号', 1, 1);
 
@@ -396,7 +396,7 @@ INSERT IGNORE INTO `pdm_tool_sys_permission` (`id`, `name`, `code`, `description
 
 
 -- 为admin角色分配API权限
-INSERT INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
+INSERT IGNORE INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
                                                                                                        ('rp5', 'admin', 'p5', NOW(), 'admin'),
                                                                                                        ('rp6', 'admin', 'p6', NOW(), 'admin'),
                                                                                                        ('rp7', 'admin', 'p7', NOW(), 'admin'),
@@ -404,7 +404,7 @@ INSERT INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_id`, `c
                                                                                                        ('rp9', 'admin', 'p9', NOW(), 'admin');
 
 -- 为manager角色分配部分API权限
-INSERT INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
+INSERT IGNORE INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
     ('rp10', 'manager', 'p5', NOW(), 'admin');
 
 -- ===========================================
@@ -436,6 +436,7 @@ INSERT IGNORE INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_
 ('rp_test_m73', 'admin', 'test_m73', NOW(), 'admin'),
 ('rp_test_m74', 'admin', 'test_m74', NOW(), 'admin');
 
+DROP TABLE IF EXISTS `pdm_tool_sys_menu`;
 CREATE TABLE pdm_tool_sys_menu (
                           id VARCHAR(50) NOT NULL COMMENT '菜单ID',
                           name VARCHAR(100) NOT NULL COMMENT '菜单/功能名称',
@@ -457,7 +458,7 @@ CREATE TABLE pdm_tool_sys_menu (
                           KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统菜单表';
 
-INSERT INTO `pdm_tool_sys_menu` (`id`, `name`, `code`, `description`, `module`, `type`, `parent_id`, `level`, `sort`, `status`) VALUES
+INSERT IGNORE INTO `pdm_tool_sys_menu` (`id`, `name`, `code`, `description`, `module`, `type`, `parent_id`, `level`, `sort`, `status`) VALUES
 -- ====================== 一、协议配置管理 ======================
 ('m1', '协议配置管理', 'protocol:config', '协议配置管理模块', 'protocol', 'MENU', '0', 1, 10, 1),
 
@@ -863,7 +864,7 @@ INSERT IGNORE INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_
 -- ===========================================
 
 -- 插入组织部门数据
-INSERT INTO `pdm_tool_sys_organization` (`id`, `name`, `description`, `parent_id`, `level`, `sort`, `status`) VALUES 
+INSERT IGNORE INTO `pdm_tool_sys_organization` (`id`, `name`, `description`, `parent_id`, `level`, `sort`, `status`) VALUES
 ('org_1001', '项目管理部各业务事业部', '负责项目管理和各业务事业部的协调工作', '0', 1, 1, 1),
 ('org_1002', '产品部', '负责产品需求管理和产品规划', '0', 1, 2, 1),
 ('org_1003', '研发中心', '负责软件开发和代码实现', '0', 1, 3, 1),
