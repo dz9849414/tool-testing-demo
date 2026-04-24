@@ -91,6 +91,11 @@ public interface SysUserService {
     boolean changePassword(Long userId, String oldPassword, String newPassword);
     
     /**
+     * 更新用户密码（不需要旧密码）
+     */
+    boolean updatePassword(Long userId, String newPassword);
+    
+    /**
      * 获取用户的角色列表
      */
     List<String> getRolesByUserId(Long userId);

@@ -3,6 +3,7 @@ package com.example.tooltestingdemo.controller;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.annotation.PermissionCheck;
+import com.example.tooltestingdemo.dto.PasswordUpdateDTO;
 import com.example.tooltestingdemo.dto.UserBatchPermissionDTO;
 import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.service.SysUserService;
@@ -368,7 +369,7 @@ public class SysUserController {
     }
     
     /**
-     * 修改用户密码
+     * 修改用户密码（需要旧密码）
      */
     @PutMapping("/{id}/password")
     @PreAuthorize("@securityService.hasPermission('system:user:api') or @securityService.isCurrentUser(#id)")
@@ -379,6 +380,20 @@ public class SysUserController {
         }
         
         return Result.success("密码修改成功");
+    }
+    
+    /**
+     * 更新用户密码（只需要新密码）
+     */
+    @PutMapping("/{id}/password/update")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:user:api')")
+    public Result<String> updatePassword(@PathVariable Long id, @RequestBody PasswordUpdateDTO request) {
+        boolean success = userService.updatePassword(id, request.getNewPassword());
+        if (!success) {
+            return Result.error(400, "用户不存在");
+        }
+        
+        return Result.success("密码更新成功");
     }
     
     @Data

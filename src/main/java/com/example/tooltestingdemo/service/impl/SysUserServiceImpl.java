@@ -430,6 +430,20 @@ public class SysUserServiceImpl implements SysUserService {
         userMapper.updateById(user);
         return true;
     }
+    
+    @Override
+    @Transactional
+    public boolean updatePassword(Long userId, String newPassword) {
+        SysUser user = userMapper.selectById(userId);
+        if (user == null) {
+            return false;
+        }
+        
+        // 直接更新新密码，不需要验证旧密码
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userMapper.updateById(user);
+        return true;
+    }
 
     @Override
     public List<String> getRolesByUserId(Long userId) {
