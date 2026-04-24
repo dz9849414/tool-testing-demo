@@ -33,6 +33,16 @@ public interface SysRoleService extends IService<SysRole> {
     Page<SysRole> getRolesByPageWithSearch(Page<SysRole> page, String name);
     
     /**
+     * 分页查询角色列表（支持模糊查询、状态筛选和排序）
+     */
+    Page<SysRole> getRolesByPageWithSearch(Page<SysRole> page, String name, String description, Integer status, String sortField, String sortOrder);
+    
+    /**
+     * 分页查询角色列表（支持模糊查询、状态筛选、日期范围和排序）
+     */
+    Page<SysRole> getRolesByPageWithSearch(Page<SysRole> page, String name, String description, Integer status, java.time.LocalDate beginTime, java.time.LocalDate endTime, String sortField, String sortOrder);
+    
+    /**
      * 根据作用域ID查找角色列表
      */
     List<SysRole> findByScopeId(String scopeId);

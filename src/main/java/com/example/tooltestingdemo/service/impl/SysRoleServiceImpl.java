@@ -64,6 +64,106 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         // 执行分页查询
         return this.page(page, queryWrapper);
     }
+    
+    @Override
+    public Page<SysRole> getRolesByPageWithSearch(Page<SysRole> page, String name, String description, Integer status, String sortField, String sortOrder) {
+        return getRolesByPageWithSearch(page, name, description, status, null, null, sortField, sortOrder);
+    }
+    
+    @Override
+    public Page<SysRole> getRolesByPageWithSearch(Page<SysRole> page, String name, String description, Integer status, java.time.LocalDate beginTime, java.time.LocalDate endTime, String sortField, String sortOrder) {
+        LambdaQueryWrapper<SysRole> queryWrapper = new LambdaQueryWrapper<>();
+        
+        // 名称模糊查询
+        if (name != null && !name.trim().isEmpty()) {
+            queryWrapper.like(SysRole::getName, name.trim());
+        }
+        
+        // 描述模糊查询
+        if (description != null && !description.trim().isEmpty()) {
+            queryWrapper.like(SysRole::getDescription, description.trim());
+        }
+        
+        // 状态精确查询
+        if (status != null) {
+            queryWrapper.eq(SysRole::getStatus, status);
+        }
+        
+        // 日期范围查询
+        applyDateRangeFilter(queryWrapper, beginTime, endTime);
+        
+        // 排序处理
+        applySorting(queryWrapper, sortField, sortOrder);
+        
+        // 执行分页查询
+        return this.page(page, queryWrapper);
+    }
+    
+    /**
+     * 应用日期范围过滤
+     */
+    private void applyDateRangeFilter(LambdaQueryWrapper<SysRole> queryWrapper, java.time.LocalDate beginTime, java.time.LocalDate endTime) {
+        if (beginTime != null && endTime != null) {
+            // 开始时间和结束时间都存在
+            queryWrapper.between(SysRole::getCreateTime, 
+                beginTime.atStartOfDay(), 
+                endTime.atTime(23, 59, 59));
+        } else if (beginTime != null) {
+            // 只有开始时间
+            queryWrapper.ge(SysRole::getCreateTime, beginTime.atStartOfDay());
+        } else if (endTime != null) {
+            // 只有结束时间
+            queryWrapper.le(SysRole::getCreateTime, endTime.atTime(23, 59, 59));
+        }
+    }
+    
+    /**
+     * 应用排序规则
+     */
+    private void applySorting(LambdaQueryWrapper<SysRole> queryWrapper, String sortField, String sortOrder) {
+        if (sortField == null || sortField.trim().isEmpty()) {
+            sortField = "createTime";
+        }
+        
+        if (sortOrder == null || sortOrder.trim().isEmpty()) {
+            sortOrder = "desc";
+        }
+        
+        boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
+        
+        switch (sortField.toLowerCase()) {
+            case "name":
+                if (isAsc) {
+                    queryWrapper.orderByAsc(SysRole::getName);
+                } else {
+                    queryWrapper.orderByDesc(SysRole::getName);
+                }
+                break;
+            case "type":
+                if (isAsc) {
+                    queryWrapper.orderByAsc(SysRole::getType);
+                } else {
+                    queryWrapper.orderByDesc(SysRole::getType);
+                }
+                break;
+            case "status":
+                if (isAsc) {
+                    queryWrapper.orderByAsc(SysRole::getStatus);
+                } else {
+                    queryWrapper.orderByDesc(SysRole::getStatus);
+                }
+                break;
+            case "createtime":
+            case "create_time":
+            default:
+                if (isAsc) {
+                    queryWrapper.orderByAsc(SysRole::getCreateTime);
+                } else {
+                    queryWrapper.orderByDesc(SysRole::getCreateTime);
+                }
+                break;
+        }
+    }
 
     @Override
     public List<SysRole> findByScopeId(String scopeId) {

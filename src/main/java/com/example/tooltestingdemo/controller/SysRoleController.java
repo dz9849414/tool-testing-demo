@@ -17,6 +17,8 @@ import com.example.tooltestingdemo.util.IdGenerator;
 import org.apache.commons.beanutils.BeanUtils;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDate;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,16 +37,22 @@ public class SysRoleController {
     private final SysUserService userService;
     
     /**
-     * 分页获取角色列表（支持模糊查询）
+     * 分页获取角色列表（支持模糊查询、状态筛选、日期范围和排序）
      */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:api')")
     public Result<Page<SysRole>> getRolesByPage(
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize,
-            @RequestParam(required = false) String name) {
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate beginTime,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endTime,
+            @RequestParam(defaultValue = "createTime") String sortField,
+            @RequestParam(defaultValue = "desc") String sortOrder) {
         Page<SysRole> pageParam = new Page<>(pageNum, pageSize);
-        Page<SysRole> roles = roleService.getRolesByPageWithSearch(pageParam, name);
+        Page<SysRole> roles = roleService.getRolesByPageWithSearch(pageParam, name, description, status, beginTime, endTime, sortField, sortOrder);
         return Result.success("获取角色列表成功", roles);
     }
     
