@@ -506,7 +506,8 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         dto.setProtocolName(requireText(row.getProtocolName(), "协议类型名称不能为空"));
         dto.setUrlConfigList(parseJsonList(row.getUrlConfigJson(), new TypeReference<List<ProtocolConfigCreateDTO.UrlConfigItemDTO>>() {
         }, "URL配置(JSON)格式不正确"));
-        dto.setAuthConfigList(parseOptionalAuthConfig(row.getAuthConfigJson()));
+        dto.setAuthConfigList(parseJsonList(row.getUrlConfigJson(), new TypeReference<List<ProtocolConfigCreateDTO.AuthConfigItemDTO>>() {
+        }, "认证配置(JSON)格式不正确"));
         dto.setTimeoutConnect(parseIntegerOrNull(row.getTimeoutConnectText(), "连接超时必须为整数"));
         dto.setTimeoutRead(parseIntegerOrNull(row.getTimeoutReadText(), "读取超时必须为整数"));
         dto.setRetryCount(parseIntegerOrNull(row.getRetryCountText(), "重试次数必须为整数"));
@@ -520,15 +521,11 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         return dto;
     }
 
-    private List<ProtocolConfigCreateDTO.AuthConfigItemDTO> parseOptionalAuthConfig(String authConfigJson) {
-        if (StringUtils.isBlank(authConfigJson)) {
+    private <T> List<T> parseJsonList(String json, TypeReference<List<T>> typeRef, String errorMessage) {
+        if (StringUtils.isBlank(json)) {
+            log.debug("warning warning parseJsonList-json is empty");
             return null;
         }
-        return parseJsonList(authConfigJson, new TypeReference<List<ProtocolConfigCreateDTO.AuthConfigItemDTO>>() {
-        }, "认证配置(JSON)格式不正确");
-    }
-
-    private <T> List<T> parseJsonList(String json, TypeReference<List<T>> typeRef, String errorMessage) {
         try {
             List<T> list = objectMapper.readValue(json, typeRef);
             if (list == null || list.isEmpty()) {
