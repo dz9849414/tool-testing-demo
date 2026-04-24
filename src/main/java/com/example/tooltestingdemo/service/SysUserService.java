@@ -120,5 +120,18 @@ public interface SysUserService {
      */
     Page<SysUser> searchUsers(Page<SysUser> page, String keyword);
 
-    public List<String> getPermissionsByUsername(String username);
+    /**
+     * 根据用户名获取权限列表
+     */
+    List<String> getPermissionsByUsername(String username);
+    
+    /**
+     * 批量分配权限给用户
+     * 
+     * @param userIds 用户ID列表
+     * @param permissions 权限ID列表
+     * @param operationType 操作类型：ADD-添加权限，REMOVE-移除权限，REPLACE-替换权限
+     * @return 是否成功
+     */
+    boolean batchAssignPermissions(List<Long> userIds, List<String> permissions, String operationType);
 }

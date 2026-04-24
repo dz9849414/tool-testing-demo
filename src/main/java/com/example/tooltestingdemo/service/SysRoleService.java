@@ -126,4 +126,14 @@ public interface SysRoleService extends IService<SysRole> {
      * 获取当前最大的角色ID
      */
     Long getMaxRoleId();
+    
+    /**
+     * 批量分配权限给角色
+     * 
+     * @param roleIds 角色ID列表
+     * @param permissions 权限ID列表
+     * @param operationType 操作类型：ADD-添加权限，REMOVE-移除权限，REPLACE-替换权限
+     * @return 是否成功
+     */
+    boolean batchAssignPermissions(List<String> roleIds, List<String> permissions, String operationType);
 }

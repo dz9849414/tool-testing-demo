@@ -2,6 +2,7 @@ package com.example.tooltestingdemo.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.annotation.PermissionCheck;
+import com.example.tooltestingdemo.dto.RoleBatchPermissionDTO;
 import com.example.tooltestingdemo.entity.SysPermission;
 import com.example.tooltestingdemo.entity.SysRole;
 import com.example.tooltestingdemo.entity.SysUser;
@@ -292,6 +293,67 @@ public class SysRoleController {
         
         roleService.removeUsers(roleId, userIds);
         return Result.success("用户移除成功");
+    }
+    
+    /**
+     * 批量分配权限给角色
+     * 
+     * 请求示例：
+     * {
+     *   "roleIds": ["1009"],
+     *   "permissions": ["protocol_m3", "protocol_m6"]
+     * }
+     */
+    @PostMapping("/batch/permissions")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:api')")
+    public Result<String> batchAssignPermissions(@RequestBody RoleBatchPermissionDTO dto) {
+        try {
+            // 参数校验
+            if (dto.getRoleIds() == null || dto.getRoleIds().isEmpty()) {
+                return Result.error("角色ID列表不能为空");
+            }
+            
+            if (dto.getPermissions() == null || dto.getPermissions().isEmpty()) {
+                return Result.error("权限ID列表不能为空");
+            }
+            
+            // 检查角色是否存在
+            for (String roleId : dto.getRoleIds()) {
+                // 检查是否是admin角色
+                if ("admin".equals(roleId)) {
+                    return Result.error(ErrorStatus.BAD_REQUEST, "不能为admin角色分配权限");
+                }
+                
+                SysRole role = roleService.getById(roleId);
+                if (role == null) {
+                    return Result.error("角色不存在，角色ID: " + roleId);
+                }
+            }
+            
+            // 检查权限列表中是否包含admin权限
+            if (dto.getPermissions() != null && !dto.getPermissions().isEmpty()) {
+                List<String> adminPermissions = new ArrayList<>();
+                for (String permissionId : dto.getPermissions()) {
+                    if (permissionId.toLowerCase().contains("admin")) {
+                        adminPermissions.add(permissionId);
+                    }
+                }
+                if (!adminPermissions.isEmpty()) {
+                    return Result.error(ErrorStatus.BAD_REQUEST, "不能分配admin权限");
+                }
+            }
+            
+            // 调用服务层进行批量权限分配
+            boolean success = roleService.batchAssignPermissions(dto.getRoleIds(), dto.getPermissions(), dto.getOperationType());
+            
+            if (success) {
+                return Result.success("批量分配权限成功");
+            } else {
+                return Result.error("批量分配权限失败");
+            }
+        } catch (Exception e) {
+            return Result.error("批量分配权限异常: " + e.getMessage());
+        }
     }
     
     /**

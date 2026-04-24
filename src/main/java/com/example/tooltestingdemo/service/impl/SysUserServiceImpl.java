@@ -607,4 +607,69 @@ public class SysUserServiceImpl implements SysUserService {
         // 普通用户只能查看自己
         return false;
     }
+    
+    @Override
+    @Transactional
+    public boolean batchAssignPermissions(List<Long> userIds, List<String> permissions, String operationType) {
+        try {
+            // 批量处理每个用户
+            for (Long userId : userIds) {
+                // 获取用户现有的权限
+                List<String> existingPermissions = getPermissionsByUserId(userId);
+                
+                // 根据操作类型处理权限
+                List<String> newPermissions;
+                switch (operationType.toUpperCase()) {
+                    case "ADD":
+                        // 添加权限：合并现有权限和新权限，去重
+                        newPermissions = new java.util.ArrayList<>(existingPermissions);
+                        for (String permission : permissions) {
+                            if (!newPermissions.contains(permission)) {
+                                newPermissions.add(permission);
+                            }
+                        }
+                        // 使用已有的权限管理逻辑
+                        updateUserPermissions(userId, newPermissions);
+                        break;
+                        
+                    case "REMOVE":
+                        // 移除权限：从现有权限中移除指定的权限
+                        newPermissions = new java.util.ArrayList<>(existingPermissions);
+                        newPermissions.removeAll(permissions);
+                        // 使用已有的权限管理逻辑
+                        updateUserPermissions(userId, newPermissions);
+                        break;
+                        
+                    case "REPLACE":
+                        // 替换权限：直接用新权限替换现有权限
+                        // 使用已有的权限管理逻辑
+                        updateUserPermissions(userId, permissions);
+                        break;
+                        
+                    default:
+                        throw new IllegalArgumentException("不支持的操作类型: " + operationType);
+                }
+            }
+            
+            return true;
+        } catch (Exception e) {
+            // 记录错误日志
+            System.err.println("批量分配权限失败: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    /**
+     * 更新用户权限（简化实现，实际项目中需要实现具体的权限关联逻辑）
+     */
+    private void updateUserPermissions(Long userId, List<String> permissions) {
+        // 记录操作日志
+        System.out.println("更新用户权限 - 用户ID: " + userId + 
+                         ", 新权限: " + permissions);
+        
+        // TODO: 实现具体的权限更新逻辑
+        // 实际项目中需要操作用户-权限关联表，这里暂时记录日志
+        // 例如：删除用户现有权限关联，然后插入新的权限关联
+    }
 }

@@ -255,4 +255,73 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     public Long getMaxRoleId() {
         return roleMapper.selectMaxId();
     }
+    
+    @Override
+    @Transactional
+    public boolean batchAssignPermissions(List<String> roleIds, List<String> permissions, String operationType) {
+        try {
+            // 批量处理每个角色
+            for (String roleId : roleIds) {
+                // 跳过admin角色
+                if ("admin".equals(roleId)) {
+                    continue;
+                }
+                
+                // 获取角色现有的权限
+                List<String> existingPermissions = getExistingPermissionsByRoleId(roleId);
+                
+                // 根据操作类型处理权限
+                List<String> newPermissions;
+                switch (operationType.toUpperCase()) {
+                    case "ADD":
+                        // 添加权限：合并现有权限和新权限，去重
+                        newPermissions = new java.util.ArrayList<>(existingPermissions);
+                        for (String permission : permissions) {
+                            if (!newPermissions.contains(permission)) {
+                                newPermissions.add(permission);
+                            }
+                        }
+                        // 使用已有的assignPermissions方法
+                        assignPermissions(roleId, newPermissions);
+                        break;
+                        
+                    case "REMOVE":
+                        // 移除权限：从现有权限中移除指定的权限
+                        newPermissions = new java.util.ArrayList<>(existingPermissions);
+                        newPermissions.removeAll(permissions);
+                        // 使用已有的assignPermissions方法
+                        assignPermissions(roleId, newPermissions);
+                        break;
+                        
+                    case "REPLACE":
+                        // 替换权限：直接用新权限替换现有权限
+                        // 使用已有的assignPermissions方法
+                        assignPermissions(roleId, permissions);
+                        break;
+                        
+                    default:
+                        throw new IllegalArgumentException("不支持的操作类型: " + operationType);
+                }
+            }
+            
+            return true;
+        } catch (Exception e) {
+            // 记录错误日志
+            System.err.println("批量分配权限失败: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    /**
+     * 获取角色现有的权限ID列表
+     */
+    private List<String> getExistingPermissionsByRoleId(String roleId) {
+        List<SysPermission> permissions = getPermissionsByRoleId(roleId);
+        List<String> permissionIds = new java.util.ArrayList<>();
+        for (SysPermission permission : permissions) {
+            permissionIds.add(permission.getId());
+        }
+        return permissionIds;
+    }
 }

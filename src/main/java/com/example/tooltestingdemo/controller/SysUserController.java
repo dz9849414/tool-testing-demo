@@ -3,6 +3,7 @@ package com.example.tooltestingdemo.controller;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.annotation.PermissionCheck;
+import com.example.tooltestingdemo.dto.UserBatchPermissionDTO;
 import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.service.SysUserService;
 import lombok.Data;
@@ -468,5 +469,48 @@ public class SysUserController {
         }
         
         return Result.success(message);
+    }
+    
+    /**
+     * 批量分配权限给用户
+     * 
+     * 请求示例：
+     * {
+     *   "userIds": ["2047291066211233794"],
+     *   "permissions": ["report_api_1", "report_api_12"]
+     * }
+     */
+    @PostMapping("/batch/permissions")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:user:api')")
+    public Result<String> batchAssignPermissions(@RequestBody UserBatchPermissionDTO dto) {
+        try {
+            // 参数校验
+            if (dto.getUserIds() == null || dto.getUserIds().isEmpty()) {
+                return Result.error("用户ID列表不能为空");
+            }
+            
+            if (dto.getPermissions() == null || dto.getPermissions().isEmpty()) {
+                return Result.error("权限ID列表不能为空");
+            }
+            
+            // 检查用户是否存在
+            for (Long userId : dto.getUserIds()) {
+                SysUser user = userService.findById(userId);
+                if (user == null) {
+                    return Result.error("用户不存在，用户ID: " + userId);
+                }
+            }
+            
+            // 调用服务层进行批量权限分配
+            boolean success = userService.batchAssignPermissions(dto.getUserIds(), dto.getPermissions(), dto.getOperationType());
+            
+            if (success) {
+                return Result.success("批量分配权限成功");
+            } else {
+                return Result.error("批量分配权限失败");
+            }
+        } catch (Exception e) {
+            return Result.error("批量分配权限异常: " + e.getMessage());
+        }
     }
 }
