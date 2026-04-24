@@ -14,6 +14,9 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.io.IOException;
 
@@ -27,6 +30,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
+    private final RedisTemplate<String, String> redisTemplate;
 
     @Value("${jwt.header}")
     private String tokenHeader;
@@ -73,6 +77,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
+                // 检查Token是否在黑名单中
+                String blacklistedToken = redisTemplate.opsForValue().get("logout:token:" + jwtToken);
+                if (blacklistedToken != null) {
+                    log.warn("Token已被加入黑名单，拒绝访问: {}", jwtToken);
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json; charset=utf-8");
+                    response.setCharacterEncoding("UTF-8");
+                    response.getWriter().write("{\"code\": 401, \"message\": \"Token已失效，请重新登录\", \"data\": null}");
+                    return;
+                }
+
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
                 if (jwtUtil.validateToken(jwtToken) && !jwtUtil.isTokenExpired(jwtToken)) {

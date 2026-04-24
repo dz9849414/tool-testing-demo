@@ -1,5 +1,11 @@
 package com.example.tooltestingdemo.controller;
 
+import com.example.tooltestingdemo.common.Result;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.poi.ss.formula.functions.T;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
+import java.util.Map;
 import com.example.tooltestingdemo.entity.SysLoginLog;
 import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.entity.SysUserOrganization;
@@ -22,6 +28,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
+import java.time.Duration;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -41,6 +50,7 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final SysUserOrganizationMapper userOrganizationMapper;
     private final SysLoginLogService loginLogService;
+    private final RedisTemplate<String, String> redisTemplate;
 
 
     /**
@@ -214,6 +224,65 @@ public class AuthController {
     }
     
 
+    
+    /**
+     * 用户退出登录
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
+        try {
+            // 1. 获取 Token（从 Header 或 Cookie）
+            String token = request.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+
+            // 2. 记录退出日志
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null) {
+                String username = auth.getName();
+                SysLoginLog logoutLog = new SysLoginLog();
+                logoutLog.setUsername(username);
+                logoutLog.setIpAddress(getClientIP(request));
+                logoutLog.setUserAgent(request.getHeader("User-Agent"));
+                logoutLog.setLoginType("LOGOUT");
+                logoutLog.setStatus(1);
+                
+                // 获取用户ID
+                SysUser user = userService.findByUsername(username);
+                if (user != null) {
+                    logoutLog.setUserId(user.getId());
+                }
+                loginLogService.recordLoginLog(logoutLog);
+
+                // 3.【关键】将 Token 加入黑名单（有效期和 Token 一致）
+                if (token != null) {
+                    // 获取Token的剩余有效期
+                    long expiration = jwtUtil.getExpirationDateFromToken(token).getTime() - System.currentTimeMillis();
+                    if (expiration > 0) {
+                        redisTemplate.opsForValue().set("logout:token:" + token, "1", Duration.ofMillis(expiration));
+                    }
+                }
+            }
+
+            // 4. 清除安全上下文
+            SecurityContextHolder.clearContext();
+            // 5. 销毁 Session
+            request.getSession().invalidate();
+
+            return ResponseEntity.ok(Map.of(
+                "code", 200,
+                "message", "退出登录成功",
+                "success", true
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of(
+                "code", 500,
+                "message", "退出失败：" + e.getMessage(),
+                "success", false
+            ));
+        }
+    }
     
     /**
      * 获取客户端IP地址
