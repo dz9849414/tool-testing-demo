@@ -48,6 +48,11 @@ public interface IProtocolConfigService extends IService<ProtocolConfig> {
      * 更新协议配置状态。
      */
     ProtocolConfigVO updateProtocolConfigStatus(ProtocolConfigStatusUpdateDTO dto);
+    
+    /**
+     * 获取所有可分配的协议权限
+     */
+    java.util.List<com.example.tooltestingdemo.vo.ProtocolPermissionVO.AssignablePermission> getAssignableProtocols();
 
     /**
      * 逻辑删除协议配置。

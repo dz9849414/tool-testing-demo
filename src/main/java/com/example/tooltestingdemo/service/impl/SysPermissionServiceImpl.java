@@ -21,8 +21,21 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
     private final SysPermissionMapper permissionMapper;
     
     @Override
-    public List<SysPermission> getAllPermissions() {
+    public List<SysPermission> getAllPermissions(Integer moduleType) {
         LambdaQueryWrapper<SysPermission> queryWrapper = new LambdaQueryWrapper<>();
+        
+        // 根据moduleType参数进行筛选
+        if (moduleType != null) {
+            if (moduleType == 2) {
+                // 传2：只查协议模块的权限
+                queryWrapper.eq(SysPermission::getModule, "protocol");
+            }
+            // 其他值暂时不处理，按默认逻辑
+        } else {
+            // 不传值：查除了协议模块的范围
+            queryWrapper.ne(SysPermission::getModule, "protocol");
+        }
+        
         queryWrapper.orderByAsc(SysPermission::getModule)
                    .orderByAsc(SysPermission::getSort);
         return permissionMapper.selectList(queryWrapper);

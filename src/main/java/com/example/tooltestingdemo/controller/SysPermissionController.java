@@ -22,11 +22,12 @@ public class SysPermissionController {
     
     /**
      * 获取所有权限列表（包含总条目数）
+     * @param moduleType 模块类型筛选：不传值-查除了协议模块的范围，传2-只查协议模块的
      */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:permission:api')")
-    public Result<Object> getAllPermissions() {
-        List<SysPermission> permissions = permissionService.getAllPermissions();
+    public Result<Object> getAllPermissions(@RequestParam(required = false) Integer moduleType) {
+        List<SysPermission> permissions = permissionService.getAllPermissions(moduleType);
         
         // 创建包含总条目数的响应对象
         java.util.Map<String, Object> response = new java.util.HashMap<>();

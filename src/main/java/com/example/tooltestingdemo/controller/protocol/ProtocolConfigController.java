@@ -1,6 +1,7 @@
 package com.example.tooltestingdemo.controller.protocol;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.example.tooltestingdemo.annotation.ProtocolPermissionFilter;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.dto.ProtocolConfigCreateDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigModifyDTO;
@@ -55,6 +56,7 @@ public class ProtocolConfigController {
      */
     @GetMapping("/list")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:param:url')")
+//    @ProtocolPermissionFilter(protocolIdField = "id", enabled = true)
     @Operation(summary = "协议配置分页列表", description = "支持按协议ID、配置名称、状态以及创建/修改时间范围筛选")
     public Result<IPage<ProtocolConfigVO>> list(@ModelAttribute ProtocolConfigQueryDTO dto) {
         IPage<ProtocolConfigVO> page = protocolConfigService.getProtocolConfigList(dto);

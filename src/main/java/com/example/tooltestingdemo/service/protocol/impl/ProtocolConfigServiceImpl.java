@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.tooltestingdemo.annotation.ProtocolPermissionFilter;
 import com.example.tooltestingdemo.dto.ProtocolConfigCreateDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigModifyDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigQueryDTO;
@@ -767,4 +768,35 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         Long currentUserId = securityService.getCurrentUserId();
         return currentUserId == null ? 1L : currentUserId;
     }
+    
+    @Override
+    public java.util.List<com.example.tooltestingdemo.vo.ProtocolPermissionVO.AssignablePermission> getAssignableProtocols() {
+        // 查询所有启用的协议配置
+        LambdaQueryWrapper<ProtocolConfig> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(ProtocolConfig::getStatus, 1) // 只查询启用的协议配置
+                  .eq(ProtocolConfig::getIsDeleted, 0); // 只查询未删除的协议配置
+        
+        List<ProtocolConfig> protocolConfigs = this.list(queryWrapper);
+        
+        // 转换为AssignablePermission对象
+        return protocolConfigs.stream()
+                .map(this::convertToAssignablePermission)
+                .collect(java.util.stream.Collectors.toList());
+    }
+    
+    /**
+     * 将ProtocolConfig转换为AssignablePermission
+     */
+    private com.example.tooltestingdemo.vo.ProtocolPermissionVO.AssignablePermission convertToAssignablePermission(ProtocolConfig protocolConfig) {
+        com.example.tooltestingdemo.vo.ProtocolPermissionVO.AssignablePermission permission = 
+            new com.example.tooltestingdemo.vo.ProtocolPermissionVO.AssignablePermission();
+        // 使用协议配置ID作为协议代码
+        permission.setProtocolCode(String.valueOf(protocolConfig.getId()));
+        permission.setProtocolName(protocolConfig.getProtocolName());
+        permission.setDescription(protocolConfig.getDescription());
+        permission.setCategory(protocolConfig.getConfigName());
+        return permission;
+    }
+    
+
 }

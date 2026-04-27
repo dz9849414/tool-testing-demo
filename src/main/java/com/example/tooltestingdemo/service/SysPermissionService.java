@@ -13,8 +13,9 @@ public interface SysPermissionService extends IService<SysPermission> {
     
     /**
      * 获取所有权限列表
+     * @param moduleType 模块类型筛选：null-查除了协议模块的范围，2-只查协议模块的
      */
-    List<SysPermission> getAllPermissions();
+    List<SysPermission> getAllPermissions(Integer moduleType);
     
     /**
      * 分页获取权限列表

@@ -51,6 +51,12 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
     SysUser selectByUsernameAndStatus(@Param("username") String username, @Param("status") Integer status);
     
     /**
+     * 根据用户ID查询角色ID（用于协议权限系统）
+     */
+    @Select("SELECT role_id FROM pdm_tool_sys_user WHERE id = #{userId} AND is_deleted = 0")
+    Long selectRoleIdByUserId(@Param("userId") Long userId);
+    
+    /**
      * 根据角色ID查找用户列表
      */
     @Select("SELECT u.* FROM pdm_tool_sys_user u JOIN pdm_tool_sys_user_role ur ON u.id = ur.user_id WHERE ur.role_id = #{roleId} AND u.is_deleted = 0")
