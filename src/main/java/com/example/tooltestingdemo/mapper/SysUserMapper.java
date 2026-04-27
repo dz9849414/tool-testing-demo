@@ -69,8 +69,16 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
     List<String> selectRolesByUserId(@Param("userId") Long userId);
     
     /**
-     * 根据用户ID查找权限列表
+     * 根据用户ID查找权限列表（包含角色权限和直接分配的权限）
      */
-    @Select("SELECT p.code FROM pdm_tool_sys_permission p JOIN pdm_tool_sys_role_permission rp ON p.id = rp.permission_id JOIN pdm_tool_sys_user_role ur ON rp.role_id = ur.role_id WHERE ur.user_id = #{userId}")
+    @Select("SELECT DISTINCT p.code FROM pdm_tool_sys_permission p " +
+           "JOIN pdm_tool_sys_role_permission rp ON p.id = rp.permission_id " +
+           "JOIN pdm_tool_sys_user_role ur ON rp.role_id = ur.role_id " +
+           "WHERE ur.user_id = #{userId} " +
+           "UNION " +
+           "SELECT DISTINCT up.permission_code FROM pdm_tool_sys_user_permission up " +
+           "WHERE up.user_id = #{userId} AND up.status = 1 " +
+           "AND (up.start_time IS NULL OR up.start_time <= NOW()) " +
+           "AND (up.end_time IS NULL OR up.end_time >= NOW())")
     List<String> selectPermissionsByUserId(@Param("userId") Long userId);
 }
