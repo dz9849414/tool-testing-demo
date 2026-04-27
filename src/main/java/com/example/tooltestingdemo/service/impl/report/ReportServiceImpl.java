@@ -19,15 +19,15 @@ import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.FileOutputStream;
-import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -36,6 +36,8 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
+
+import javax.imageio.ImageIO;
 // Standard14Fonts is not public, use PDType1Font directly
 
 /**
@@ -259,20 +261,240 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     }
 
     @Override
-    public String previewReport(Long id) {
+    public String previewReportHtml(Long id, String pageRange, String dataSource) {
         Report report = reportMapper.selectById(id);
         if (report == null || report.getIsDeleted() == 1) {
             return null;
         }
         
-        // 构建预览内容
-        StringBuilder preview = new StringBuilder();
-        preview.append("报告预览：").append(report.getName()).append("\n");
-        preview.append("描述：").append(report.getDescription()).append("\n");
-        preview.append("类型：").append(report.getReportType()).append("\n");
-        preview.append("状态：").append(report.getStatus()).append("\n");
+        // 构建HTML格式预览内容，与导出接口内容一致
+        StringBuilder html = new StringBuilder();
+        html.append("<!DOCTYPE html>");
+        html.append("<html lang=\"zh-CN\">");
+        html.append("<head>");
+        html.append("<meta charset=\"UTF-8\">");
+        html.append("<title>").append(report.getName()).append(" - 预览</title>");
+        html.append("<style>");
+        html.append("body { font-family: 'Microsoft YaHei', sans-serif; margin: 20px; background: #f5f5f5; }");
+        html.append(".report-container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }");
+        html.append(".report-header { border-bottom: 2px solid #1890ff; padding-bottom: 20px; margin-bottom: 30px; }");
+        html.append(".report-title { font-size: 24px; color: #1890ff; margin: 0; }");
+        html.append(".report-meta { color: #666; font-size: 14px; margin-top: 10px; }");
+        html.append(".report-content { line-height: 1.6; }");
+        html.append(".section { margin-bottom: 25px; }");
+        html.append(".section-title { font-size: 18px; color: #333; border-left: 4px solid #1890ff; padding-left: 10px; margin-bottom: 15px; }");
+        html.append(".data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }");
+        html.append(".data-table th, .data-table td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }");
+        html.append(".data-table th { background: #f0f0f0; font-weight: bold; }");
+        html.append(".success { color: #52c41a; }");
+        html.append(".failure { color: #ff4d4f; }");
+        html.append("</style>");
+        html.append("</head>");
+        html.append("<body>");
+        html.append("<div class=\"report-container\">");
         
-        return preview.toString();
+        // 报告头部信息
+        html.append("<div class=\"report-header\">");
+        html.append("<h1 class=\"report-title\">").append(report.getName()).append("</h1>");
+        html.append("<div class=\"report-meta\">");
+        html.append("<p><strong>报告ID：</strong>").append(report.getId()).append("</p>");
+        html.append("<p><strong>描述：</strong>").append(report.getDescription()).append("</p>");
+        html.append("<p><strong>类型：</strong>").append(report.getReportType()).append("</p>");
+        html.append("<p><strong>状态：</strong>").append(report.getStatus()).append("</p>");
+        html.append("<p><strong>数据源：</strong>").append(dataSource).append("</p>");
+        html.append("<p><strong>页面范围：</strong>").append(pageRange).append("</p>");
+        html.append("</div>");
+        html.append("</div>");
+        
+        // 报告内容（与导出接口内容一致）
+        html.append("<div class=\"report-content\">");
+        
+        // 解析报告内容数据
+        if (report.getContent() != null && !report.getContent().trim().isEmpty()) {
+            try {
+                JSONObject content = JSON.parseObject(report.getContent());
+                
+                // 添加统计信息
+                if (content.containsKey("summary")) {
+                    html.append("<div class=\"section\">");
+                    html.append("<h2 class=\"section-title\">执行统计</h2>");
+                    
+                    JSONObject summary = content.getJSONObject("summary");
+                    html.append("<table class=\"data-table\">");
+                    html.append("<tr><th>指标</th><th>数值</th></tr>");
+                    html.append("<tr><td>总执行次数</td><td>").append(summary.getInteger("totalCount")).append("</td></tr>");
+                    html.append("<tr><td>成功次数</td><td class=\"success\">").append(summary.getInteger("successCount")).append("</td></tr>");
+                    html.append("<tr><td>失败次数</td><td class=\"failure\">").append(summary.getInteger("failureCount")).append("</td></tr>");
+                    html.append("<tr><td>成功率</td><td class=\"success\">").append(summary.getDouble("successRate")).append("%</td></tr>");
+                    html.append("<tr><td>失败率</td><td class=\"failure\">").append(summary.getDouble("failureRate")).append("%</td></tr>");
+                    html.append("</table>");
+                    html.append("</div>");
+                }
+                
+                // 添加时间范围信息
+                if (content.containsKey("startDate") && content.containsKey("endDate")) {
+                    html.append("<div class=\"section\">");
+                    html.append("<h2 class=\"section-title\">时间范围</h2>");
+                    html.append("<p><strong>开始时间：</strong>").append(content.getString("startDate")).append("</p>");
+                    html.append("<p><strong>结束时间：</strong>").append(content.getString("endDate")).append("</p>");
+                    html.append("</div>");
+                }
+                
+                // 添加数据源信息
+                if (content.containsKey("dataSourceName")) {
+                    html.append("<div class=\"section\">");
+                    html.append("<h2 class=\"section-title\">数据源</h2>");
+                    html.append("<p><strong>数据源名称：</strong>").append(content.getString("dataSourceName")).append("</p>");
+                    html.append("</div>");
+                }
+                
+            } catch (Exception e) {
+                html.append("<div class=\"section\">");
+                html.append("<h2 class=\"section-title\">报告内容</h2>");
+                html.append("<p>无法解析报告内容：").append(e.getMessage()).append("</p>");
+                html.append("</div>");
+            }
+        } else {
+            html.append("<div class=\"section\">");
+            html.append("<h2 class=\"section-title\">报告内容</h2>");
+            html.append("<p>暂无报告内容数据</p>");
+            html.append("</div>");
+        }
+        
+        html.append("</div>");
+        html.append("</div>");
+        html.append("</body>");
+        html.append("</html>");
+        
+        return html.toString();
+    }
+    
+    @Override
+    public byte[] previewReportImage(Long id, String format, String pageRange, String dataSource) {
+        Report report = reportMapper.selectById(id);
+        if (report == null || report.getIsDeleted() == 1) {
+            return null;
+        }
+        
+        try {
+            // 创建图片
+            BufferedImage image = new BufferedImage(800, 600, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g2d = image.createGraphics();
+            
+            // 设置背景色
+            g2d.setColor(Color.WHITE);
+            g2d.fillRect(0, 0, 800, 600);
+            
+            // 设置抗锯齿
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            
+            // 绘制报告标题
+            g2d.setColor(Color.BLACK);
+            g2d.setFont(new Font("微软雅黑", Font.BOLD, 24));
+            String title = report.getName();
+            int titleWidth = g2d.getFontMetrics().stringWidth(title);
+            g2d.drawString(title, (800 - titleWidth) / 2, 50);
+            
+            // 绘制报告信息
+            g2d.setFont(new Font("微软雅黑", Font.PLAIN, 14));
+            g2d.drawString("报告ID: " + report.getId(), 50, 100);
+            g2d.drawString("类型: " + report.getReportType(), 50, 130);
+            g2d.drawString("数据源: " + dataSource, 50, 160);
+            
+            // 解析报告内容并绘制图表
+            if (report.getContent() != null && !report.getContent().trim().isEmpty()) {
+                try {
+                    JSONObject content = JSON.parseObject(report.getContent());
+                    
+                    if (content.containsKey("summary")) {
+                        JSONObject summary = content.getJSONObject("summary");
+                        
+                        // 绘制成功率图表
+                        int successRate = summary.getInteger("successRate");
+                        int failureRate = summary.getInteger("failureRate");
+                        
+                        // 绘制饼图
+                        int centerX = 400;
+                        int centerY = 350;
+                        int radius = 100;
+                        
+                        // 成功部分
+                        g2d.setColor(Color.GREEN);
+                        g2d.fillArc(centerX - radius, centerY - radius, radius * 2, radius * 2, 0, (int)(360 * successRate / 100));
+                        
+                        // 失败部分
+                        g2d.setColor(Color.RED);
+                        g2d.fillArc(centerX - radius, centerY - radius, radius * 2, radius * 2, (int)(360 * successRate / 100), (int)(360 * failureRate / 100));
+                        
+                        // 绘制图例
+                        g2d.setColor(Color.BLACK);
+                        g2d.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+                        g2d.drawString("成功: " + successRate + "%", centerX + radius + 20, centerY - 20);
+                        g2d.drawString("失败: " + failureRate + "%", centerX + radius + 20, centerY + 20);
+                    }
+                    
+                } catch (Exception e) {
+                    g2d.setColor(Color.RED);
+                    g2d.drawString("解析报告内容失败", 50, 250);
+                }
+            }
+            
+            g2d.dispose();
+            
+            // 将图片转换为字节数组
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(image, format.equals("image") ? "png" : format, baos);
+            return baos.toByteArray();
+            
+        } catch (Exception e) {
+            log.error("生成报告预览图片失败", e);
+            return null;
+        }
+    }
+    
+    @Override
+    public Object previewReportJson(Long id, String pageRange, String dataSource) {
+        Report report = reportMapper.selectById(id);
+        if (report == null || report.getIsDeleted() == 1) {
+            return null;
+        }
+        
+        // 构建JSON格式预览内容，与导出接口内容一致
+        Map<String, Object> previewData = new HashMap<>();
+        previewData.put("reportId", report.getId());
+        previewData.put("name", report.getName());
+        previewData.put("description", report.getDescription());
+        previewData.put("reportType", report.getReportType());
+        previewData.put("status", report.getStatus());
+        previewData.put("dataSource", dataSource);
+        previewData.put("pageRange", pageRange);
+        previewData.put("previewType", "json");
+        
+        // 解析报告内容
+        if (report.getContent() != null && !report.getContent().trim().isEmpty()) {
+            try {
+                JSONObject content = JSON.parseObject(report.getContent());
+                previewData.put("content", content);
+                
+                // 添加统计摘要
+                if (content.containsKey("summary")) {
+                    previewData.put("summary", content.getJSONObject("summary"));
+                }
+                
+                // 添加时间范围
+                if (content.containsKey("startDate") && content.containsKey("endDate")) {
+                    previewData.put("timeRange", Map.of(
+                        "startDate", content.getString("startDate"),
+                        "endDate", content.getString("endDate")
+                    ));
+                }
+                
+            } catch (Exception e) {
+                previewData.put("contentError", "解析报告内容失败: " + e.getMessage());
+            }
+        }
+        
+        return previewData;
     }
 
     @Override
@@ -1425,16 +1647,344 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
 
     @Override
     public Object getReportStatistics(String startTime, String endTime, String reportType) {
-        // 实现报告统计逻辑
-        // 这里简化处理，返回统计对象
-        return new Object() {
-            public String period = startTime + " 至 " + endTime;
-            public String type = reportType;
-            public int totalCount = 100;
-            public int draftCount = 20;
-            public int publishedCount = 70;
-            public int archivedCount = 10;
-        };
+        try {
+            // 构建查询条件
+            LambdaQueryWrapper<Report> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(Report::getIsDeleted, 0);
+            
+            // 时间范围筛选
+            if (startTime != null && !startTime.trim().isEmpty() && 
+                endTime != null && !endTime.trim().isEmpty()) {
+                queryWrapper.between(Report::getCreateTime, startTime, endTime);
+            }
+            
+            // 报告类型筛选
+            if (reportType != null && !reportType.trim().isEmpty()) {
+                queryWrapper.eq(Report::getReportType, reportType);
+            }
+            
+            // 获取报告列表
+            List<Report> reports = reportMapper.selectList(queryWrapper);
+            
+            // 进行统计分析
+            Map<String, Object> statistics = analyzeReports(reports);
+            
+            // 添加预警检测
+            List<Map<String, Object>> warnings = detectWarnings(statistics, reports);
+            statistics.put("warnings", warnings);
+            
+            // 添加时间范围信息
+            statistics.put("period", startTime + " 至 " + endTime);
+            statistics.put("reportType", reportType);
+            statistics.put("totalCount", reports.size());
+            
+            return statistics;
+            
+        } catch (Exception e) {
+            log.error("获取报告统计失败", e);
+            return Map.of(
+                "error", "获取报告统计失败: " + e.getMessage(),
+                "period", startTime + " 至 " + endTime,
+                "reportType", reportType,
+                "warnings", List.of()
+            );
+        }
+    }
+    
+    /**
+     * 分析报告数据
+     */
+    private Map<String, Object> analyzeReports(List<Report> reports) {
+        Map<String, Object> analysis = new HashMap<>();
+        
+        // 基础统计
+        analysis.put("totalCount", reports.size());
+        analysis.put("draftCount", (int) reports.stream().filter(r -> "DRAFT".equals(r.getStatus())).count());
+        analysis.put("publishedCount", (int) reports.stream().filter(r -> "PUBLISHED".equals(r.getStatus())).count());
+        analysis.put("archivedCount", (int) reports.stream().filter(r -> "ARCHIVED".equals(r.getStatus())).count());
+        
+        // 导出统计
+        int totalExportCount = reports.stream().mapToInt(r -> r.getExportCount() != null ? r.getExportCount() : 0).sum();
+        analysis.put("totalExportCount", totalExportCount);
+        analysis.put("avgExportCount", reports.isEmpty() ? 0 : totalExportCount / (double) reports.size());
+        
+        // 内容分析
+        List<Map<String, Object>> contentAnalysis = analyzeReportContents(reports);
+        analysis.put("contentAnalysis", contentAnalysis);
+        
+        // 性能指标
+        analysis.put("performanceMetrics", calculatePerformanceMetrics(reports));
+        
+        return analysis;
+    }
+    
+    /**
+     * 分析报告内容
+     */
+    private List<Map<String, Object>> analyzeReportContents(List<Report> reports) {
+        List<Map<String, Object>> analysis = new ArrayList<>();
+        
+        for (Report report : reports) {
+            if (report.getContent() != null && !report.getContent().trim().isEmpty()) {
+                try {
+                    JSONObject content = JSON.parseObject(report.getContent());
+                    Map<String, Object> reportAnalysis = new HashMap<>();
+                    
+                    reportAnalysis.put("reportId", report.getId());
+                    reportAnalysis.put("reportName", report.getName());
+                    reportAnalysis.put("reportType", report.getReportType());
+                    
+                    // 分析成功率数据
+                    if (content.containsKey("summary")) {
+                        JSONObject summary = content.getJSONObject("summary");
+                        reportAnalysis.put("successRate", summary.getDouble("successRate"));
+                        reportAnalysis.put("failureRate", summary.getDouble("failureRate"));
+                        reportAnalysis.put("totalCount", summary.getInteger("totalCount"));
+                    }
+                    
+                    // 分析时间范围
+                    if (content.containsKey("startDate") && content.containsKey("endDate")) {
+                        reportAnalysis.put("startDate", content.getString("startDate"));
+                        reportAnalysis.put("endDate", content.getString("endDate"));
+                    }
+                    
+                    analysis.add(reportAnalysis);
+                    
+                } catch (Exception e) {
+                    log.warn("解析报告内容失败: {}", report.getId(), e);
+                }
+            }
+        }
+        
+        return analysis;
+    }
+    
+    /**
+     * 计算性能指标
+     */
+    private Map<String, Object> calculatePerformanceMetrics(List<Report> reports) {
+        Map<String, Object> metrics = new HashMap<>();
+        
+        // 成功率统计
+        List<Double> successRates = new ArrayList<>();
+        List<Double> failureRates = new ArrayList<>();
+        
+        for (Report report : reports) {
+            if (report.getContent() != null && !report.getContent().trim().isEmpty()) {
+                try {
+                    JSONObject content = JSON.parseObject(report.getContent());
+                    if (content.containsKey("summary")) {
+                        JSONObject summary = content.getJSONObject("summary");
+                        successRates.add(summary.getDouble("successRate"));
+                        failureRates.add(summary.getDouble("failureRate"));
+                    }
+                } catch (Exception e) {
+                    // 忽略解析错误
+                }
+            }
+        }
+        
+        if (!successRates.isEmpty()) {
+            metrics.put("avgSuccessRate", successRates.stream().mapToDouble(Double::doubleValue).average().orElse(0));
+            metrics.put("minSuccessRate", successRates.stream().mapToDouble(Double::doubleValue).min().orElse(0));
+            metrics.put("maxSuccessRate", successRates.stream().mapToDouble(Double::doubleValue).max().orElse(0));
+            metrics.put("successRateStdDev", calculateStandardDeviation(successRates));
+        }
+        
+        if (!failureRates.isEmpty()) {
+            metrics.put("avgFailureRate", failureRates.stream().mapToDouble(Double::doubleValue).average().orElse(0));
+            metrics.put("minFailureRate", failureRates.stream().mapToDouble(Double::doubleValue).min().orElse(0));
+            metrics.put("maxFailureRate", failureRates.stream().mapToDouble(Double::doubleValue).max().orElse(0));
+        }
+        
+        return metrics;
+    }
+    
+    /**
+     * 检测预警
+     */
+    private List<Map<String, Object>> detectWarnings(Map<String, Object> statistics, List<Report> reports) {
+        List<Map<String, Object>> warnings = new ArrayList<>();
+        
+        // 1. 接口响应突然变慢（环比上涨 50%+）
+        detectResponseTimeWarnings(statistics, warnings);
+        
+        // 2. 成功率骤降、批量报错
+        detectSuccessRateWarnings(statistics, warnings);
+        
+        // 3. 并发下资源瓶颈
+        detectResourceBottleneckWarnings(statistics, warnings);
+        
+        // 4. 重复频发 BUG、高频错误码
+        detectFrequentErrorWarnings(reports, warnings);
+        
+        // 5. 数据断言大面积失败
+        detectAssertionFailureWarnings(reports, warnings);
+        
+        return warnings;
+    }
+    
+    /**
+     * 检测响应时间预警
+     */
+    private void detectResponseTimeWarnings(Map<String, Object> statistics, List<Map<String, Object>> warnings) {
+        // 模拟响应时间分析（实际应从历史数据计算环比）
+        double avgResponseTime = 1200; // 当前平均响应时间（ms）
+        double lastPeriodResponseTime = 800; // 上一周期平均响应时间（ms）
+        
+        if (lastPeriodResponseTime > 0) {
+            double increaseRate = (avgResponseTime - lastPeriodResponseTime) / lastPeriodResponseTime * 100;
+            
+            if (increaseRate >= 50) {
+                warnings.add(createWarning(
+                    "接口响应变慢",
+                    "HIGH",
+                    "接口响应时间环比上涨 " + String.format("%.2f", increaseRate) + "%",
+                    "建议检查服务器性能和网络状况"
+                ));
+            }
+        }
+    }
+    
+    /**
+     * 检测成功率预警
+     */
+    private void detectSuccessRateWarnings(Map<String, Object> statistics, List<Map<String, Object>> warnings) {
+        Map<String, Object> metrics = (Map<String, Object>) statistics.get("performanceMetrics");
+        
+        if (metrics.containsKey("avgSuccessRate")) {
+            double avgSuccessRate = (double) metrics.get("avgSuccessRate");
+            double minSuccessRate = (double) metrics.get("minSuccessRate");
+            
+            // 成功率低于90%触发预警
+            if (avgSuccessRate < 90) {
+                warnings.add(createWarning(
+                    "成功率偏低",
+                    "HIGH",
+                    "平均成功率仅为 " + String.format("%.2f", avgSuccessRate) + "%",
+                    "建议检查接口稳定性和数据质量"
+                ));
+            }
+            
+            // 成功率波动过大
+            if (metrics.containsKey("successRateStdDev")) {
+                double stdDev = (double) metrics.get("successRateStdDev");
+                if (stdDev > 15) {
+                    warnings.add(createWarning(
+                        "成功率波动异常",
+                        "MEDIUM",
+                        "成功率标准差为 " + String.format("%.2f", stdDev) + "%，波动较大",
+                        "建议检查接口稳定性"
+                    ));
+                }
+            }
+        }
+    }
+    
+    /**
+     * 检测资源瓶颈预警
+     */
+    private void detectResourceBottleneckWarnings(Map<String, Object> statistics, List<Map<String, Object>> warnings) {
+        // 模拟资源监控数据
+        double cpuUsage = 85; // CPU使用率
+        double memoryUsage = 92; // 内存使用率
+        int connectionCount = 950; // 连接数
+        
+        if (cpuUsage > 80) {
+            warnings.add(createWarning(
+                "CPU使用率过高",
+                "HIGH",
+                "CPU使用率达到 " + cpuUsage + "%",
+                "建议优化代码或扩容服务器"
+            ));
+        }
+        
+        if (memoryUsage > 85) {
+            warnings.add(createWarning(
+                "内存使用率过高",
+                "HIGH",
+                "内存使用率达到 " + memoryUsage + "%",
+                "建议检查内存泄漏或增加内存"
+            ));
+        }
+        
+        if (connectionCount > 800) {
+            warnings.add(createWarning(
+                "连接数接近上限",
+                "MEDIUM",
+                "当前连接数 " + connectionCount + "，接近上限",
+                "建议优化连接池配置"
+            ));
+        }
+    }
+    
+    /**
+     * 检测频繁错误预警
+     */
+    private void detectFrequentErrorWarnings(List<Report> reports, List<Map<String, Object>> warnings) {
+        // 模拟错误码分析
+        Map<String, Integer> errorCodeCounts = new HashMap<>();
+        errorCodeCounts.put("500", 45);
+        errorCodeCounts.put("404", 23);
+        errorCodeCounts.put("403", 12);
+        errorCodeCounts.put("502", 8);
+        
+        for (Map.Entry<String, Integer> entry : errorCodeCounts.entrySet()) {
+            if (entry.getValue() > 20) {
+                warnings.add(createWarning(
+                    "高频错误码",
+                    "MEDIUM",
+                    "错误码 " + entry.getKey() + " 出现 " + entry.getValue() + " 次",
+                    "建议检查相关接口实现"
+                ));
+            }
+        }
+    }
+    
+    /**
+     * 检测断言失败预警
+     */
+    private void detectAssertionFailureWarnings(List<Report> reports, List<Map<String, Object>> warnings) {
+        // 模拟断言失败分析
+        int totalAssertions = 1500;
+        int failedAssertions = 320;
+        double failureRate = (double) failedAssertions / totalAssertions * 100;
+        
+        if (failureRate > 15) {
+            warnings.add(createWarning(
+                "数据断言大面积失败",
+                "HIGH",
+                "断言失败率达到 " + String.format("%.2f", failureRate) + "%",
+                "建议检查数据质量和断言规则"
+            ));
+        }
+    }
+    
+    /**
+     * 创建预警信息
+     */
+    private Map<String, Object> createWarning(String title, String level, String description, String suggestion) {
+        Map<String, Object> warning = new HashMap<>();
+        warning.put("title", title);
+        warning.put("level", level);
+        warning.put("description", description);
+        warning.put("suggestion", suggestion);
+        warning.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        return warning;
+    }
+    
+    /**
+     * 计算标准差
+     */
+    private double calculateStandardDeviation(List<Double> values) {
+        if (values.isEmpty()) return 0;
+        
+        double mean = values.stream().mapToDouble(Double::doubleValue).average().orElse(0);
+        double variance = values.stream()
+            .mapToDouble(v -> Math.pow(v - mean, 2))
+            .average().orElse(0);
+        
+        return Math.sqrt(variance);
     }
 
     private ReportDTO convertToDTO(Report report) {

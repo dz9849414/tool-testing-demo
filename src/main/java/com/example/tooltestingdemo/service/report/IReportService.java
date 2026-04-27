@@ -59,9 +59,19 @@ public interface IReportService extends IService<Report> {
     java.util.List<FailureTimelineDTO> getFailureTimeline(Long templateId, String timeRange);
     
     /**
-     * 预览报告
+     * 预览报告 - HTML格式
      */
-    String previewReport(Long id);
+    String previewReportHtml(Long id, String pageRange, String dataSource);
+    
+    /**
+     * 预览报告 - 图片格式
+     */
+    byte[] previewReportImage(Long id, String format, String pageRange, String dataSource);
+    
+    /**
+     * 预览报告 - JSON格式
+     */
+    Object previewReportJson(Long id, String pageRange, String dataSource);
     
     /**
      * 导出报告（返回文件路径）

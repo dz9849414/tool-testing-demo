@@ -3,13 +3,18 @@ package com.example.tooltestingdemo.controller.report;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.dto.report.CustomChartConfigDTO;
 import com.example.tooltestingdemo.dto.report.ReportChartDTO;
+import com.example.tooltestingdemo.entity.report.ReportChart;
 import com.example.tooltestingdemo.service.report.IReportChartService;
+import com.example.tooltestingdemo.util.ChartImageExporter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -18,10 +23,12 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/report/charts")
 @RequiredArgsConstructor
+@Slf4j
 @Tag(name = "报告图表管理")
 public class ReportChartController {
 
     private final IReportChartService reportChartService;
+    private final ChartImageExporter chartImageExporter;
 
     @PostMapping
     @Operation(summary = "创建图表")
@@ -164,15 +171,65 @@ public class ReportChartController {
     @GetMapping("/{id}/export")
     @Operation(summary = "导出图表")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:chart:export')")
-    public Result<String> exportChart(
+    public void exportChart(
             @PathVariable Long id,
             @RequestParam(defaultValue = "png") String format,
-            @RequestParam(defaultValue = "high") String resolution) {
+            @RequestParam(defaultValue = "high") String resolution,
+            HttpServletResponse response) {
         try {
-            String exportPath = reportChartService.exportChart(id, format, resolution);
-            return exportPath != null ? Result.success(exportPath) : Result.error("图表不存在");
+            // 获取图表数据
+            ReportChart chart = reportChartService.getChartById(id);
+            if (chart == null || chart.getIsDeleted() == 1) {
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                response.getWriter().write("图表不存在");
+                return;
+            }
+            
+            // 生成图片文件
+                String exportPath = chartImageExporter.exportChartToImage(chart, format, resolution);
+            
+            // 设置响应头
+            response.setContentType(getContentType(format));
+            response.setHeader("Content-Disposition", 
+                "attachment; filename=\"chart_" + id + "." + format.toLowerCase() + "\"");
+            
+            // 写入图片数据到响应流
+            byte[] imageData = chartImageExporter.getImageFileContent(exportPath);
+            if (imageData != null) {
+                response.getOutputStream().write(imageData);
+                response.getOutputStream().flush();
+                
+                // 清理临时文件
+                chartImageExporter.deleteImageFile(exportPath);
+            } else {
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                response.getWriter().write("生成图片失败");
+            }
+            
         } catch (Exception e) {
-            return Result.error("导出图表失败：" + e.getMessage());
+            try {
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                response.getWriter().write("导出图表失败：" + e.getMessage());
+            } catch (IOException ex) {
+                log.error("写入错误响应失败", ex);
+            }
+        }
+    }
+    
+    /**
+     * 根据格式获取Content-Type
+     */
+    private String getContentType(String format) {
+        switch (format.toLowerCase()) {
+            case "png":
+                return "image/png";
+            case "jpg":
+            case "jpeg":
+                return "image/jpeg";
+            case "gif":
+                return "image/gif";
+            default:
+                return "image/png";
         }
     }
 

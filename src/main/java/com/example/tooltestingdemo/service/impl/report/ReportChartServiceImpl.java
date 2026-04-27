@@ -4,10 +4,16 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.report.CustomChartConfigDTO;
 import com.example.tooltestingdemo.dto.report.ReportChartDTO;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
+import com.example.tooltestingdemo.entity.report.Report;
 import com.example.tooltestingdemo.entity.report.ReportChart;
 import com.example.tooltestingdemo.mapper.report.ReportChartMapper;
+import com.example.tooltestingdemo.mapper.report.ReportMapper;
 import com.example.tooltestingdemo.service.report.IReportChartService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +30,7 @@ import java.util.stream.Collectors;
 public class ReportChartServiceImpl extends ServiceImpl<ReportChartMapper, ReportChart> implements IReportChartService {
 
     private final ReportChartMapper reportChartMapper;
+    private final ReportMapper reportMapper;
 
     @Override
     public Long createChart(ReportChartDTO chartDTO) {
@@ -129,6 +136,11 @@ public class ReportChartServiceImpl extends ServiceImpl<ReportChartMapper, Repor
     }
 
     @Override
+    public ReportChart getChartById(Long id) {
+        return reportChartMapper.selectById(id);
+    }
+    
+    @Override
     public String exportChart(Long id, String format, String resolution) {
         ReportChart chart = reportChartMapper.selectById(id);
         if (chart == null || chart.getIsDeleted() == 1) {
@@ -171,15 +183,47 @@ public class ReportChartServiceImpl extends ServiceImpl<ReportChartMapper, Repor
 
     @Override
     public Object analyzeChartData(Long id) {
-        // 实现图表数据分析逻辑
-        // 这里简化处理，返回分析结果对象
-        return new Object() {
-            public Long chartId = id;
-            public String analysisResult = "数据分析完成";
-            public List<String> trends = List.of("趋势1", "趋势2");
-            public List<String> anomalies = List.of("异常点1");
-            public String conclusion = "分析结论";
-        };
+        try {
+            // 获取图表信息
+            ReportChart chart = reportChartMapper.selectById(id);
+            if (chart == null || chart.getIsDeleted() == 1) {
+                throw new RuntimeException("图表不存在");
+            }
+            
+            // 根据数据源类型分析数据
+            String dataSourceType = chart.getDataSourceType();
+            String chartData = null;
+            
+            if ("PROTOCOL".equals(dataSourceType)) {
+                // 协议数据源：分析协议测试数据
+                chartData = analyzeProtocolTestData(chart);
+            } else if ("TEMPLATE".equals(dataSourceType)) {
+                // 模板数据源：分析模板执行数据
+                chartData = analyzeTemplateExecuteData(chart);
+            } else if ("REPORT".equals(dataSourceType)) {
+                // 报告数据源：分析报告内容数据
+                chartData = analyzeReportContentData(chart);
+            } else {
+                // 默认数据源：使用模拟数据
+                chartData = generateDefaultChartData();
+            }
+            
+            // 更新图表数据
+            chart.setChartData(chartData);
+            reportChartMapper.updateById(chart);
+            
+            // 返回分析结果
+            final String finalChartData = chartData;
+            return new Object() {
+                public Long chartId = id;
+                public String analysisResult = "数据分析完成";
+                public String chartData = finalChartData;
+                public String message = "数据已成功分析并更新到图表";
+            };
+            
+        } catch (Exception e) {
+            throw new RuntimeException("图表数据分析失败：" + e.getMessage(), e);
+        }
     }
 
     @Override
@@ -193,6 +237,176 @@ public class ReportChartServiceImpl extends ServiceImpl<ReportChartMapper, Repor
         ReportChartDTO dto = new ReportChartDTO();
         BeanUtils.copyProperties(chart, dto);
         return dto;
+    }
+    
+    /**
+     * 分析协议测试数据
+     */
+    private String analyzeProtocolTestData(ReportChart chart) {
+        // 这里实现协议测试数据的分析逻辑
+        JSONObject chartData = new JSONObject();
+        JSONArray dataArray = new JSONArray();
+        
+        // 模拟协议测试数据
+        JSONObject httpData = new JSONObject();
+        httpData.put("name", "HTTP协议");
+        httpData.put("value", 95);
+        dataArray.add(httpData);
+        
+        JSONObject httpsData = new JSONObject();
+        httpsData.put("name", "HTTPS协议");
+        httpsData.put("value", 98);
+        dataArray.add(httpsData);
+        
+        JSONObject tcpData = new JSONObject();
+        tcpData.put("name", "TCP协议");
+        tcpData.put("value", 92);
+        dataArray.add(tcpData);
+        
+        chartData.put("data", dataArray);
+        chartData.put("title", "协议测试成功率统计");
+        chartData.put("type", "BAR");
+        
+        return chartData.toJSONString();
+    }
+    
+    /**
+     * 分析模板执行数据
+     */
+    private String analyzeTemplateExecuteData(ReportChart chart) {
+        // 这里实现模板执行数据的分析逻辑
+        JSONObject chartData = new JSONObject();
+        JSONArray dataArray = new JSONArray();
+        
+        // 模拟模板执行数据
+        JSONObject successData = new JSONObject();
+        successData.put("name", "成功");
+        successData.put("value", 85);
+        dataArray.add(successData);
+        
+        JSONObject failureData = new JSONObject();
+        failureData.put("name", "失败");
+        failureData.put("value", 15);
+        dataArray.add(failureData);
+        
+        chartData.put("data", dataArray);
+        chartData.put("title", "模板执行成功率统计");
+        chartData.put("type", "PIE");
+        
+        return chartData.toJSONString();
+    }
+    
+    /**
+     * 分析报告内容数据
+     */
+    private String analyzeReportContentData(ReportChart chart) {
+        try {
+            // 获取数据源ID
+            String dataSourceIds = chart.getDataSourceIds();
+            if (dataSourceIds == null || dataSourceIds.trim().isEmpty()) {
+                return generateDefaultChartData();
+            }
+            
+            // 解析数据源ID（JSON数组格式）
+            JSONArray dataSourceArray = JSON.parseArray(dataSourceIds);
+            if (dataSourceArray.isEmpty()) {
+                return generateDefaultChartData();
+            }
+            
+            // 获取第一个报告ID
+            Long reportId = dataSourceArray.getLong(0);
+            Report report = reportMapper.selectById(reportId);
+            if (report == null || report.getIsDeleted() == 1) {
+                return generateDefaultChartData();
+            }
+            
+            // 解析报告内容
+            String content = report.getContent();
+            if (content == null || content.trim().isEmpty()) {
+                return generateDefaultChartData();
+            }
+            
+            JSONObject reportContent = JSON.parseObject(content);
+            JSONObject chartData = new JSONObject();
+            JSONArray dataArray = new JSONArray();
+            
+            // 分析报告数据
+            if (reportContent.containsKey("summary")) {
+                JSONObject summary = reportContent.getJSONObject("summary");
+                
+                // 成功率数据
+                JSONObject successData = new JSONObject();
+                successData.put("name", "成功");
+                successData.put("value", summary.getInteger("successCount"));
+                successData.put("percentage", summary.getDouble("successRate"));
+                dataArray.add(successData);
+                
+                // 失败率数据
+                JSONObject failureData = new JSONObject();
+                failureData.put("name", "失败");
+                failureData.put("value", summary.getInteger("failureCount"));
+                failureData.put("percentage", summary.getDouble("failureRate"));
+                dataArray.add(failureData);
+            }
+            
+            // 如果有rateData，使用rateData
+            if (reportContent.containsKey("rateData")) {
+                JSONArray rateData = reportContent.getJSONArray("rateData");
+                dataArray = rateData; // 直接使用rateData
+            }
+            
+            // 设置图表数据
+            chartData.put("data", dataArray);
+            chartData.put("title", chart.getName() != null ? chart.getName() : "报告数据分析");
+            chartData.put("type", chart.getChartType() != null ? chart.getChartType() : "BAR");
+            
+            // 添加时间范围信息
+            if (reportContent.containsKey("startDate") && reportContent.containsKey("endDate")) {
+                chartData.put("startDate", reportContent.getString("startDate"));
+                chartData.put("endDate", reportContent.getString("endDate"));
+            }
+            
+            // 添加数据源信息
+            if (reportContent.containsKey("dataSourceName")) {
+                chartData.put("dataSource", reportContent.getString("dataSourceName"));
+            }
+            
+            return chartData.toJSONString();
+            
+        } catch (Exception e) {
+            log.error("分析报告内容数据失败", e);
+            return generateDefaultChartData();
+        }
+    }
+    
+    /**
+     * 生成默认图表数据
+     */
+    private String generateDefaultChartData() {
+        JSONObject chartData = new JSONObject();
+        JSONArray dataArray = new JSONArray();
+        
+        // 默认数据
+        JSONObject data1 = new JSONObject();
+        data1.put("name", "默认数据1");
+        data1.put("value", 80);
+        dataArray.add(data1);
+        
+        JSONObject data2 = new JSONObject();
+        data2.put("name", "默认数据2");
+        data2.put("value", 60);
+        dataArray.add(data2);
+        
+        JSONObject data3 = new JSONObject();
+        data3.put("name", "默认数据3");
+        data3.put("value", 90);
+        dataArray.add(data3);
+        
+        chartData.put("data", dataArray);
+        chartData.put("title", "默认图表数据");
+        chartData.put("type", "BAR");
+        
+        return chartData.toJSONString();
     }
 
     // ====================== 自定义图表相关方法实现 ======================

@@ -48,6 +48,11 @@ public interface IReportChartService extends IService<ReportChart> {
     Boolean customizeChart(Long id, String chartConfig, String styleConfig);
     
     /**
+     * 根据ID获取图表
+     */
+    ReportChart getChartById(Long id);
+    
+    /**
      * 导出图表
      */
     String exportChart(Long id, String format, String resolution);

@@ -10,12 +10,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 报告控制器
@@ -191,12 +194,50 @@ public class ReportController {
     @GetMapping("/{id}/preview")
     @Operation(summary = "预览报告")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:preview')")
-    public Result<String> previewReport(@PathVariable Long id) {
+    public ResponseEntity<Object> previewReport(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "html") String format,
+            @RequestParam(defaultValue = "all") String pageRange,
+            @RequestParam(defaultValue = "JOB_LOG") String dataSource) {
         try {
-            String previewContent = reportService.previewReport(id);
-            return previewContent != null ? Result.success(previewContent) : Result.error("报告不存在");
+            // 根据格式返回不同的预览内容
+            if ("html".equalsIgnoreCase(format)) {
+                // 返回HTML格式预览
+                String htmlContent = reportService.previewReportHtml(id, pageRange, dataSource);
+                if (htmlContent == null) {
+                    return ResponseEntity.notFound().build();
+                }
+                
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_TYPE, "text/html; charset=utf-8")
+                        .body(htmlContent);
+                        
+            } else if ("image".equalsIgnoreCase(format) || "png".equalsIgnoreCase(format) || "jpg".equalsIgnoreCase(format)) {
+                // 返回图片格式预览
+                byte[] imageData = reportService.previewReportImage(id, format, pageRange, dataSource);
+                if (imageData == null) {
+                    return ResponseEntity.notFound().build();
+                }
+                
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_TYPE, getImageContentType(format))
+                        .body(imageData);
+                        
+            } else {
+                // 默认返回JSON格式预览
+                Object previewData = reportService.previewReportJson(id, pageRange, dataSource);
+                if (previewData == null) {
+                    return ResponseEntity.notFound().build();
+                }
+                
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_TYPE, "application/json; charset=utf-8")
+                        .body(previewData);
+            }
+            
         } catch (Exception e) {
-            return Result.error("预览报告失败：" + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "预览报告失败：" + e.getMessage()));
         }
     }
 
@@ -249,6 +290,22 @@ public class ReportController {
                 return "application/json";
             default:
                 return "application/octet-stream";
+        }
+    }
+    
+    private String getImageContentType(String format) {
+        switch (format.toLowerCase()) {
+            case "png":
+                return "image/png";
+            case "jpg":
+            case "jpeg":
+                return "image/jpeg";
+            case "gif":
+                return "image/gif";
+            case "image":
+                return "image/png"; // 默认返回PNG
+            default:
+                return "image/png";
         }
     }
 
