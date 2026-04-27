@@ -70,7 +70,7 @@ public interface IReportChartService extends IService<ReportChart> {
     /**
      * 图表数据分析
      */
-    Object analyzeChartData(Long id);
+    Object analyzeChartData(Long id, String startTime, String endTime, String timeRange);
     
     /**
      * 获取图表分组

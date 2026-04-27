@@ -18,6 +18,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -127,12 +129,51 @@ public class ReportChartServiceImpl extends ServiceImpl<ReportChartMapper, Repor
             return false;
         }
         
-        chart.setChartConfig(chartConfig);
-        chart.setStyleConfig(styleConfig);
+        // 验证chartConfig是否为有效JSON，如果不是则使用默认值
+        String validChartConfig = validateJsonConfig(chartConfig);
+        chart.setChartConfig(validChartConfig);
+        
+        // 验证styleConfig是否为有效JSON，如果不是则使用默认值
+        String validStyleConfig = validateJsonConfig(styleConfig);
+        chart.setStyleConfig(validStyleConfig);
+        
         chart.setIsCustom(true);
         chart.setUpdateTime(LocalDateTime.now());
         
         return reportChartMapper.updateById(chart) > 0;
+    }
+    
+    /**
+     * 验证JSON配置，确保是有效的JSON格式
+     */
+    private String validateJsonConfig(String config) {
+        if (config == null || config.trim().isEmpty()) {
+            return "{}";
+        }
+        
+        String trimmedConfig = config.trim();
+        
+        // 检查是否是有效的JSON对象或数组
+        if (trimmedConfig.startsWith("{") && trimmedConfig.endsWith("}")) {
+            try {
+                JSON.parseObject(trimmedConfig);
+                return trimmedConfig;
+            } catch (Exception e) {
+                log.warn("无效的JSON对象配置: {}, 使用默认值");
+                return "{}";
+            }
+        } else if (trimmedConfig.startsWith("[") && trimmedConfig.endsWith("]")) {
+            try {
+                JSON.parseArray(trimmedConfig);
+                return trimmedConfig;
+            } catch (Exception e) {
+                log.warn("无效的JSON数组配置: {}, 使用默认值");
+                return "{}";
+            }
+        } else {
+            log.warn("配置不是有效的JSON格式: {}, 使用默认值");
+            return "{}";
+        }
     }
 
     @Override
@@ -182,30 +223,35 @@ public class ReportChartServiceImpl extends ServiceImpl<ReportChartMapper, Repor
     }
 
     @Override
-    public Object analyzeChartData(Long id) {
+    public Object analyzeChartData(Long id, String startTime, String endTime, String timeRange) {
         try {
+            // 如果id为0，只根据时间区间查询数据
+            if (id == null || id == 0) {
+                return analyzeDataByTimeRange(startTime, endTime, timeRange);
+            }
+            
             // 获取图表信息
             ReportChart chart = reportChartMapper.selectById(id);
             if (chart == null || chart.getIsDeleted() == 1) {
                 throw new RuntimeException("图表不存在");
             }
             
-            // 根据数据源类型分析数据
+            // 根据数据源类型和时间范围分析数据
             String dataSourceType = chart.getDataSourceType();
             String chartData = null;
             
             if ("PROTOCOL".equals(dataSourceType)) {
                 // 协议数据源：分析协议测试数据
-                chartData = analyzeProtocolTestData(chart);
+                chartData = analyzeProtocolTestData(chart, startTime, endTime, timeRange);
             } else if ("TEMPLATE".equals(dataSourceType)) {
                 // 模板数据源：分析模板执行数据
-                chartData = analyzeTemplateExecuteData(chart);
+                chartData = analyzeTemplateExecuteData(chart, startTime, endTime, timeRange);
             } else if ("REPORT".equals(dataSourceType)) {
                 // 报告数据源：分析报告内容数据
-                chartData = analyzeReportContentData(chart);
+                chartData = analyzeReportContentData(chart, startTime, endTime, timeRange);
             } else {
                 // 默认数据源：使用模拟数据
-                chartData = generateDefaultChartData();
+                chartData = generateDefaultChartData(startTime, endTime, timeRange);
             }
             
             // 更新图表数据
@@ -214,11 +260,16 @@ public class ReportChartServiceImpl extends ServiceImpl<ReportChartMapper, Repor
             
             // 返回分析结果
             final String finalChartData = chartData;
+            final String finalDataSourceType = dataSourceType;
+            final String finalTimePeriod = calculateTimePeriod(startTime, endTime, timeRange);
+            
             return new Object() {
                 public Long chartId = id;
                 public String analysisResult = "数据分析完成";
                 public String chartData = finalChartData;
                 public String message = "数据已成功分析并更新到图表";
+                public String timePeriod = finalTimePeriod;
+                public String dataSourceType = finalDataSourceType;
             };
             
         } catch (Exception e) {
@@ -242,7 +293,7 @@ public class ReportChartServiceImpl extends ServiceImpl<ReportChartMapper, Repor
     /**
      * 分析协议测试数据
      */
-    private String analyzeProtocolTestData(ReportChart chart) {
+    private String analyzeProtocolTestData(ReportChart chart, String startTime, String endTime, String timeRange) {
         // 这里实现协议测试数据的分析逻辑
         JSONObject chartData = new JSONObject();
         JSONArray dataArray = new JSONArray();
@@ -273,7 +324,7 @@ public class ReportChartServiceImpl extends ServiceImpl<ReportChartMapper, Repor
     /**
      * 分析模板执行数据
      */
-    private String analyzeTemplateExecuteData(ReportChart chart) {
+    private String analyzeTemplateExecuteData(ReportChart chart, String startTime, String endTime, String timeRange) {
         // 这里实现模板执行数据的分析逻辑
         JSONObject chartData = new JSONObject();
         JSONArray dataArray = new JSONArray();
@@ -299,90 +350,97 @@ public class ReportChartServiceImpl extends ServiceImpl<ReportChartMapper, Repor
     /**
      * 分析报告内容数据
      */
-    private String analyzeReportContentData(ReportChart chart) {
+    private String analyzeReportContentData(ReportChart chart, String startTime, String endTime, String timeRange) {
         try {
+            // 构建查询条件
+            LambdaQueryWrapper<Report> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(Report::getIsDeleted, 0);
+            
+            // 时间范围筛选
+            if (startTime != null && endTime != null) {
+                queryWrapper.between(Report::getCreateTime, startTime, endTime);
+            } else if (timeRange != null) {
+                // 根据预定义时间范围筛选
+                LocalDateTime[] dateRange = calculateDateRange(timeRange);
+                if (dateRange != null) {
+                    queryWrapper.between(Report::getCreateTime, dateRange[0], dateRange[1]);
+                }
+            }
+            
             // 获取数据源ID
             String dataSourceIds = chart.getDataSourceIds();
-            if (dataSourceIds == null || dataSourceIds.trim().isEmpty()) {
-                return generateDefaultChartData();
+            List<Report> reports = new ArrayList<>();
+            
+            if (dataSourceIds != null && !dataSourceIds.trim().isEmpty()) {
+                // 解析数据源ID（JSON数组格式）
+                JSONArray dataSourceArray = JSON.parseArray(dataSourceIds);
+                if (!dataSourceArray.isEmpty()) {
+                    // 根据数据源ID列表获取报告
+                    List<Long> reportIds = dataSourceArray.toJavaList(Long.class);
+                    queryWrapper.in(Report::getId, reportIds);
+                    reports = reportMapper.selectList(queryWrapper);
+                }
+            } else {
+                // 如果没有指定数据源ID，获取所有符合条件的报告
+                reports = reportMapper.selectList(queryWrapper);
             }
             
-            // 解析数据源ID（JSON数组格式）
-            JSONArray dataSourceArray = JSON.parseArray(dataSourceIds);
-            if (dataSourceArray.isEmpty()) {
-                return generateDefaultChartData();
+            if (reports.isEmpty()) {
+                return generateDefaultChartData(startTime, endTime, timeRange);
             }
             
-            // 获取第一个报告ID
-            Long reportId = dataSourceArray.getLong(0);
-            Report report = reportMapper.selectById(reportId);
-            if (report == null || report.getIsDeleted() == 1) {
-                return generateDefaultChartData();
-            }
-            
-            // 解析报告内容
-            String content = report.getContent();
-            if (content == null || content.trim().isEmpty()) {
-                return generateDefaultChartData();
-            }
-            
-            JSONObject reportContent = JSON.parseObject(content);
             JSONObject chartData = new JSONObject();
             JSONArray dataArray = new JSONArray();
+            List<String> xAxisData = new ArrayList<>();
             
-            // 分析报告数据
-            if (reportContent.containsKey("summary")) {
-                JSONObject summary = reportContent.getJSONObject("summary");
-                
-                // 成功率数据
-                JSONObject successData = new JSONObject();
-                successData.put("name", "成功");
-                successData.put("value", summary.getInteger("successCount"));
-                successData.put("percentage", summary.getDouble("successRate"));
-                dataArray.add(successData);
-                
-                // 失败率数据
-                JSONObject failureData = new JSONObject();
-                failureData.put("name", "失败");
-                failureData.put("value", summary.getInteger("failureCount"));
-                failureData.put("percentage", summary.getDouble("failureRate"));
-                dataArray.add(failureData);
+            // 添加时间范围信息到图表数据
+            String timePeriodDesc = calculateTimePeriod(startTime, endTime, timeRange);
+            chartData.put("timePeriod", timePeriodDesc);
+            
+            // 分析多个报告的数据
+            for (Report report : reports) {
+                if (report.getContent() != null && !report.getContent().trim().isEmpty()) {
+                    try {
+                        JSONObject reportContent = JSON.parseObject(report.getContent());
+                        
+                        if (reportContent.containsKey("summary")) {
+                            JSONObject summary = reportContent.getJSONObject("summary");
+                            
+                            // 添加X轴数据（报告名称）
+                            xAxisData.add(report.getName());
+                            
+                            // 成功率数据
+                            JSONObject successData = new JSONObject();
+                            successData.put("name", report.getName());
+                            successData.put("value", summary.getDouble("successRate"));
+                            successData.put("color", "#52c41a");
+                            dataArray.add(successData);
+                        }
+                    } catch (Exception e) {
+                        log.warn("解析报告内容失败: {}");
+                    }
+                }
             }
             
-            // 如果有rateData，使用rateData
-            if (reportContent.containsKey("rateData")) {
-                JSONArray rateData = reportContent.getJSONArray("rateData");
-                dataArray = rateData; // 直接使用rateData
-            }
-            
-            // 设置图表数据
+            // 构建图表数据结构
+            chartData.put("xAxis", xAxisData);
             chartData.put("data", dataArray);
-            chartData.put("title", chart.getName() != null ? chart.getName() : "报告数据分析");
-            chartData.put("type", chart.getChartType() != null ? chart.getChartType() : "BAR");
-            
-            // 添加时间范围信息
-            if (reportContent.containsKey("startDate") && reportContent.containsKey("endDate")) {
-                chartData.put("startDate", reportContent.getString("startDate"));
-                chartData.put("endDate", reportContent.getString("endDate"));
-            }
-            
-            // 添加数据源信息
-            if (reportContent.containsKey("dataSourceName")) {
-                chartData.put("dataSource", reportContent.getString("dataSourceName"));
-            }
+            chartData.put("title", chart.getName() + " - " + timePeriodDesc);
+            chartData.put("type", chart.getChartType());
+            chartData.put("reportCount", reports.size());
             
             return chartData.toJSONString();
             
         } catch (Exception e) {
             log.error("分析报告内容数据失败", e);
-            return generateDefaultChartData();
+            return generateDefaultChartData(startTime, endTime, timeRange);
         }
     }
     
     /**
      * 生成默认图表数据
      */
-    private String generateDefaultChartData() {
+    private String generateDefaultChartData(String startTime, String endTime, String timeRange) {
         JSONObject chartData = new JSONObject();
         JSONArray dataArray = new JSONArray();
         
@@ -407,6 +465,207 @@ public class ReportChartServiceImpl extends ServiceImpl<ReportChartMapper, Repor
         chartData.put("type", "BAR");
         
         return chartData.toJSONString();
+    }
+
+    /**
+     * 计算时间范围描述
+     */
+    private String calculateTimePeriod(String startTime, String endTime, String timeRange) {
+        if (startTime != null && endTime != null) {
+            return startTime + " 至 " + endTime;
+        } else if (timeRange != null && !timeRange.trim().isEmpty()) {
+            switch (timeRange.toLowerCase()) {
+                case "today":
+                    return "今天";
+                case "yesterday":
+                    return "昨天";
+                case "week":
+                    return "本周";
+                case "month":
+                    return "本月";
+                case "quarter":
+                    return "本季度";
+                case "year":
+                    return "本年";
+                default:
+                    return timeRange;
+            }
+        } else {
+            return "全部时间";
+        }
+    }
+    
+    /**
+     * 计算日期范围
+     */
+    private LocalDateTime[] calculateDateRange(String timeRange) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startTime;
+        LocalDateTime endTime = now;
+        
+        switch (timeRange.toLowerCase()) {
+            case "today":
+                startTime = now.toLocalDate().atStartOfDay();
+                break;
+            case "yesterday":
+                startTime = now.toLocalDate().minusDays(1).atStartOfDay();
+                endTime = now.toLocalDate().atStartOfDay().minusSeconds(1);
+                break;
+            case "week":
+                startTime = now.toLocalDate().minusDays(6).atStartOfDay();
+                break;
+            case "month":
+                startTime = now.toLocalDate().withDayOfMonth(1).atStartOfDay();
+                break;
+            case "quarter":
+                int currentQuarter = (now.getMonthValue() - 1) / 3 + 1;
+                int startMonth = (currentQuarter - 1) * 3 + 1;
+                startTime = LocalDateTime.of(now.getYear(), startMonth, 1, 0, 0);
+                break;
+            case "year":
+                startTime = LocalDateTime.of(now.getYear(), 1, 1, 0, 0);
+                break;
+            default:
+                return null; // 不支持的时间范围
+        }
+        
+        return new LocalDateTime[]{startTime, endTime};
+    }
+    
+    /**
+     * 根据时间范围分析数据（id为0时使用）
+     */
+    private Object analyzeDataByTimeRange(String startTime, String endTime, String timeRange) {
+        try {
+            // 构建查询条件
+            LambdaQueryWrapper<Report> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(Report::getIsDeleted, 0);
+            
+            // 时间范围筛选
+            if (startTime != null && endTime != null) {
+                queryWrapper.between(Report::getCreateTime, startTime, endTime);
+            } else if (timeRange != null) {
+                // 根据预定义时间范围筛选
+                LocalDateTime[] dateRange = calculateDateRange(timeRange);
+                if (dateRange != null) {
+                    queryWrapper.between(Report::getCreateTime, dateRange[0], dateRange[1]);
+                }
+            }
+            
+            // 获取符合条件的报告
+            List<Report> reports = reportMapper.selectList(queryWrapper);
+            
+            if (reports.isEmpty()) {
+                JSONObject emptyData = new JSONObject();
+                return createTimeRangeResult(startTime, endTime, timeRange, emptyData, "无数据");
+            }
+            
+            // 分析报告数据
+            JSONObject chartData = new JSONObject();
+            JSONArray dataArray = new JSONArray();
+            List<String> xAxisData = new ArrayList<>();
+            
+            // 统计不同类型的数据
+            Map<String, Integer> reportTypeCount = new HashMap<>();
+            Map<String, Double> successRateByType = new HashMap<>();
+            Map<String, Integer> totalCountByType = new HashMap<>();
+            
+            for (Report report : reports) {
+                String reportType = report.getReportType() != null ? report.getReportType() : "未知类型";
+                
+                // 统计报告类型数量
+                reportTypeCount.put(reportType, reportTypeCount.getOrDefault(reportType, 0) + 1);
+                
+                // 分析报告内容
+                if (report.getContent() != null && !report.getContent().trim().isEmpty()) {
+                    try {
+                        JSONObject reportContent = JSON.parseObject(report.getContent());
+                        if (reportContent.containsKey("summary")) {
+                            JSONObject summary = reportContent.getJSONObject("summary");
+                            
+                            // 累计成功率
+                            double successRate = summary.getDouble("successRate");
+                            successRateByType.put(reportType, 
+                                successRateByType.getOrDefault(reportType, 0.0) + successRate);
+                                
+                            // 累计总执行次数
+                            int totalCount = summary.getInteger("totalCount");
+                            totalCountByType.put(reportType, 
+                                totalCountByType.getOrDefault(reportType, 0) + totalCount);
+                        }
+                    } catch (Exception e) {
+                        log.warn("解析报告内容失败: {}");
+                    }
+                }
+            }
+            
+            // 构建图表数据
+            for (Map.Entry<String, Integer> entry : reportTypeCount.entrySet()) {
+                String reportType = entry.getKey();
+                int count = entry.getValue();
+                
+                JSONObject dataItem = new JSONObject();
+                dataItem.put("name", reportType);
+                dataItem.put("value", count);
+                dataItem.put("color", getColorByIndex(xAxisData.size()));
+                
+                // 计算平均成功率
+                if (successRateByType.containsKey(reportType)) {
+                    double avgSuccessRate = successRateByType.get(reportType) / count;
+                    dataItem.put("successRate", String.format("%.2f%%", avgSuccessRate));
+                }
+                
+                // 添加总执行次数
+                if (totalCountByType.containsKey(reportType)) {
+                    dataItem.put("totalCount", totalCountByType.get(reportType));
+                }
+                
+                dataArray.add(dataItem);
+                xAxisData.add(reportType);
+            }
+            
+            // 构建图表数据结构
+            chartData.put("xAxis", xAxisData);
+            chartData.put("data", dataArray);
+            chartData.put("title", "时间范围分析 - " + calculateTimePeriod(startTime, endTime, timeRange));
+            chartData.put("type", "BAR");
+            chartData.put("reportCount", reports.size());
+            chartData.put("reportTypes", reportTypeCount.size());
+            
+            return createTimeRangeResult(startTime, endTime, timeRange, chartData, "时间范围数据分析完成");
+            
+        } catch (Exception e) {
+            log.error("时间范围数据分析失败", e);
+            JSONObject errorData = new JSONObject();
+            return createTimeRangeResult(startTime, endTime, timeRange, errorData, "数据分析失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 创建时间范围分析结果
+     */
+    private Object createTimeRangeResult(String startTime, String endTime, String timeRange, Object chartData, String message) {
+        final Object finalChartData = chartData;
+        final String finalTimePeriod = calculateTimePeriod(startTime, endTime, timeRange);
+        final String finalMessage = message;
+        
+        return new Object() {
+            public Long chartId = 0L;
+            public String analysisResult = "时间范围数据分析完成";
+            public Object chartData = finalChartData;
+            public String message = finalMessage;
+            public String timePeriod = finalTimePeriod;
+            public String dataSourceType = "TIME_RANGE";
+            public String mode = "time_range_only";
+        };
+    }
+    
+    /**
+     * 根据索引获取颜色
+     */
+    private String getColorByIndex(int index) {
+        String[] colors = {"#5470c6", "#91cc75", "#fac858", "#ee6666", "#73c0de", "#3ba272", "#fc8452", "#9a60b4"};
+        return colors[index % colors.length];
     }
 
     // ====================== 自定义图表相关方法实现 ======================

@@ -158,8 +158,8 @@ public class ReportChartController {
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:chart:customize')")
     public Result<Boolean> customizeChart(
             @PathVariable Long id,
-            @RequestParam String chartConfig,
-            @RequestParam String styleConfig) {
+            @RequestParam(defaultValue = "{}") String chartConfig,
+            @RequestParam(defaultValue = "{}") String styleConfig) {
         try {
             Boolean result = reportChartService.customizeChart(id, chartConfig, styleConfig);
             return result ? Result.success(true) : Result.error("图表不存在");
@@ -262,14 +262,19 @@ public class ReportChartController {
     @GetMapping("/{id}/analyze")
     @Operation(summary = "图表数据分析")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:chart:analyze')")
-    public Result<Object> analyzeChartData(@PathVariable Long id) {
+    public Result<Object> analyzeChartData(
+            @PathVariable Long id,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String timeRange) {
         try {
-            Object analysisResult = reportChartService.analyzeChartData(id);
+            Object analysisResult = reportChartService.analyzeChartData(id, startDate, endDate, timeRange);
             return Result.success(analysisResult);
         } catch (Exception e) {
             return Result.error("图表数据分析失败：" + e.getMessage());
         }
     }
+
 
     @GetMapping("/groups")
     @Operation(summary = "获取图表分组")
