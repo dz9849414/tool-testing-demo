@@ -127,6 +127,14 @@ public class RolePermissionServiceImpl implements IRolePermissionService {
                 for (String roleId : dto.getRoleIds()) {
                     totalProcessed++;
                     try {
+                        // 检查是否为admin角色（禁止操作）
+                        if ("admin".equalsIgnoreCase(roleId)) {
+                            String reason = String.format("禁止移除admin角色: userId=%s, roleId=%s", userId, roleId);
+                            failureReasons.add(reason);
+                            log.warn(reason);
+                            continue; // 跳过admin角色，继续处理其他角色
+                        }
+                        
                         // 检查用户是否拥有该角色
                         LambdaQueryWrapper<SysUserRole> queryWrapper = new LambdaQueryWrapper<>();
                         queryWrapper.eq(SysUserRole::getUserId, userId)
