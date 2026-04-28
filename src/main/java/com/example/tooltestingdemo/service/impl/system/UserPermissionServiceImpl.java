@@ -2,11 +2,13 @@ package com.example.tooltestingdemo.service.impl.system;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.tooltestingdemo.common.ErrorStatus;
 import com.example.tooltestingdemo.dto.system.BatchRemoveUserPermissionDTO;
 import com.example.tooltestingdemo.dto.system.UserPermissionDTO;
 import com.example.tooltestingdemo.entity.SysPermission;
 import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.entity.system.SysUserPermission;
+import com.example.tooltestingdemo.exception.BusinessException;
 import com.example.tooltestingdemo.mapper.SysPermissionMapper;
 import com.example.tooltestingdemo.mapper.SysUserMapper;
 import com.example.tooltestingdemo.mapper.system.SysUserPermissionMapper;
@@ -80,12 +82,11 @@ public class UserPermissionServiceImpl extends ServiceImpl<SysUserPermissionMapp
             LambdaQueryWrapper<SysUserPermission> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(SysUserPermission::getUserId, dto.getUserId())
                        .eq(SysUserPermission::getPermissionId, dto.getPermissionId())
-                       .eq(SysUserPermission::getScopeType, dto.getScopeType())
-                       .eq(SysUserPermission::getScopeId, dto.getScopeId());
-            
+                       .eq(SysUserPermission::getScopeType, dto.getScopeType());
+
             SysUserPermission existing = userPermissionMapper.selectOne(queryWrapper);
             if (existing != null) {
-                throw new RuntimeException("该用户已拥有此权限");
+                throw new BusinessException(ErrorStatus.BAD_REQUEST,"该用户已拥有此权限");
             }
             
             // 创建权限分配记录
