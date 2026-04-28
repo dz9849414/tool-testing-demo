@@ -1,7 +1,11 @@
 package com.example.tooltestingdemo.service.protocol.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.ProtocolConfigCreateDTO;
+import com.example.tooltestingdemo.dto.ProtocolTestRecordQueryDTO;
 import com.example.tooltestingdemo.dto.ProtocolTestTransferDTO;
 import com.example.tooltestingdemo.entity.protocol.ProtocolConfig;
 import com.example.tooltestingdemo.entity.protocol.ProtocolTestRecord;
@@ -10,8 +14,18 @@ import com.example.tooltestingdemo.service.protocol.IProtocolConfigService;
 import com.example.tooltestingdemo.service.protocol.IProtocolTestRecordService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
+import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
+import org.apache.poi.xssf.usermodel.XSSFFont;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -23,12 +37,19 @@ import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URLEncoder;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * <p>
@@ -42,6 +63,9 @@ import java.util.Map;
 @Slf4j
 @RequiredArgsConstructor
 public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecordMapper, ProtocolTestRecord> implements IProtocolTestRecordService {
+
+    private static final DateTimeFormatter FILE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private static final String EXPORT_FILE_NAME = "协议测试记录导出";
 
     private final IProtocolConfigService protocolConfigService;
     private final ObjectMapper objectMapper;
@@ -97,6 +121,31 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
 
         return executeAndSave(config, ProtocolTestRecord.TestType.TRANSFER.name(), ProtocolTestRecord.TestScenario.PROTOCOL.name(),
                 fullUrl, httpMethod, entity, requestMeta, connectTimeoutMs, readTimeoutMs);
+    }
+
+    @Override
+    public IPage<ProtocolTestRecord> getProtocolTestRecordList(ProtocolTestRecordQueryDTO dto) {
+        ProtocolTestRecordQueryDTO query = dto == null ? new ProtocolTestRecordQueryDTO() : dto;
+        return this.page(query.toPage(), buildQueryWrapper(query));
+    }
+
+    @Override
+    public void exportProtocolTestRecords(ProtocolTestRecordQueryDTO dto, HttpServletResponse response) throws IOException {
+        ProtocolTestRecordQueryDTO query = dto == null ? new ProtocolTestRecordQueryDTO() : dto;
+        List<ProtocolTestRecord> records = this.list(buildQueryWrapper(query));
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            XSSFSheet sheet = workbook.createSheet("协议测试记录");
+            XSSFCellStyle headerStyle = createHeaderStyle(workbook);
+            XSSFCellStyle dataStyle = createDataStyle(workbook);
+
+            String[] headers = {"ID", "协议ID", "配置ID", "测试类型", "测试场景", "结果状态", "响应码", "响应时长(ms)", "错误信息", "创建时间"};
+            int[] widths = {10, 12, 12, 14, 14, 14, 12, 16, 48, 24};
+            writeHeaderRow(sheet, headerStyle, headers, widths);
+            writeDataRows(sheet, dataStyle, records);
+
+            workbook.write(outputStream);
+            writeExcelResponse(response, EXPORT_FILE_NAME + "_" + LocalDateTime.now().format(FILE_TIME_FORMATTER) + ".xlsx", outputStream.toByteArray());
+        }
     }
 
     private List<ProtocolConfigCreateDTO.UrlConfigItemDTO> parseUrlConfigList(String urlConfigJson) {
@@ -222,6 +271,36 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
         return record;
     }
 
+    private LambdaQueryWrapper<ProtocolTestRecord> buildQueryWrapper(ProtocolTestRecordQueryDTO dto) {
+        LambdaQueryWrapper<ProtocolTestRecord> queryWrapper = new LambdaQueryWrapper<>();
+        if (dto.getProtocolId() != null) {
+            queryWrapper.eq(ProtocolTestRecord::getProtocolId, dto.getProtocolId());
+        }
+        if (dto.getConfigId() != null) {
+            queryWrapper.eq(ProtocolTestRecord::getConfigId, dto.getConfigId());
+        }
+        if (StringUtils.isNotBlank(dto.getTestType())) {
+            queryWrapper.eq(ProtocolTestRecord::getTestType, dto.getTestType().trim().toUpperCase());
+        }
+        if (StringUtils.isNotBlank(dto.getTestScenario())) {
+            queryWrapper.eq(ProtocolTestRecord::getTestScenario, dto.getTestScenario().trim().toUpperCase());
+        }
+        if (StringUtils.isNotBlank(dto.getResultStatus())) {
+            queryWrapper.eq(ProtocolTestRecord::getResultStatus, dto.getResultStatus().trim().toUpperCase());
+        }
+        applyDateTimeRange(queryWrapper, dto.getCreateTimeStart(), dto.getCreateTimeEnd(), ProtocolTestRecord::getCreateTime);
+        queryWrapper.orderByDesc(ProtocolTestRecord::getCreateTime).orderByDesc(ProtocolTestRecord::getId);
+        return queryWrapper;
+    }
+
+    private void applyDateTimeRange(LambdaQueryWrapper<ProtocolTestRecord> queryWrapper,
+                                    LocalDateTime start,
+                                    LocalDateTime end,
+                                    SFunction<ProtocolTestRecord, ?> column) {
+        Optional.ofNullable(start).ifPresent(value -> queryWrapper.ge(column, value));
+        Optional.ofNullable(end).ifPresent(value -> queryWrapper.le(column, value));
+    }
+
     private String buildTransferUrl(String baseUrl, String path, Map<String, Object> queryParams) {
         String url = baseUrl;
         if (StringUtils.isNotBlank(path)) {
@@ -281,6 +360,76 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
         summary.put("statusCode", statusCode);
         summary.put("responseBodyPreview", truncate(responseBody));
         return toJson(summary);
+    }
+
+    private void writeHeaderRow(XSSFSheet sheet, XSSFCellStyle headerStyle, String[] headers, int[] columnWidths) {
+        XSSFRow headerRow = sheet.createRow(0);
+        for (int i = 0; i < headers.length; i++) {
+            XSSFCell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerStyle);
+            sheet.setColumnWidth(i, columnWidths[i] * 256);
+        }
+    }
+
+    private void writeDataRows(XSSFSheet sheet, XSSFCellStyle dataStyle, List<ProtocolTestRecord> records) {
+        int rowIndex = 1;
+        for (ProtocolTestRecord record : records) {
+            XSSFRow row = sheet.createRow(rowIndex++);
+            setCellValue(row, 0, String.valueOf(record.getId()), dataStyle);
+            setCellValue(row, 1, String.valueOf(record.getProtocolId()), dataStyle);
+            setCellValue(row, 2, String.valueOf(record.getConfigId()), dataStyle);
+            setCellValue(row, 3, record.getTestType(), dataStyle);
+            setCellValue(row, 4, record.getTestScenario(), dataStyle);
+            setCellValue(row, 5, record.getResultStatus(), dataStyle);
+            setCellValue(row, 6, record.getResponseCode(), dataStyle);
+            setCellValue(row, 7, record.getResponseTime() == null ? "" : String.valueOf(record.getResponseTime()), dataStyle);
+            setCellValue(row, 8, record.getErrorMessage(), dataStyle);
+            setCellValue(row, 9, record.getCreateTime() == null ? "" : record.getCreateTime().toString(), dataStyle);
+        }
+    }
+
+    private XSSFCellStyle createHeaderStyle(XSSFWorkbook workbook) {
+        XSSFCellStyle headerStyle = workbook.createCellStyle();
+        headerStyle.setBorderTop(BorderStyle.THIN);
+        headerStyle.setBorderBottom(BorderStyle.THIN);
+        headerStyle.setBorderLeft(BorderStyle.THIN);
+        headerStyle.setBorderRight(BorderStyle.THIN);
+        headerStyle.setAlignment(HorizontalAlignment.CENTER);
+        headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+
+        XSSFFont headerFont = workbook.createFont();
+        headerFont.setBold(true);
+        headerStyle.setFont(headerFont);
+        return headerStyle;
+    }
+
+    private XSSFCellStyle createDataStyle(XSSFWorkbook workbook) {
+        XSSFCellStyle dataStyle = workbook.createCellStyle();
+        dataStyle.setBorderTop(BorderStyle.THIN);
+        dataStyle.setBorderBottom(BorderStyle.THIN);
+        dataStyle.setBorderLeft(BorderStyle.THIN);
+        dataStyle.setBorderRight(BorderStyle.THIN);
+        dataStyle.setAlignment(HorizontalAlignment.LEFT);
+        dataStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        return dataStyle;
+    }
+
+    private void setCellValue(XSSFRow row, int columnIndex, String value, XSSFCellStyle style) {
+        XSSFCell cell = row.createCell(columnIndex);
+        cell.setCellValue(value == null ? "" : value);
+        cell.setCellStyle(style);
+    }
+
+    private void writeExcelResponse(HttpServletResponse response, String fileName, byte[] content) throws IOException {
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setHeader("Content-Disposition", "attachment; filename="
+                + URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20"));
+        try (OutputStream outputStream = response.getOutputStream()) {
+            outputStream.write(content);
+            outputStream.flush();
+        }
     }
 
     private String truncate(String text) {
