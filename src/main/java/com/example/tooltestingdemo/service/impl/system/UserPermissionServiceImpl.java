@@ -2,6 +2,7 @@ package com.example.tooltestingdemo.service.impl.system;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.tooltestingdemo.dto.system.BatchRemoveUserPermissionDTO;
 import com.example.tooltestingdemo.dto.system.UserPermissionDTO;
 import com.example.tooltestingdemo.entity.SysPermission;
 import com.example.tooltestingdemo.entity.SysUser;
@@ -182,6 +183,79 @@ public class UserPermissionServiceImpl extends ServiceImpl<SysUserPermissionMapp
     }
 
     @Override
+    @Transactional
+    public Boolean batchRemoveUserPermissions(BatchRemoveUserPermissionDTO dto) {
+        try {
+            if (dto.getUserIds() == null || dto.getUserIds().isEmpty()) {
+                throw new RuntimeException("用户ID列表不能为空");
+            }
+            
+            if (dto.getPermissionIds() == null || dto.getPermissionIds().isEmpty()) {
+                throw new RuntimeException("权限ID列表不能为空");
+            }
+            
+            int totalRemoved = 0;
+            
+            // 遍历所有用户和权限组合
+            for (String userId : dto.getUserIds()) {
+                // 验证用户存在
+                SysUser user = userMapper.selectById(userId);
+                if (user == null) {
+                    log.warn("用户不存在: userId={}", userId);
+                    continue;
+                }
+                
+                for (String permissionId : dto.getPermissionIds()) {
+                    try {
+                        // 构建查询条件（考虑作用域）
+                        LambdaQueryWrapper<SysUserPermission> queryWrapper = new LambdaQueryWrapper<>();
+                        queryWrapper.eq(SysUserPermission::getUserId, userId)
+                                   .eq(SysUserPermission::getPermissionId, permissionId);
+                        
+                        // 如果指定了作用域，添加作用域条件
+                        if (dto.getScopeType() != null && !dto.getScopeType().trim().isEmpty()) {
+                            queryWrapper.eq(SysUserPermission::getScopeType, dto.getScopeType());
+                        }
+                        
+                        if (dto.getScopeId() != null && !dto.getScopeId().trim().isEmpty()) {
+                            queryWrapper.eq(SysUserPermission::getScopeId, dto.getScopeId());
+                        }
+                        
+                        // 检查用户是否拥有该直接权限
+                        SysUserPermission userPermission = userPermissionMapper.selectOne(queryWrapper);
+                        if (userPermission != null) {
+                            // 移除权限
+                            int deleted = userPermissionMapper.delete(queryWrapper);
+                            if (deleted > 0) {
+                                totalRemoved++;
+                                log.info("成功移除用户直接权限: userId={}, permissionId={}, scopeType={}, scopeId={}", 
+                                        userId, permissionId, dto.getScopeType(), dto.getScopeId());
+                                
+                                // 记录操作历史
+                                recordUserPermissionRemoveHistory(userId, permissionId, dto.getScopeType(), 
+                                        dto.getScopeId(), dto.getRemoveReason(), dto.getOperatorId());
+                            }
+                        } else {
+                            log.info("用户未拥有该直接权限，无需移除: userId={}, permissionId={}", userId, permissionId);
+                        }
+                        
+                    } catch (Exception e) {
+                        log.error("移除用户直接权限失败: userId={}, permissionId={}", userId, permissionId, e);
+                        // 继续处理其他权限，不中断整个批量操作
+                    }
+                }
+            }
+            
+            log.info("批量移除用户直接权限完成: 共移除 {} 个权限关联", totalRemoved);
+            return totalRemoved > 0;
+            
+        } catch (Exception e) {
+            log.error("批量移除用户直接权限失败", e);
+            throw new RuntimeException("批量移除用户直接权限失败: " + e.getMessage());
+        }
+    }
+
+    @Override
     public Boolean hasPermission(String userId, String permissionCode, String scopeType, String scopeId) {
         try {
             LambdaQueryWrapper<SysUserPermission> queryWrapper = new LambdaQueryWrapper<>();
@@ -259,6 +333,19 @@ public class UserPermissionServiceImpl extends ServiceImpl<SysUserPermissionMapp
                 public String operationReason = "项目需要";
             }
         );
+    }
+
+    /**
+     * 记录用户权限移除历史（可选实现）
+     */
+    private void recordUserPermissionRemoveHistory(String userId, String permissionId, String scopeType, 
+                                                  String scopeId, String reason, String operatorId) {
+        // 这里可以记录到操作日志表或权限分配历史表
+        log.info("记录用户权限移除历史: userId={}, permissionId={}, scopeType={}, scopeId={}, reason={}, operator={}", 
+                userId, permissionId, scopeType, scopeId, reason, operatorId);
+        
+        // 实际实现可以调用日志服务记录详细操作历史
+        // operationLogService.logOperation("REMOVE_USER_PERMISSION", ...);
     }
 
     /**

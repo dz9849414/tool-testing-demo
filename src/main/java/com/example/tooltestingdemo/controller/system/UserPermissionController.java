@@ -1,6 +1,7 @@
 package com.example.tooltestingdemo.controller.system;
 
 import com.example.tooltestingdemo.common.Result;
+import com.example.tooltestingdemo.dto.system.BatchRemoveUserPermissionDTO;
 import com.example.tooltestingdemo.dto.system.UserPermissionDTO;
 import com.example.tooltestingdemo.service.system.IUserPermissionService;
 import com.example.tooltestingdemo.vo.system.UserPermissionVO;
@@ -144,6 +145,86 @@ public class UserPermissionController {
             
         } catch (Exception e) {
             return Result.error("批量撤销权限失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/batch-remove")
+    @Operation(summary = "批量移除用户直接权限")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:user:permission:remove')")
+    public Result<Boolean> batchRemoveUserPermissions(@RequestBody BatchRemoveUserPermissionDTO dto) {
+        try {
+            // 参数校验
+            if (dto.getUserIds() == null || dto.getUserIds().isEmpty()) {
+                return Result.error("用户ID列表不能为空");
+            }
+            
+            if (dto.getPermissionIds() == null || dto.getPermissionIds().isEmpty()) {
+                return Result.error("权限ID列表不能为空");
+            }
+            
+            // 验证用户和权限数量限制
+            if (dto.getUserIds().size() > 100) {
+                return Result.error("单次操作用户数量不能超过100个");
+            }
+            
+            if (dto.getPermissionIds().size() > 100) {
+                return Result.error("单次操作权限数量不能超过100个");
+            }
+            
+            Boolean result = userPermissionService.batchRemoveUserPermissions(dto);
+            return result ? Result.success( "批量移除用户直接权限成功") : Result.error("批量移除用户直接权限失败");
+            
+        } catch (Exception e) {
+            log.error("批量移除用户直接权限失败", e);
+            return Result.error("批量移除用户直接权限失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/batch-remove/validate")
+    @Operation(summary = "验证批量移除用户直接权限的可行性")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:user:permission:remove')")
+    public Result<Object> validateBatchRemoveUserPermissions(@RequestBody BatchRemoveUserPermissionDTO dto) {
+        try {
+            // 参数校验
+            if (dto.getUserIds() == null || dto.getUserIds().isEmpty()) {
+                return Result.error("用户ID列表不能为空");
+            }
+            
+            if (dto.getPermissionIds() == null || dto.getPermissionIds().isEmpty()) {
+                return Result.error("权限ID列表不能为空");
+            }
+            
+            // 统计可移除的权限关联数量
+            int removableCount = 0;
+            StringBuilder validationDetails = new StringBuilder();
+            
+            for (String userId : dto.getUserIds()) {
+                for (String permissionId : dto.getPermissionIds()) {
+                    // 检查用户是否拥有该直接权限
+                    Boolean hasPermission = userPermissionService.hasPermission(userId, permissionId, 
+                            dto.getScopeType(), dto.getScopeId());
+                    if (hasPermission) {
+                        removableCount++;
+                        validationDetails.append(String.format("用户[%s]拥有权限[%s]（作用域：%s/%s）\n", 
+                                userId, permissionId, dto.getScopeType(), dto.getScopeId()));
+                    }
+                }
+            }
+            
+            // 返回验证结果
+            final int finalRemovableCount = removableCount;
+            final String finalValidationDetails = validationDetails.toString();
+            
+            return Result.success(new Object() {
+                public Boolean valid = finalRemovableCount > 0;
+                public Integer removableCount = finalRemovableCount;
+                public String message = finalRemovableCount > 0 ? 
+                    String.format("可移除 %d 个用户直接权限关联", finalRemovableCount) : "没有可移除的用户直接权限关联";
+                public String details = finalValidationDetails;
+            });
+            
+        } catch (Exception e) {
+            return Result.error("验证批量移除用户直接权限失败：" + e.getMessage());
         }
     }
 
