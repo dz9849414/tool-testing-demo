@@ -1,8 +1,13 @@
 package com.example.tooltestingdemo.service.protocol;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.dto.ProtocolTestTransferDTO;
+import com.example.tooltestingdemo.dto.ProtocolTestRecordQueryDTO;
 import com.example.tooltestingdemo.entity.protocol.ProtocolTestRecord;
+import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
 
 /**
  * <p>
@@ -29,4 +34,14 @@ public interface IProtocolTestRecordService extends IService<ProtocolTestRecord>
      * @return 保存后的测试记录
      */
     ProtocolTestRecord testTransfer(ProtocolTestTransferDTO dto);
+
+    /**
+     * 协议测试记录分页查询。
+     */
+    IPage<ProtocolTestRecord> getProtocolTestRecordList(ProtocolTestRecordQueryDTO dto);
+
+    /**
+     * 导出协议测试记录。
+     */
+    void exportProtocolTestRecords(ProtocolTestRecordQueryDTO dto, HttpServletResponse response) throws IOException;
 }
