@@ -11,6 +11,7 @@ import com.example.tooltestingdemo.mapper.SysPermissionMapper;
 import com.example.tooltestingdemo.mapper.SysUserMapper;
 import com.example.tooltestingdemo.mapper.system.SysUserPermissionMapper;
 import com.example.tooltestingdemo.service.system.IUserPermissionService;
+import com.example.tooltestingdemo.vo.system.BatchRemoveResult;
 import com.example.tooltestingdemo.vo.system.UserPermissionVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -184,7 +185,12 @@ public class UserPermissionServiceImpl extends ServiceImpl<SysUserPermissionMapp
 
     @Override
     @Transactional
-    public Boolean batchRemoveUserPermissions(BatchRemoveUserPermissionDTO dto) {
+    public BatchRemoveResult batchRemoveUserPermissions(BatchRemoveUserPermissionDTO dto) {
+        BatchRemoveResult result = new BatchRemoveResult();
+        List<String> failureReasons = new ArrayList<>();
+        int totalRemoved = 0;
+        int totalProcessed = 0;
+        
         try {
             if (dto.getUserIds() == null || dto.getUserIds().isEmpty()) {
                 throw new RuntimeException("用户ID列表不能为空");
@@ -194,18 +200,19 @@ public class UserPermissionServiceImpl extends ServiceImpl<SysUserPermissionMapp
                 throw new RuntimeException("权限ID列表不能为空");
             }
             
-            int totalRemoved = 0;
-            
             // 遍历所有用户和权限组合
             for (String userId : dto.getUserIds()) {
                 // 验证用户存在
                 SysUser user = userMapper.selectById(userId);
                 if (user == null) {
-                    log.warn("用户不存在: userId={}", userId);
+                    String reason = String.format("用户不存在: userId=%s", userId);
+                    failureReasons.add(reason);
+                    log.warn(reason);
                     continue;
                 }
                 
                 for (String permissionId : dto.getPermissionIds()) {
+                    totalProcessed++;
                     try {
                         // 构建查询条件（考虑作用域）
                         LambdaQueryWrapper<SysUserPermission> queryWrapper = new LambdaQueryWrapper<>();
@@ -234,24 +241,45 @@ public class UserPermissionServiceImpl extends ServiceImpl<SysUserPermissionMapp
                                 // 记录操作历史
                                 recordUserPermissionRemoveHistory(userId, permissionId, dto.getScopeType(), 
                                         dto.getScopeId(), dto.getRemoveReason(), dto.getOperatorId());
+                            } else {
+                                String reason = String.format("删除数据库记录失败: userId=%s, permissionId=%s", userId, permissionId);
+                                failureReasons.add(reason);
+                                log.error(reason);
                             }
                         } else {
-                            log.info("用户未拥有该直接权限，无需移除: userId={}, permissionId={}", userId, permissionId);
+                            String reason = String.format("用户未拥有该直接权限: userId=%s, permissionId=%s", userId, permissionId);
+                            failureReasons.add(reason);
+                            log.info(reason);
                         }
                         
                     } catch (Exception e) {
-                        log.error("移除用户直接权限失败: userId={}, permissionId={}", userId, permissionId, e);
-                        // 继续处理其他权限，不中断整个批量操作
+                        String reason = String.format("移除用户直接权限失败: userId=%s, permissionId=%s, error=%s", 
+                                userId, permissionId, e.getMessage());
+                        failureReasons.add(reason);
+                        log.error(reason, e);
                     }
                 }
             }
             
-            log.info("批量移除用户直接权限完成: 共移除 {} 个权限关联", totalRemoved);
-            return totalRemoved > 0;
+            // 设置结果
+            result.setSuccess(totalRemoved > 0);
+            result.setRemovedCount(totalRemoved);
+            result.setProcessedCount(totalProcessed);
+            result.setFailureReasons(failureReasons);
+            result.setMessage(String.format("批量移除完成: 共处理 %d 个权限关联，成功移除 %d 个", 
+                    totalProcessed, totalRemoved));
+            
+            log.info("批量移除用户直接权限完成: {}", result.getMessage());
+            return result;
             
         } catch (Exception e) {
             log.error("批量移除用户直接权限失败", e);
-            throw new RuntimeException("批量移除用户直接权限失败: " + e.getMessage());
+            result.setSuccess(false);
+            result.setRemovedCount(0);
+            result.setProcessedCount(totalProcessed);
+            result.setFailureReasons(List.of("批量操作失败: " + e.getMessage()));
+            result.setMessage("批量移除失败: " + e.getMessage());
+            return result;
         }
     }
 

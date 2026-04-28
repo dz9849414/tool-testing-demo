@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.dto.system.BatchRemoveUserPermissionDTO;
 import com.example.tooltestingdemo.dto.system.UserPermissionDTO;
 import com.example.tooltestingdemo.entity.system.SysUserPermission;
+import com.example.tooltestingdemo.vo.system.BatchRemoveResult;
 import com.example.tooltestingdemo.vo.system.UserPermissionVO;
 
 import java.util.List;
@@ -46,7 +47,7 @@ public interface IUserPermissionService extends IService<SysUserPermission> {
     /**
      * 批量移除用户直接权限
      */
-    Boolean batchRemoveUserPermissions(BatchRemoveUserPermissionDTO dto);
+    BatchRemoveResult batchRemoveUserPermissions(BatchRemoveUserPermissionDTO dto);
     
     /**
      * 检查用户是否拥有权限

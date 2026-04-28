@@ -12,11 +12,13 @@ import com.example.tooltestingdemo.mapper.SysRolePermissionMapper;
 import com.example.tooltestingdemo.mapper.SysUserMapper;
 import com.example.tooltestingdemo.mapper.SysUserRoleMapper;
 import com.example.tooltestingdemo.service.system.IRolePermissionService;
+import com.example.tooltestingdemo.vo.system.BatchRemoveResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -96,7 +98,12 @@ public class RolePermissionServiceImpl implements IRolePermissionService {
 
     @Override
     @Transactional
-    public Boolean batchRemoveRolesFromUser(BatchRemoveUserRoleDTO dto) {
+    public BatchRemoveResult batchRemoveRolesFromUser(BatchRemoveUserRoleDTO dto) {
+        BatchRemoveResult result = new BatchRemoveResult();
+        List<String> failureReasons = new ArrayList<>();
+        int totalRemoved = 0;
+        int totalProcessed = 0;
+        
         try {
             if (dto.getUserIds() == null || dto.getUserIds().isEmpty()) {
                 throw new RuntimeException("用户ID列表不能为空");
@@ -106,18 +113,19 @@ public class RolePermissionServiceImpl implements IRolePermissionService {
                 throw new RuntimeException("角色ID列表不能为空");
             }
             
-            int totalRemoved = 0;
-            
             // 遍历所有用户和角色组合
             for (String userId : dto.getUserIds()) {
                 // 验证用户存在
                 SysUser user = userMapper.selectById(userId);
                 if (user == null) {
-                    log.warn("用户不存在: userId={}", userId);
+                    String reason = String.format("用户不存在: userId=%s", userId);
+                    failureReasons.add(reason);
+                    log.warn(reason);
                     continue;
                 }
                 
                 for (String roleId : dto.getRoleIds()) {
+                    totalProcessed++;
                     try {
                         // 检查用户是否拥有该角色
                         LambdaQueryWrapper<SysUserRole> queryWrapper = new LambdaQueryWrapper<>();
@@ -134,24 +142,45 @@ public class RolePermissionServiceImpl implements IRolePermissionService {
                                 
                                 // 记录操作历史（可选）
                                 recordRoleRemoveHistory(userId, roleId, dto.getRemoveReason(), dto.getOperatorId());
+                            } else {
+                                String reason = String.format("删除数据库记录失败: userId=%s, roleId=%s", userId, roleId);
+                                failureReasons.add(reason);
+                                log.error(reason);
                             }
                         } else {
-                            log.info("用户未拥有该角色，无需移除: userId={}, roleId={}", userId, roleId);
+                            String reason = String.format("用户未拥有该角色: userId=%s, roleId=%s", userId, roleId);
+                            failureReasons.add(reason);
+                            log.info(reason);
                         }
                         
                     } catch (Exception e) {
-                        log.error("移除用户角色失败: userId={}, roleId={}", userId, roleId, e);
-                        // 继续处理其他角色，不中断整个批量操作
+                        String reason = String.format("移除用户角色失败: userId=%s, roleId=%s, error=%s", 
+                                userId, roleId, e.getMessage());
+                        failureReasons.add(reason);
+                        log.error(reason, e);
                     }
                 }
             }
             
-            log.info("批量移除角色完成: 共移除 {} 个用户角色关联", totalRemoved);
-            return totalRemoved > 0;
+            // 设置结果
+            result.setSuccess(totalRemoved > 0);
+            result.setRemovedCount(totalRemoved);
+            result.setProcessedCount(totalProcessed);
+            result.setFailureReasons(failureReasons);
+            result.setMessage(String.format("批量移除角色完成: 共处理 %d 个用户角色关联，成功移除 %d 个", 
+                    totalProcessed, totalRemoved));
+            
+            log.info("批量移除角色完成: {}", result.getMessage());
+            return result;
             
         } catch (Exception e) {
             log.error("批量移除角色失败", e);
-            throw new RuntimeException("批量移除角色失败: " + e.getMessage());
+            result.setSuccess(false);
+            result.setRemovedCount(0);
+            result.setProcessedCount(totalProcessed);
+            result.setFailureReasons(List.of("批量操作失败: " + e.getMessage()));
+            result.setMessage("批量移除角色失败: " + e.getMessage());
+            return result;
         }
     }
 
