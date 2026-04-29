@@ -30,4 +30,14 @@ public interface TemplateHistoryMapper extends BaseMapper<TemplateHistory> {
      * SQL ID：selectLatestByTemplateId
      */
     TemplateHistory selectLatestByTemplateId(@Param("templateId") Long templateId);
+
+    /**
+     * 根据模板ID删除历史版本
+     */
+    default int deleteByTemplateId(Long templateId) {
+        return this.delete(
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<TemplateHistory>()
+                .eq(TemplateHistory::getTemplateId, templateId)
+        );
+    }
 }

@@ -46,4 +46,14 @@ public interface TemplateFavoriteMapper extends BaseMapper<TemplateFavorite> {
      * SQL ID：checkFavoriteExists
      */
     int checkFavoriteExists(@Param("userId") Long userId, @Param("templateId") Long templateId);
+
+    /**
+     * 根据模板ID删除收藏/关注记录
+     */
+    default int deleteByTemplateId(Long templateId) {
+        return this.delete(
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<TemplateFavorite>()
+                .eq(TemplateFavorite::getTemplateId, templateId)
+        );
+    }
 }

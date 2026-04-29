@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8079
 
 spring:
   application:
@@ -19,14 +19,14 @@ spring:
   # 时区配置
   jackson:
     time-zone: Asia/Shanghai
-  
+
   # 数据源配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/tool_testing?useSSL=false&serverTimezone=Asia/Shanghai
     username: root
     password: root
-  
+
   # MyBatis Plus配置
   mybatis-plus:
     configuration:
@@ -51,7 +51,7 @@ jwt:
 security:
   ignored:
     - /api/auth/**
-    - /swagger-ui/**
+    - /swagger-ui/authorization
     - /v3/api-docs/**
     - /webjars/**
 

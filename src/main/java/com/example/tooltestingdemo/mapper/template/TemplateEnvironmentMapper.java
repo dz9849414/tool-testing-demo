@@ -46,4 +46,14 @@ public interface TemplateEnvironmentMapper extends BaseMapper<TemplateEnvironmen
      * SQL ID：batchInsert
      */
     int batchInsert(@Param("list") List<TemplateEnvironment> environments);
+
+    /**
+     * 根据模板ID删除所有环境配置
+     */
+    default int deleteByTemplateId(Long templateId) {
+        return this.delete(
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<TemplateEnvironment>()
+                .eq(TemplateEnvironment::getTemplateId, templateId)
+        );
+    }
 }

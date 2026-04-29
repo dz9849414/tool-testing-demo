@@ -47,6 +47,15 @@ public class TemplateJobController {
     }
 
     /**
+     * 根据模板ID查询关联任务列表
+     */
+    @GetMapping("/list/by-template/{templateId}")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
+    public Result<List<TemplateJobListVO>> listJobsByTemplateId(@PathVariable Long templateId) {
+        return Result.success(jobService.listJobsByTemplateId(templateId));
+    }
+
+    /**
      * 获取任务详情
      */
     @GetMapping("/{id}")
@@ -149,6 +158,51 @@ public class TemplateJobController {
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
     public Result<Map<String, Object>> getBatchTriggerResult(@PathVariable String batchId) {
         return Result.success(jobService.getBatchTriggerResult(batchId));
+    }
+
+    /**
+     * 查询异步批量执行进度
+     */
+    @GetMapping("/batch/{batchId}/progress")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
+    public Result<Map<String, Object>> getBatchTriggerProgress(@PathVariable String batchId) {
+        return Result.success(jobService.getBatchTriggerProgress(batchId));
+    }
+
+    /**
+     * 暂停异步批量执行
+     */
+    @PostMapping("/batch/{batchId}/pause")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
+    public Result<Map<String, Object>> pauseBatchTrigger(@PathVariable String batchId) {
+        return Result.success("暂停请求已提交", jobService.pauseBatchTrigger(batchId));
+    }
+
+    /**
+     * 取消异步批量执行
+     */
+    @PostMapping("/batch/{batchId}/cancel")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
+    public Result<Map<String, Object>> cancelBatchTrigger(@PathVariable String batchId) {
+        return Result.success("取消请求已提交", jobService.cancelBatchTrigger(batchId));
+    }
+
+    /**
+     * 恢复已暂停的异步批量执行
+     */
+    @PostMapping("/batch/{batchId}/resume")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
+    public Result<Map<String, Object>> resumeBatchTrigger(@PathVariable String batchId) {
+        return Result.success("恢复请求已提交", jobService.resumeBatchTrigger(batchId));
+    }
+
+    /**
+     * 重试失败的批量执行项
+     */
+    @PostMapping("/batch/{batchId}/retry-failed")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
+    public Result<Map<String, Object>> retryFailedBatchTrigger(@PathVariable String batchId) {
+        return Result.success("重试任务已提交", jobService.retryFailedBatchTrigger(batchId));
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.example.tooltestingdemo.entity.template;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -11,6 +12,7 @@ import java.util.List;
  */
 @Data
 @TableName("pdm_tool_template_job")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class TemplateJob {
 
     @TableId(value = "id", type = IdType.AUTO)
@@ -78,6 +80,7 @@ public class TemplateJob {
      * 任务子项列表（非数据库字段）
      */
     @TableField(exist = false)
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private List<TemplateJobItem> items;
 
     /**

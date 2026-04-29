@@ -1,5 +1,6 @@
 package com.example.tooltestingdemo.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -7,10 +8,11 @@ import java.util.List;
 
 /**
  * 接口模板 DTO（用于创建/更新）
- *
+ * <p>
  * 文件位置：src/main/java/com/example/tooltestingdemo/dto/InterfaceTemplateDTO.java
  */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class InterfaceTemplateDTO {
 
     /**
@@ -227,11 +229,12 @@ public class InterfaceTemplateDTO {
     private List<TemplateVariableDTO> variables;
 
 
-
     // ==================== 文件附件 ====================
 
     /**
      * 文件附件列表（新增/更新时使用）
      */
     private List<TemplateFileDTO> files;
+
+    private Integer versionUp;
 }

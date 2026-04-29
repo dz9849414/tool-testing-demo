@@ -39,4 +39,14 @@ public interface TemplateShareMapper extends BaseMapper<TemplateShare> {
      */
     List<TemplateShare> selectByShareTarget(@Param("shareType") String shareType, 
                                              @Param("shareTargetId") Long shareTargetId);
+
+    /**
+     * 根据模板ID删除共享记录
+     */
+    default int deleteByTemplateId(Long templateId) {
+        return this.delete(
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<TemplateShare>()
+                .eq(TemplateShare::getTemplateId, templateId)
+        );
+    }
 }

@@ -19,6 +19,7 @@ GET /api/template/page
 | keyword | String | 否 | 关键词搜索 |
 | protocolType | String | 否 | 协议类型(HTTP/HTTPS等) |
 | status | Integer | 否 | 状态(0-草稿 1-已发布 2-已归档) |
+| extNum1 | Long | 否 | 扩展数字字段1，精确查询 |
 
 **响应：** `Result<IPage<InterfaceTemplateVO>>`
 
@@ -103,7 +104,36 @@ PUT /api/template/{id}
 DELETE /api/template/{id}
 ```
 
-**响应：** `Result<String>` - "删除成功"
+**响应：** `Result<Map<String, Object>>`
+
+```json
+{
+  "code": 200,
+  "message": "删除成功，清理关联数据 12 条",
+  "data": {
+    "deleted": true,
+    "cleanedRelationCount": 12,
+    "cleanupDetails": {
+      "headers": 2,
+      "parameters": 1,
+      "formData": 0,
+      "assertions": 1,
+      "preProcessors": 0,
+      "postProcessors": 0,
+      "variables": 1,
+      "environments": 1,
+      "favorites": 0,
+      "shares": 0,
+      "usageLogs": 3,
+      "executeLogs": 2,
+      "jobItems": 0,
+      "jobLogs": 0,
+      "histories": 1,
+      "files": 1
+    }
+  }
+}
+```
 
 ---
 
@@ -161,6 +191,11 @@ POST /api/template/execute/{templateId}
 ```
 
 **响应：** `Result<Map<String, Object>>`
+
+返回新增字段：
+
+- `cleanedRelationCount`: 批量删除累计清理的关联数据条数
+- `cleanupDetails`: 按模板 ID 汇总的清理明细
 ```json
 {
   "code": 200,
