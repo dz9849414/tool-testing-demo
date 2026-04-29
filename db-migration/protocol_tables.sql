@@ -124,3 +124,30 @@ CREATE TABLE `pdm_tool_protocol_test_record`
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='协议测试记录表';
+
+DROP TABLE IF EXISTS `pdm_tool_protocol_file_export`;
+CREATE TABLE IF NOT EXISTS `pdm_tool_protocol_file_export` (
+                                                               `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+                                                               `operation_type` VARCHAR(20) NOT NULL COMMENT '操作类型：EXPORT/IMPORT',
+    `protocol_config_ids` VARCHAR(1000) COMMENT '协议配置ID集合（逗号分隔，可为空）',
+    `file_name` VARCHAR(255) COMMENT '协议文件名称（图片字段：文件名称）',
+    `file_path` VARCHAR(1000) COMMENT '文件路径（如落盘/对象存储位置）',
+    `file_size` BIGINT COMMENT '文件大小',
+    `file_format` VARCHAR(20) COMMENT '协议文件格式（图片字段：文件格式，如Excel/PDF）',
+    `status` TINYINT DEFAULT 0 COMMENT '状态：0-处理中，1-成功，2-部分成功，3-失败',
+    `success_count` INT COMMENT '成功数量',
+    `fail_count` INT COMMENT '失败数量',
+    `error_message` TEXT COMMENT '失败原因/错误信息',
+    `start_time` DATETIME COMMENT '开始时间',
+    `end_time` DATETIME COMMENT '结束时间',
+
+    `create_id` BIGINT COMMENT '创建人',
+    `create_name` VARCHAR(200) COMMENT '创建人名称',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_id` BIGINT COMMENT '更新人',
+    `update_name` VARCHAR(200) COMMENT '更新人名称',
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `is_deleted` TINYINT DEFAULT 0 COMMENT '是否删除：0-否，1-是',
+    `deleted_by` BIGINT COMMENT '删除人',
+    `deleted_time` DATETIME COMMENT '删除时间'
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='协议文件导入导出记录表';

@@ -5,15 +5,16 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.example.tooltestingdemo.annotation.ProtocolPermissionFilter;
 import com.example.tooltestingdemo.dto.ProtocolConfigCreateDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigModifyDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigQueryDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigStatusUpdateDTO;
 import com.example.tooltestingdemo.entity.protocol.ProtocolConfig;
+import com.example.tooltestingdemo.entity.protocol.ProtocolFileImportExport;
 import com.example.tooltestingdemo.mapper.protocol.ProtocolConfigMapper;
 import com.example.tooltestingdemo.service.SecurityService;
 import com.example.tooltestingdemo.service.protocol.IProtocolConfigService;
+import com.example.tooltestingdemo.service.protocol.IProtocolFileImportExportService;
 import com.example.tooltestingdemo.service.protocol.support.ProtocolConfigImportFailureReportStore;
 import com.example.tooltestingdemo.util.LocalDateUtil;
 import com.example.tooltestingdemo.vo.ProtocolConfigImportResultVO;
@@ -59,6 +60,7 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
     private final ObjectMapper objectMapper;
     private final SecurityService securityService;
     private final ProtocolConfigImportFailureReportStore failureReportStore;
+    private final IProtocolFileImportExportService protocolFileImportExportService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -260,7 +262,10 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
             writeExportRows(sheet, dataStyle, configs);
 
             workbook.write(outputStream);
-            writeExcelResponse(response, EXPORT_FILE_NAME + ".xlsx", outputStream.toByteArray());
+            byte[] bytes = outputStream.toByteArray();
+            writeExcelResponse(response, EXPORT_FILE_NAME + ".xlsx", bytes);
+
+            saveExportRecordForProtocolConfig(configs, bytes.length);
         }
     }
 
@@ -619,6 +624,25 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
             throw new RuntimeException("数据格式仅支持 JSON/XML/FORM/TEXT/BINARY");
         }
         return normalized;
+    }
+
+    private void saveExportRecordForProtocolConfig(List<ProtocolConfig> configs, long fileSize) {
+        ProtocolFileImportExport record = new ProtocolFileImportExport();
+        record.setOperationType("EXPORT");
+        record.setFileName(EXPORT_FILE_NAME + ".xlsx");
+        record.setFileFormat("xlsx");
+        record.setFileSize(fileSize);
+        record.setStatus(1);
+        record.setSuccessCount(configs == null ? 0 : configs.size());
+        record.setFailCount(0);
+        record.setStartTime(LocalDateTime.now());
+        record.setEndTime(LocalDateTime.now());
+
+        Long operatorId = securityService.getCurrentUserId();
+        record.setCreateId(operatorId);
+        record.setCreateName(operatorId == null ? "系统" : String.valueOf(operatorId));
+
+        protocolFileImportExportService.save(record);
     }
 
     private String blankToNull(String value) {
