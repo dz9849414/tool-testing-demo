@@ -138,8 +138,7 @@ public interface ITemplateStatisticsService {
     /**
      * 获取统计对比报告
      * 
-     * @param reportType 报告类型（与metricType一致）：WEEKLY_EXECUTION/SUCCESS_RATE/RESPONSE_TIME/PROTOCOL_DISTRIBUTION/FAILURE_REASONS
-     * @param metricType 指标类型：WEEKLY_EXECUTION/SUCCESS_RATE/RESPONSE_TIME/PROTOCOL_DISTRIBUTION/FAILURE_REASONS
+     * @param reportType 报告类型：WEEKLY_EXECUTION/SUCCESS_RATE/RESPONSE_TIME/PROTOCOL_DISTRIBUTION/FAILURE_REASONS
      * @param group1StartDate 对比组1开始日期
      * @param group1EndDate 对比组1结束日期
      * @param group2StartDate 对比组2开始日期
@@ -149,7 +148,6 @@ public interface ITemplateStatisticsService {
      */
     com.example.tooltestingdemo.dto.report.CompareResultDTO getCompareReport(
             String reportType,
-            String metricType, 
             String group1StartDate, 
             String group1EndDate, 
             String group2StartDate, 

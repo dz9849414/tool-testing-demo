@@ -225,6 +225,8 @@ public class TemplateStatisticsController {
     @Operation(summary = "获取协议类型分布统计报告")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:view')")
     public Result<com.example.tooltestingdemo.dto.report.StatisticsReportDTO> getProtocolDistributionReport(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
             @RequestParam(defaultValue = "CATEGORY") String reportType) {
         try {
             // 参数校验
@@ -236,7 +238,7 @@ public class TemplateStatisticsController {
             }
 
             StatisticsReportDTO report = templateStatisticsService.getProtocolDistributionReport(
-                null, null, reportType);
+                startDate, endDate, reportType);
             return Result.success("协议类型分布统计报告获取成功", report);
         } catch (Exception e) {
             return Result.error("获取协议类型分布统计报告失败：" + e.getMessage());
@@ -309,9 +311,6 @@ public class TemplateStatisticsController {
                 return Result.error("报告类型不正确，请使用WEEKLY_EXECUTION/SUCCESS_RATE/RESPONSE_TIME/PROTOCOL_DISTRIBUTION/FAILURE_REASONS");
             }
             
-            // metricType固定为WEEKLY_EXECUTION
-            String metricType = "WEEKLY_EXECUTION";
-            
             // 验证日期参数
             if (request.getGroup1StartDate() == null || request.getGroup1StartDate().trim().isEmpty()) {
                 return Result.error("对比组1开始日期不能为空");
@@ -345,10 +344,9 @@ public class TemplateStatisticsController {
                 }
             }
             
-            // 调用Service获取对比报告（使用reportType作为实际统计类型，metricType固定为WEEKLY_EXECUTION）
+            // 调用Service获取对比报告（日期范围不受限制，根据用户选择返回对应天数的数据）
             CompareResultDTO result = templateStatisticsService.getCompareReport(
                 reportType,
-                metricType,
                 request.getGroup1StartDate(),
                 request.getGroup1EndDate(),
                 request.getGroup2StartDate(),

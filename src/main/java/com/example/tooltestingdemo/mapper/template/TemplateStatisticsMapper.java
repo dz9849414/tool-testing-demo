@@ -357,13 +357,19 @@ public interface TemplateStatisticsMapper {
     /**
      * 获取协议类型分布统计（按协议分类）
      */
-    @Select("SELECT " +
-            "protocol_name as category, " +
+    @Select("<script>" +
+            "SELECT " +
+            "pt.protocol_name as category, " +
             "COUNT(*) as protocol_count " +
-            "FROM pdm_tool_protocol_type " +
-            "WHERE is_deleted = 0 " +
-            "GROUP BY protocol_name " +
-            "ORDER BY protocol_count DESC")
+            "FROM pdm_tool_protocol_test_record ptr " +
+            "INNER JOIN pdm_tool_protocol_type pt ON ptr.protocol_id = pt.id " +
+            "WHERE ptr.is_deleted = 0 AND pt.is_deleted = 0 " +
+            "<if test=\"startTime != null and endTime != null\">" +
+            "AND ptr.create_time BETWEEN #{startTime} AND #{endTime} " +
+            "</if>" +
+            "GROUP BY pt.protocol_name " +
+            "ORDER BY protocol_count DESC" +
+            "</script>")
     List<Map<String, Object>> getProtocolCategoryStats(@Param("startTime") LocalDateTime startTime,
                                                       @Param("endTime") LocalDateTime endTime);
 

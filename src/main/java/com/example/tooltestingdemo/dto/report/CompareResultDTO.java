@@ -18,11 +18,6 @@ public class CompareResultDTO {
     private String reportType;
     
     /**
-     * 指标类型
-     */
-    private String metricType;
-    
-    /**
      * 指标类型名称
      */
     private String metricTypeName;

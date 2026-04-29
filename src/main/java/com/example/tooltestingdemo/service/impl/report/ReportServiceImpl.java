@@ -12,7 +12,9 @@ import com.example.tooltestingdemo.entity.template.TemplateJobLog;
 import com.example.tooltestingdemo.mapper.report.ReportMapper;
 import com.example.tooltestingdemo.mapper.template.TemplateJobLogMapper;
 import com.example.tooltestingdemo.service.report.IReportService;
+import com.example.tooltestingdemo.service.report.IReportTemplateService;
 import com.example.tooltestingdemo.service.report.ITemplateStatisticsService;
+import com.example.tooltestingdemo.entity.report.ReportTemplate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
@@ -36,6 +38,7 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 
 import javax.imageio.ImageIO;
 // Standard14Fonts is not public, use PDType1Font directly
@@ -51,6 +54,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     private final ReportMapper reportMapper;
     private final TemplateJobLogMapper templateJobLogMapper;
     private final ITemplateStatisticsService templateStatisticsService;
+    private final IReportTemplateService reportTemplateService;
 
     @Override
     public Long createReport(ReportDTO reportDTO) {
@@ -145,8 +149,8 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     @Override
     public Long autoGenerateReport(String reportType, String dataSourceIds) {
         try {
-            // 根据reportType从pdm_tool_template_execute_log表获取最近的测试数据
-            Object statisticsData = getRecentTestDataFromExecuteLog(reportType, dataSourceIds);
+            // 根据reportType获取对应的模板
+            ReportTemplate template = getTemplateByReportType(reportType);
             
             // 构建报告DTO
             ReportDTO reportDTO = new ReportDTO();
@@ -157,20 +161,41 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             reportDTO.setDataSourceIds(dataSourceIds);
             reportDTO.setStatus("DRAFT");
             
-            // 将统计数据转换为JSON字符串
-            if (statisticsData != null) {
-                if (statisticsData instanceof StatisticsReportDTO) {
-                    StatisticsReportDTO statsReport = (StatisticsReportDTO) statisticsData;
-                    reportDTO.setContent(statsReport.getContent() != null ? 
-                        statsReport.getContent().toString() : "{}");
-                } else if (statisticsData instanceof List) {
-                    // 简化格式的数据
-                    reportDTO.setContent(new JSONArray((List) statisticsData).toString());
+            // 获取模板结构和章节结构
+            String chapterStructure = template != null ? template.getChapterStructure() : null;
+            String templateStructure = template != null ? template.getTemplateStructure() : null;
+            
+            // 优先级：chapter_structure > template_structure > 旧逻辑
+            if (chapterStructure != null && !chapterStructure.trim().isEmpty() && 
+                (chapterStructure.startsWith("[") || chapterStructure.startsWith("{"))) {
+                // 优先级1：根据章节结构组织报告内容
+                log.info("使用章节结构(chapter_structure)生成报告内容");
+                reportDTO.setContent(buildContentByChapterStructure(chapterStructure, reportType, dataSourceIds));
+            } else if (templateStructure != null && !templateStructure.trim().isEmpty() && 
+                       templateStructure.startsWith("{")) {
+                // 优先级2：根据模板结构(template_structure)生成报告内容
+                log.info("使用模板结构(template_structure)生成报告内容");
+                reportDTO.setContent(buildContentByTemplateStructure(templateStructure, reportType, dataSourceIds));
+            } else {
+                // 优先级3：旧逻辑：直接获取统计数据
+                log.info("使用默认逻辑生成报告内容");
+                Object statisticsData = getRecentTestDataFromExecuteLog(reportType, dataSourceIds);
+                
+                // 将统计数据转换为JSON字符串
+                if (statisticsData != null) {
+                    if (statisticsData instanceof StatisticsReportDTO) {
+                        StatisticsReportDTO statsReport = (StatisticsReportDTO) statisticsData;
+                        reportDTO.setContent(statsReport.getContent() != null ? 
+                            statsReport.getContent().toString() : "{}");
+                    } else if (statisticsData instanceof List) {
+                        // 简化格式的数据
+                        reportDTO.setContent(new JSONArray((List) statisticsData).toString());
+                    } else {
+                        reportDTO.setContent("{}");
+                    }
                 } else {
                     reportDTO.setContent("{}");
                 }
-            } else {
-                reportDTO.setContent("{}");
             }
             
             return createReport(reportDTO);
@@ -179,6 +204,528 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             log.error("自动生成报告失败", e);
             throw new RuntimeException("自动生成报告失败：" + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 根据报告类型获取模板
+     */
+    private ReportTemplate getTemplateByReportType(String reportType) {
+        try {
+            LambdaQueryWrapper<ReportTemplate> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(ReportTemplate::getTemplateType, reportType)
+                       .eq(ReportTemplate::getStatus, 1)
+                       .orderByDesc(ReportTemplate::getSortOrder)
+                       .last("LIMIT 1");
+            return reportTemplateService.getOne(queryWrapper);
+        } catch (Exception e) {
+            log.warn("未找到报告类型 {} 对应的模板", reportType);
+            return null;
+        }
+    }
+
+    /**
+     * 根据模板结构(template_structure)构建报告内容
+     * template_structure格式：{"sections": ["任务概览", "执行统计", "成功率分析", "性能趋势", "问题总结"]}
+     */
+    private String buildContentByTemplateStructure(String templateStructure, String reportType, String dataSourceIds) {
+        try {
+            JSONObject templateJson = JSON.parseObject(templateStructure);
+            JSONArray sections = templateJson.getJSONArray("sections");
+            
+            if (sections == null || sections.isEmpty()) {
+                log.warn("模板结构中sections为空");
+                return "{}";
+            }
+            
+            JSONArray contentArray = new JSONArray();
+            
+            // 获取最近7天的数据时间范围
+            LocalDateTime endTime = LocalDateTime.now();
+            LocalDateTime startTime = endTime.minusDays(7);
+            String startDate = startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            String endDate = endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            String normalizedDataSource = dataSourceIds != null && !dataSourceIds.isEmpty() ? dataSourceIds : "UNIFIED";
+            
+            for (int i = 0; i < sections.size(); i++) {
+                String sectionName = sections.getString(i);
+                JSONObject sectionContent = new JSONObject();
+                sectionContent.put("title", sectionName);
+                
+                // 根据section名称确定数据来源和类型
+                SectionMapping mapping = getSectionMapping(sectionName);
+                sectionContent.put("type", mapping.getType());
+                sectionContent.put("dataSource", mapping.getDataSource());
+                
+                // 获取对应的数据
+                Object data = getDataByDataSource(mapping.getDataSource(), startDate, endDate, normalizedDataSource);
+                sectionContent.put("data", data);
+                
+                contentArray.add(sectionContent);
+            }
+            
+            return contentArray.toJSONString();
+        } catch (Exception e) {
+            log.error("根据模板结构构建报告内容失败", e);
+            return "{}";
+        }
+    }
+
+    /**
+     * 获取章节名称到数据来源的映射
+     */
+    private SectionMapping getSectionMapping(String sectionName) {
+        SectionMapping mapping = new SectionMapping();
+        
+        switch (sectionName) {
+            case "任务概览":
+            case "概述":
+            case "测试概览":
+            case "执行概览":
+                mapping.setType("text");
+                mapping.setDataSource("OVERVIEW");
+                break;
+            case "执行统计":
+            case "日执行量统计":
+            case "效率趋势":
+            case "使用趋势":
+            case "任务统计":
+            case "周执行统计":
+                mapping.setType("chart");
+                mapping.setDataSource("WEEKLY_EXECUTION");
+                break;
+            case "成功率分析":
+            case "成功率趋势":
+                mapping.setType("chart");
+                mapping.setDataSource("SUCCESS_RATE");
+                break;
+            case "性能趋势":
+            case "响应时间":
+            case "性能对比":
+            case "响应时间分析":
+            case "响应时间趋势":
+            case "响应时间分布":
+                mapping.setType("chart");
+                mapping.setDataSource("RESPONSE_TIME");
+                break;
+            case "协议分布":
+            case "协议类型分布":
+                mapping.setType("chart");
+                mapping.setDataSource("PROTOCOL_DISTRIBUTION");
+                break;
+            case "问题总结":
+            case "失败原因":
+            case "失败原因TOP5":
+            case "错误统计":
+            case "故障原因分析":
+                mapping.setType("chart");
+                mapping.setDataSource("FAILURE_REASONS");
+                break;
+            case "优化建议":
+            case "测试结论":
+            case "改进建议":
+                mapping.setType("text");
+                mapping.setDataSource("OPTIMIZATION_SUGGESTIONS");
+                break;
+            case "接口详情":
+                mapping.setType("text");
+                mapping.setDataSource("INTERFACE_DETAILS");
+                break;
+            case "异常检测":
+                mapping.setType("chart");
+                mapping.setDataSource("ANOMALY_DETECTION");
+                break;
+            case "影响因素":
+                mapping.setType("text");
+                mapping.setDataSource("INFLUENCING_FACTORS");
+                break;
+            default:
+                mapping.setType("text");
+                mapping.setDataSource("UNKNOWN");
+                break;
+        }
+        
+        return mapping;
+    }
+
+    /**
+     * 章节映射内部类
+     */
+    private static class SectionMapping {
+        private String type;
+        private String dataSource;
+        
+        public String getType() {
+            return type;
+        }
+        
+        public void setType(String type) {
+            this.type = type;
+        }
+        
+        public String getDataSource() {
+            return dataSource;
+        }
+        
+        public void setDataSource(String dataSource) {
+            this.dataSource = dataSource;
+        }
+    }
+
+    /**
+     * 根据章节结构构建报告内容
+     */
+    private String buildContentByChapterStructure(String chapterStructure, String reportType, String dataSourceIds) {
+        try {
+            JSONArray chapters = JSON.parseArray(chapterStructure);
+            JSONArray contentArray = new JSONArray();
+            
+            // 获取最近7天的数据时间范围
+            LocalDateTime endTime = LocalDateTime.now();
+            LocalDateTime startTime = endTime.minusDays(7);
+            String startDate = startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            String endDate = endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            
+            for (int i = 0; i < chapters.size(); i++) {
+                JSONObject chapter = chapters.getJSONObject(i);
+                String title = chapter.getString("title");
+                String type = chapter.getString("type");
+                String dataSource = chapter.getString("dataSource");
+                String chartType = chapter.getString("chartType");
+                
+                JSONObject chapterContent = new JSONObject();
+                chapterContent.put("title", title);
+                chapterContent.put("type", type);
+                chapterContent.put("dataSource", dataSource);
+                
+                if (chartType != null) {
+                    chapterContent.put("chartType", chartType);
+                }
+                
+                // 根据dataSource获取对应的数据
+                Object data = getDataByDataSource(dataSource, startDate, endDate, dataSourceIds);
+                chapterContent.put("data", data);
+                
+                contentArray.add(chapterContent);
+            }
+            
+            return contentArray.toJSONString();
+        } catch (Exception e) {
+            log.error("根据章节结构构建报告内容失败", e);
+            return "{}";
+        }
+    }
+
+    /**
+     * 根据dataSource获取对应的数据
+     */
+    private Object getDataByDataSource(String dataSource, String startDate, String endDate, String dataSourceIds) {
+        String normalizedDataSource = dataSourceIds != null && !dataSourceIds.isEmpty() ? dataSourceIds : "UNIFIED";
+        
+        switch (dataSource != null ? dataSource.toUpperCase() : "UNKNOWN") {
+            case "OVERVIEW":
+                return buildOverviewData(startDate, endDate, normalizedDataSource);
+            case "EFFICIENCY_TREND":
+            case "WEEKLY_EXECUTION":
+                StatisticsReportDTO weeklyReport = templateStatisticsService.getWeeklyExecutionReport(startDate, endDate, normalizedDataSource);
+                return weeklyReport != null && weeklyReport.getContent() != null && !weeklyReport.getContent().isEmpty() ? 
+                    weeklyReport.getContent().get(0) : buildEmptyChartData(startDate, endDate, "WEEKLY_EXECUTION");
+            case "SUCCESS_RATE":
+                StatisticsReportDTO successRateReport = templateStatisticsService.getSuccessRateReport(startDate, endDate, normalizedDataSource);
+                return successRateReport != null && successRateReport.getContent() != null && !successRateReport.getContent().isEmpty() ? 
+                    successRateReport.getContent().get(0) : buildEmptyChartData(startDate, endDate, "SUCCESS_RATE");
+            case "RESPONSE_TIME":
+                Object responseData = templateStatisticsService.getHourlyResponseTimeReportSimple(startDate, endDate, normalizedDataSource);
+                if (responseData != null && responseData instanceof List && !((List<?>) responseData).isEmpty()) {
+                    return responseData;
+                }
+                // 业务查询没有数据就返回空列表，不生成模拟数据
+                return new JSONArray();
+            case "PROTOCOL_DISTRIBUTION":
+                StatisticsReportDTO protocolReport = templateStatisticsService.getProtocolDistributionReport(startDate, endDate, "CATEGORY");
+                return protocolReport != null && protocolReport.getContent() != null && !protocolReport.getContent().isEmpty() ? 
+                    protocolReport.getContent().get(0) : buildEmptyChartData(startDate, endDate, "PROTOCOL_DISTRIBUTION");
+            case "FAILURE_REASONS":
+                Object failureData = templateStatisticsService.getTopFailureReasonsReportSimple(startDate, endDate, normalizedDataSource);
+                if (failureData != null && failureData instanceof List && !((List<?>) failureData).isEmpty()) {
+                    return failureData;
+                }
+                return buildEmptyChartData(startDate, endDate, "FAILURE_REASONS");
+            case "OPTIMIZATION_SUGGESTIONS":
+                return buildOptimizationSuggestions(startDate, endDate, normalizedDataSource);
+            case "INTERFACE_DETAILS":
+                return buildInterfaceDetails(startDate, endDate, normalizedDataSource);
+            case "ANOMALY_DETECTION":
+                return buildEmptyChartData(startDate, endDate, "ANOMALY_DETECTION");
+            case "INFLUENCING_FACTORS":
+                return buildInfluencingFactors(startDate, endDate, normalizedDataSource);
+            default:
+                // 默认返回空数据
+                return new JSONObject();
+        }
+    }
+
+    /**
+     * 构建空的图表数据结构
+     */
+    private JSONObject buildEmptyChartData(String startDate, String endDate, String dataSource) {
+        JSONObject emptyData = new JSONObject();
+        emptyData.put("startDate", startDate);
+        emptyData.put("endDate", endDate);
+        emptyData.put("dataSource", dataSource);
+        emptyData.put("summary", new JSONObject());
+        emptyData.put("details", new JSONArray());
+        return emptyData;
+    }
+
+    /**
+     * 生成模拟的响应时间数据（用于响应时间趋势、响应时间分布、性能对比）
+     */
+    private JSONArray generateMockResponseTimeData(String startDate, String endDate) {
+        JSONArray result = new JSONArray();
+        
+        try {
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+            
+            // 计算天数
+            long days = java.time.temporal.ChronoUnit.DAYS.between(start, end) + 1;
+            int totalDays = (int) Math.min(days, 7); // 最多生成7天数据
+            
+            Random random = new Random();
+            
+            for (int i = 0; i < totalDays; i++) {
+                LocalDate currentDate = start.plusDays(i);
+                String dateStr = currentDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                
+                // 模拟不同时间段的响应时间数据
+                for (int hour = 0; hour < 24; hour += 2) { // 每2小时一个数据点
+                    JSONObject dataPoint = new JSONObject();
+                    dataPoint.put("name", dateStr + " " + String.format("%02d:00", hour));
+                    dataPoint.put("date", dateStr);
+                    dataPoint.put("hour", hour);
+                    
+                    // 模拟响应时间（毫秒）- 工作时间较高，夜间较低
+                    double baseValue = (hour >= 9 && hour <= 18) ? 150 : 80;
+                    double value = baseValue + random.nextDouble() * 100 - 30; // 添加随机波动
+                    dataPoint.put("value", Math.round(value * 100) / 100.0);
+                    
+                    // 添加其他统计字段
+                    dataPoint.put("min", Math.round((value - 20) * 100) / 100.0);
+                    dataPoint.put("max", Math.round((value + 30) * 100) / 100.0);
+                    dataPoint.put("avg", Math.round(value * 100) / 100.0);
+                    dataPoint.put("count", random.nextInt(50) + 10);
+                    
+                    result.add(dataPoint);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("生成模拟响应时间数据失败", e);
+            // 返回默认的空数据
+            for (int i = 0; i < 14; i++) {
+                JSONObject dataPoint = new JSONObject();
+                dataPoint.put("name", "时间点" + (i + 1));
+                dataPoint.put("value", 100 + i * 10);
+                dataPoint.put("min", 80 + i * 8);
+                dataPoint.put("max", 120 + i * 12);
+                dataPoint.put("avg", 100 + i * 10);
+                dataPoint.put("count", 20 + i * 3);
+                result.add(dataPoint);
+            }
+        }
+        
+        return result;
+    }
+
+    /**
+     * 生成模拟的性能对比数据
+     */
+    private JSONObject generateMockPerformanceComparisonData(String startDate, String endDate) {
+        JSONObject result = new JSONObject();
+        
+        try {
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+            
+            // 计算天数
+            long days = java.time.temporal.ChronoUnit.DAYS.between(start, end) + 1;
+            int totalDays = (int) Math.min(days, 7);
+            
+            Random random = new Random();
+            
+            // 生成对比数据 - 模拟两组数据进行比较
+            JSONArray data1 = new JSONArray(); // 当前周期数据
+            JSONArray data2 = new JSONArray(); // 对比周期数据（模拟上一周）
+            
+            for (int i = 0; i < totalDays; i++) {
+                LocalDate currentDate = start.plusDays(i);
+                String dateStr = currentDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                
+                // 当前周期数据
+                JSONObject point1 = new JSONObject();
+                point1.put("name", dateStr);
+                double value1 = 120 + random.nextDouble() * 60;
+                point1.put("value", Math.round(value1 * 100) / 100.0);
+                point1.put("count", random.nextInt(100) + 50);
+                data1.add(point1);
+                
+                // 对比周期数据（模拟比当前略低或略高）
+                JSONObject point2 = new JSONObject();
+                point2.put("name", dateStr);
+                double value2 = value1 * (0.9 + random.nextDouble() * 0.2); // 90%-110% 的波动
+                point2.put("value", Math.round(value2 * 100) / 100.0);
+                point2.put("count", random.nextInt(100) + 50);
+                data2.add(point2);
+            }
+            
+            result.put("data1", data1);
+            result.put("data2", data2);
+            result.put("startDate", startDate);
+            result.put("endDate", endDate);
+            
+            // 添加汇总统计
+            JSONObject summary = new JSONObject();
+            double avg1 = data1.stream().mapToDouble(obj -> ((JSONObject) obj).getDoubleValue("value")).average().orElse(0);
+            double avg2 = data2.stream().mapToDouble(obj -> ((JSONObject) obj).getDoubleValue("value")).average().orElse(0);
+            summary.put("currentAvg", Math.round(avg1 * 100) / 100.0);
+            summary.put("compareAvg", Math.round(avg2 * 100) / 100.0);
+            summary.put("changeRate", Math.round((avg1 - avg2) / avg2 * 10000) / 100.0);
+            result.put("summary", summary);
+            
+        } catch (Exception e) {
+            log.warn("生成模拟性能对比数据失败", e);
+            // 返回默认数据
+            JSONArray data1 = new JSONArray();
+            JSONArray data2 = new JSONArray();
+            for (int i = 0; i < 7; i++) {
+                JSONObject point1 = new JSONObject();
+                point1.put("name", "第" + (i + 1) + "天");
+                point1.put("value", 120 + i * 5);
+                data1.add(point1);
+                
+                JSONObject point2 = new JSONObject();
+                point2.put("name", "第" + (i + 1) + "天");
+                point2.put("value", 115 + i * 5);
+                data2.add(point2);
+            }
+            result.put("data1", data1);
+            result.put("data2", data2);
+            
+            JSONObject summary = new JSONObject();
+            summary.put("currentAvg", 140);
+            summary.put("compareAvg", 135);
+            summary.put("changeRate", 3.7);
+            result.put("summary", summary);
+        }
+        
+        return result;
+    }
+
+    /**
+     * 构建接口详情数据
+     */
+    private JSONObject buildInterfaceDetails(String startDate, String endDate, String dataSource) {
+        JSONObject details = new JSONObject();
+        details.put("startDate", startDate);
+        details.put("endDate", endDate);
+        details.put("totalInterfaces", 0);
+        details.put("successCount", 0);
+        details.put("failureCount", 0);
+        details.put("interfaces", new JSONArray());
+        return details;
+    }
+
+    /**
+     * 构建影响因素数据
+     */
+    private JSONObject buildInfluencingFactors(String startDate, String endDate, String dataSource) {
+        JSONObject factors = new JSONObject();
+        factors.put("startDate", startDate);
+        factors.put("endDate", endDate);
+        factors.put("factors", new JSONArray());
+        return factors;
+    }
+
+    /**
+     * 构建优化建议数据
+     */
+    private JSONObject buildOptimizationSuggestions(String startDate, String endDate, String dataSource) {
+        JSONObject suggestions = new JSONObject();
+        suggestions.put("startDate", startDate);
+        suggestions.put("endDate", endDate);
+        
+        List<String> suggestionList = new ArrayList<>();
+        
+        try {
+            // 根据统计数据生成优化建议
+            StatisticsReportDTO successRateReport = templateStatisticsService.getSuccessRateReport(startDate, endDate, dataSource);
+            if (successRateReport != null && successRateReport.getContent() != null && !successRateReport.getContent().isEmpty()) {
+                JSONObject successData = successRateReport.getContent().getJSONObject(0);
+                if (successData.containsKey("summary")) {
+                    JSONObject summary = successData.getJSONObject("summary");
+                    double successRate = summary.getDoubleValue("successRate");
+                    
+                    if (successRate < 90) {
+                        suggestionList.add("当前成功率低于90%，建议检查失败原因并优化测试用例");
+                    }
+                    
+                    long failureCount = summary.getLongValue("failureCount");
+                    if (failureCount > 0) {
+                        suggestionList.add("发现" + failureCount + "次失败，建议分析失败原因TOP5进行针对性优化");
+                    }
+                }
+            }
+            
+            // 添加通用建议
+            suggestionList.add("建议定期检查模板执行日志，及时发现潜在问题");
+            suggestionList.add("根据性能趋势分析，合理调整任务调度时间");
+            suggestionList.add("关注协议分布变化，及时更新协议支持");
+            
+        } catch (Exception e) {
+            log.warn("构建优化建议失败", e);
+            suggestionList.add("建议根据报告数据分析进行相应优化");
+        }
+        
+        suggestions.put("suggestions", suggestionList);
+        return suggestions;
+    }
+
+    /**
+     * 构建概述数据
+     */
+    private JSONObject buildOverviewData(String startDate, String endDate, String dataSource) {
+        JSONObject overview = new JSONObject();
+        overview.put("startDate", startDate);
+        overview.put("endDate", endDate);
+        overview.put("generateTime", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        overview.put("dataSource", dataSource);
+        
+        // 获取关键统计指标
+        try {
+            StatisticsReportDTO successRateReport = templateStatisticsService.getSuccessRateReport(startDate, endDate, dataSource);
+            if (successRateReport != null && successRateReport.getContent() != null && !successRateReport.getContent().isEmpty()) {
+                JSONObject successData = successRateReport.getContent().getJSONObject(0);
+                if (successData.containsKey("summary")) {
+                    JSONObject summary = successData.getJSONObject("summary");
+                    overview.put("totalCount", summary.getOrDefault("totalCount", 0));
+                    overview.put("successCount", summary.getOrDefault("successCount", 0));
+                    overview.put("failureCount", summary.getOrDefault("failureCount", 0));
+                    overview.put("successRate", summary.getOrDefault("successRate", 0));
+                }
+            }
+            
+            StatisticsReportDTO weeklyReport = templateStatisticsService.getWeeklyExecutionReport(startDate, endDate, dataSource);
+            if (weeklyReport != null && weeklyReport.getContent() != null && !weeklyReport.getContent().isEmpty()) {
+                JSONObject weeklyData = weeklyReport.getContent().getJSONObject(0);
+                if (weeklyData.containsKey("summary")) {
+                    JSONObject summary = weeklyData.getJSONObject("summary");
+                    overview.put("avgDailyExecution", summary.getOrDefault("avg", 0));
+                }
+            }
+        } catch (Exception e) {
+            log.warn("构建概述数据失败", e);
+        }
+        
+        return overview;
     }
 
     /**
@@ -577,119 +1124,450 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
      */
     public void generatePdfReport(Report report, File exportFile, String pageRange) {
         try (PDDocument document = new PDDocument()) {
-            PDPage page = new PDPage();
-            document.addPage(page);
-
-            try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
-                // ========= 关键：加载支持中文的字体 =========
-                PDType0Font font = PDType0Font.load(document, getClass().getResourceAsStream("/fonts/simhei.ttf"));
-
-                // ========= 报告标题 =========
-                contentStream.beginText();
-                contentStream.setFont(font, 16); // 标题字体大小
-                contentStream.newLineAtOffset(50, 750);
-                contentStream.showText("测试报告详情");
-                contentStream.endText();
-
-                // ========= 报告基本信息 =========
-                contentStream.beginText();
-                contentStream.setFont(font, 12); // 正文字体大小
-                contentStream.newLineAtOffset(50, 720);
+            PDType0Font font = PDType0Font.load(document, getClass().getResourceAsStream("/fonts/simhei.ttf"));
+            
+            // ========= 第一页：报告封面和基本信息（紧凑布局）=========
+            PDPage coverPage = new PDPage();
+            document.addPage(coverPage);
+            
+            try (PDPageContentStream coverStream = new PDPageContentStream(document, coverPage)) {
+                // 报告标题
+                coverStream.beginText();
+                coverStream.setFont(font, 18);
+                coverStream.newLineAtOffset(80, 750);
+                coverStream.showText(report.getName() != null ? report.getName() : "测试报告");
+                coverStream.endText();
                 
-                // 报告名称（加粗效果）
-                contentStream.setFont(font, 14);
-                contentStream.showText("报告名称：");
-                contentStream.setFont(font, 12);
-                contentStream.showText(report.getName() != null ? report.getName() : "未命名");
-                contentStream.newLineAtOffset(0, -25);
+                // 副标题信息（紧凑排列）
+                coverStream.beginText();
+                coverStream.setFont(font, 11);
+                coverStream.newLineAtOffset(80, 720);
                 
-                // 生成时间
-                contentStream.showText("生成时间：" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-                contentStream.newLineAtOffset(0, -25);
+                // 第一行
+                coverStream.showText("报告类型：" + (report.getReportType() != null ? getReadableReportType(report.getReportType()) : "未知类型"));
+                coverStream.newLineAtOffset(200, 0);
+                coverStream.showText("生成时间：" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                coverStream.newLineAtOffset(-200, -18);
                 
-                // 数据范围
-                contentStream.showText("数据范围：" + pageRange);
-                contentStream.newLineAtOffset(0, -25);
-                
-                // 报告描述
-                if (report.getDescription() != null && !report.getDescription().trim().isEmpty()) {
-                    contentStream.showText("报告描述：" + report.getDescription());
-                    contentStream.newLineAtOffset(0, -25);
-                }
-                
-                // 报告类型（中文翻译）
-                contentStream.setFont(font, 14);
-                contentStream.showText("报告类型：");
-                contentStream.setFont(font, 12);
-                contentStream.showText(report.getReportType() != null ? getReadableReportType(report.getReportType()) : "未知类型");
-                contentStream.newLineAtOffset(0, -25);
-                
-                // 报告状态（中文翻译）
-                contentStream.setFont(font, 14);
-                contentStream.showText("报告状态：");
-                contentStream.setFont(font, 12);
-                contentStream.showText(report.getStatus() != null ? getReadableReportStatus(report.getStatus()) : "未知状态");
-                contentStream.newLineAtOffset(0, -25);
-                
-                // 报告ID
-                contentStream.showText("报告ID：" + report.getId());
-                contentStream.newLineAtOffset(0, -25);
-                
-                // 总执行次数（从报告内容中提取）
-                if (report.getContent() != null && report.getContent().contains("totalCount:")) {
-                    String content = report.getContent();
-                    int totalCount = extractTotalCount(content);
-                    contentStream.showText("总执行次数：" + totalCount);
-                    contentStream.newLineAtOffset(0, -25);
-                }
+                // 第二行
+                coverStream.showText("数据范围：" + pageRange);
+                coverStream.newLineAtOffset(200, 0);
+                coverStream.showText("报告ID：" + report.getId());
+                coverStream.endText();
                 
                 // 分隔线
-                contentStream.endText();
-                contentStream.moveTo(50, 600);
-                contentStream.lineTo(562, 600);
-                contentStream.stroke();
+                coverStream.moveTo(80, 685);
+                coverStream.lineTo(532, 685);
+                coverStream.stroke();
                 
-                // 报告内容
-                contentStream.beginText();
-                contentStream.setFont(font, 12);
-                contentStream.newLineAtOffset(50, 580);
-                contentStream.showText("报告内容：");
-                contentStream.newLineAtOffset(0, -20);
-                
-                String reportContent = buildReportContent(report, pageRange);
-                if (reportContent != null && !reportContent.trim().isEmpty()) {
-                    // 先把原始内容处理一遍，过滤、替换、清洗
-                    String cleanContent = cleanAndTranslateContent(reportContent);
-                    // 保留successCount、totalCount等统计字段，只过滤不需要的字段
-                    cleanContent = cleanContent.replaceAll("(?m)^.*(占比|value:|name:|名称|数值|dataSource).*$", "");
-                    cleanContent = cleanContent.replace("totalCount:", "总执行次数:");
-                    cleanContent = cleanContent.replace("successCount:", "成功次数:");
-//                    String formattedContent = formatRateReportLines(cleanContent);
-                    String[] allLines = cleanContent.split("\\r?\\n");
-
-                    int y = 560;
-                    for (String line : allLines) {
-                        if (y < 50) break;
-                        if (line.trim().isEmpty()) continue;
-                        contentStream.newLineAtOffset(0, -15);
-                        contentStream.showText(line.trim());
-                        y -= 15;
-                    }
-                } else {
-                    contentStream.newLineAtOffset(0, -15);
-                    contentStream.showText("报告内容为空");
+                // 报告描述（如果有）
+                if (report.getDescription() != null && !report.getDescription().trim().isEmpty()) {
+                    coverStream.beginText();
+                    coverStream.setFont(font, 11);
+                    coverStream.newLineAtOffset(80, 670);
+                    coverStream.showText("报告描述：" + report.getDescription());
+                    coverStream.endText();
                 }
-
-                contentStream.endText();
-            }catch (Exception e) {
-                throw new RuntimeException("导出报告文件失败：" + e.getMessage(), e);
+                
+                // 报告内容预览（直接在封面继续）
+                String content = report.getContent();
+                if ("RESPONSE_TIME".equalsIgnoreCase(report.getReportType()) && content != null && !content.trim().isEmpty()) {
+                    generateResponseTimeReportContent(document, font, content, coverStream);
+                } else {
+                    // 其他类型：继续在第一页输出部分内容
+                    String reportContent = buildReportContent(report, pageRange);
+                    if (reportContent != null && !reportContent.trim().isEmpty()) {
+                        String cleanContent = cleanAndTranslateContent(reportContent);
+                        List<String> chapters = parseReportChapters(cleanContent);
+                        
+                        int y = report.getDescription() != null && !report.getDescription().trim().isEmpty() ? 640 : 670;
+                        PDPage currentPage = coverPage;
+                        PDPageContentStream contentStream = coverStream;
+                        
+                        for (String chapter : chapters) {
+                            if (y < 40) {
+                                contentStream.endText();
+                                contentStream.close();
+                                currentPage = new PDPage();
+                                document.addPage(currentPage);
+                                contentStream = new PDPageContentStream(document, currentPage);
+                                contentStream.setFont(font, 11);
+                                y = 770;
+                            }
+                            
+                            if (chapter.startsWith("=== ")) {
+                                contentStream.beginText();
+                                contentStream.setFont(font, 13);
+                                contentStream.newLineAtOffset(50, y);
+                                contentStream.showText(chapter);
+                                contentStream.endText();
+                                y -= 20;
+                                contentStream.moveTo(50, y);
+                                contentStream.lineTo(562, y);
+                                contentStream.stroke();
+                                y -= 12;
+                            } else {
+                                contentStream.beginText();
+                                contentStream.setFont(font, 11);
+                                contentStream.newLineAtOffset(50, y);
+                                contentStream.showText(chapter);
+                                contentStream.endText();
+                                y -= 12;
+                            }
+                        }
+                        if (contentStream != coverStream) {
+                            contentStream.close();
+                        }
+                    }
+                }
             }
-
+            
             // 输出文件
             document.save(new FileOutputStream(exportFile));
-        }catch (Exception e) {
+        } catch (Exception e) {
             throw new RuntimeException("导出报告文件失败：" + e.getMessage(), e);
         }
+    }
+    
+    /**
+     * 专门处理 RESPONSE_TIME 类型报告内容（支持从封面页继续输出）
+     */
+    private void generateResponseTimeReportContent(PDDocument document, PDType0Font font, String content, PDPageContentStream coverStream) throws Exception {
+        JSONArray sections = JSON.parseArray(content);
+        
+        PDPage currentPage = null;
+        PDPageContentStream contentStream = null;
+        int y = 640; // 从封面页继续，紧凑布局
+        
+        // 判断是否使用封面流继续输出
+        if (coverStream != null) {
+            contentStream = coverStream;
+        } else {
+            currentPage = new PDPage();
+            document.addPage(currentPage);
+            contentStream = new PDPageContentStream(document, currentPage);
+            y = 770; // 新页面从顶部开始
+        }
+        
+        contentStream.setFont(font, 11);
+        
+        for (int i = 0; i < sections.size(); i++) {
+            JSONObject section = sections.getJSONObject(i);
+            String type = section.getString("type");
+            String title = section.getString("title");
+            
+            // 检查是否需要新页面
+            if (y < 60) {
+                if (contentStream != coverStream) {
+                    contentStream.close();
+                }
+                currentPage = new PDPage();
+                document.addPage(currentPage);
+                contentStream = new PDPageContentStream(document, currentPage);
+                contentStream.setFont(font, 11);
+                y = 770;
+            }
+            
+            // 章节标题
+            contentStream.beginText();
+            contentStream.setFont(font, 13);
+            contentStream.newLineAtOffset(50, y);
+            contentStream.showText("=== " + title + " ===");
+            contentStream.endText();
+            y -= 18;
+            
+            // 分隔线
+            contentStream.moveTo(50, y);
+            contentStream.lineTo(562, y);
+            contentStream.stroke();
+            y -= 12;
+            
+            if ("text".equals(type)) {
+                // 文本类型：直接输出内容
+                JSONObject data = section.getJSONObject("data");
+                if (data != null) {
+                    for (String key : data.keySet()) {
+                        if (y < 40) {
+                            if (contentStream != coverStream) {
+                                contentStream.close();
+                            }
+                            currentPage = new PDPage();
+                            document.addPage(currentPage);
+                            contentStream = new PDPageContentStream(document, currentPage);
+                            contentStream.setFont(font, 11);
+                            y = 770;
+                        }
+                        
+                        Object value = data.get(key);
+                        String displayKey = convertToChineseKey(key);
+                        
+                        if (value instanceof JSONArray) {
+                            // suggestions 数组：每行单独显示
+                            contentStream.beginText();
+                            contentStream.setFont(font, 11);
+                            contentStream.newLineAtOffset(50, y);
+                            contentStream.showText(displayKey + "：");
+                            contentStream.endText();
+                            y -= 14;
+                            
+                            JSONArray suggestions = (JSONArray) value;
+                            int idx = 1;
+                            for (Object suggestion : suggestions) {
+                                if (y < 40) {
+                                    if (contentStream != coverStream) {
+                                        contentStream.close();
+                                    }
+                                    currentPage = new PDPage();
+                                    document.addPage(currentPage);
+                                    contentStream = new PDPageContentStream(document, currentPage);
+                                    contentStream.setFont(font, 11);
+                                    y = 770;
+                                }
+                                // 每行单独创建文本块，确保不重叠
+                                contentStream.beginText();
+                                contentStream.setFont(font, 11);
+                                contentStream.newLineAtOffset(50, y);
+                                contentStream.showText("  " + idx + ". " + suggestion);
+                                contentStream.endText();
+                                y -= 14;
+                                idx++;
+                            }
+                        } else {
+                            // 普通文本：每行单独创建文本块
+                            contentStream.beginText();
+                            contentStream.setFont(font, 11);
+                            contentStream.newLineAtOffset(50, y);
+                            contentStream.showText(displayKey + "：" + value);
+                            contentStream.endText();
+                            y -= 14;
+                        }
+                    }
+                }
+            } else if ("chart".equals(type)) {
+                // 图表类型：生成图表并插入
+                String chartType = section.getString("chartType");
+                JSONArray chartData = section.getJSONArray("data");
+                
+                // 生成图表图片
+                byte[] chartImage = generateChartImage(chartData, chartType, title);
+                
+                // 计算图片位置和大小（紧凑布局）
+                float imageWidth = 500;
+                float imageHeight = 180;
+                
+                if (y - imageHeight < 40) {
+                    if (contentStream != coverStream) {
+                        contentStream.close();
+                    }
+                    currentPage = new PDPage();
+                    document.addPage(currentPage);
+                    contentStream = new PDPageContentStream(document, currentPage);
+                    contentStream.setFont(font, 11);
+                    y = 770;
+                }
+                
+                // 插入图表图片
+                PDImageXObject image = PDImageXObject.createFromByteArray(document, chartImage, "chart");
+                contentStream.drawImage(image, 36, y - imageHeight, imageWidth, imageHeight);
+                y -= (imageHeight + 15);
+            }
+        }
+        
+        // 如果不是封面流，需要关闭
+        if (contentStream != coverStream && contentStream != null) {
+            contentStream.close();
+        }
+    }
+    
+    /**
+     * 使用 ECharts 生成图表图片
+     */
+    private byte[] generateChartImage(JSONArray data, String chartType, String title) {
+        try {
+            // 准备图表数据
+            List<String> names = new ArrayList<>();
+            List<Double> values = new ArrayList<>();
+            
+            for (int i = 0; i < data.size(); i++) {
+                JSONObject item = data.getJSONObject(i);
+                names.add(item.getString("name"));
+                values.add(item.getDouble("value"));
+            }
+            
+            // 生成 HTML 内容
+            StringBuilder htmlBuilder = new StringBuilder();
+            htmlBuilder.append("<html><head>");
+            htmlBuilder.append("<script src=\"https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js\"></script>");
+            htmlBuilder.append("</head><body>");
+            htmlBuilder.append("<div id=\"chart\" style=\"width:800px;height:400px;\"></div>");
+            htmlBuilder.append("<script>");
+            htmlBuilder.append("var chart = echarts.init(document.getElementById('chart'));");
+            htmlBuilder.append("var option = {");
+            htmlBuilder.append("    title: { text: '").append(title).append("' },");
+            htmlBuilder.append("    tooltip: {},");
+            htmlBuilder.append("    xAxis: { data: ").append(JSON.toJSONString(names)).append(" },");
+            htmlBuilder.append("    yAxis: {},");
+            htmlBuilder.append("    series: [{");
+            htmlBuilder.append("        name: '数值',");
+            htmlBuilder.append("        type: '").append(chartType.toLowerCase().equals("histogram") ? "bar" : chartType.toLowerCase()).append("',");
+            htmlBuilder.append("        data: ").append(JSON.toJSONString(values)).append("");
+            htmlBuilder.append("    }]");
+            htmlBuilder.append("};");
+            htmlBuilder.append("chart.setOption(option);");
+            htmlBuilder.append("</script></body></html>");
+            
+            // 使用 headless 浏览器渲染（简化方案：返回空数组表示图表位置）
+            // 实际项目中需要使用 Jsoup + 无头浏览器或专门的图表库
+            
+            // 由于没有实际的 headless 浏览器环境，返回一个简单的占位图片
+            return generateSimpleChartImage(names, values, chartType, title);
+        } catch (Exception e) {
+            log.error("生成图表图片失败", e);
+            return new byte[0];
+        }
+    }
+    
+    /**
+     * 生成简单的图表图片（基于 ASCII 或简单图形）
+     */
+    private byte[] generateSimpleChartImage(List<String> names, List<Double> values, String chartType, String title) throws Exception {
+        // 创建简单的图表表示
+        int width = 500;
+        int height = 250;
+        
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2d = image.createGraphics();
+        
+        // 设置背景
+        g2d.setColor(Color.WHITE);
+        g2d.fillRect(0, 0, width, height);
+        
+        // 设置字体
+        Font font = new Font("SimHei", Font.PLAIN, 10);
+        g2d.setFont(font);
+        g2d.setColor(Color.BLACK);
+        
+        // 绘制标题
+        g2d.drawString(title, width / 2 - 50, 20);
+        
+        // 计算边界
+        int padding = 40;
+        int chartWidth = width - padding * 2;
+        int chartHeight = height - padding * 2;
+        
+        // 绘制坐标轴
+        g2d.drawLine(padding, padding, padding, height - padding);
+        g2d.drawLine(padding, height - padding, width - padding, height - padding);
+        
+        // 计算数据范围
+        double maxValue = values.stream().mapToDouble(Double::doubleValue).max().orElse(1);
+        double minValue = values.stream().mapToDouble(Double::doubleValue).min().orElse(0);
+        double valueRange = maxValue - minValue;
+        if (valueRange == 0) valueRange = 1;
+        
+        // 绘制数据
+        int barWidth = chartWidth / values.size();
+        for (int i = 0; i < values.size(); i++) {
+            double normalizedValue = (values.get(i) - minValue) / valueRange;
+            int barHeight = (int) (normalizedValue * chartHeight * 0.9);
+            int x = padding + i * barWidth;
+            
+            if ("LINE".equalsIgnoreCase(chartType)) {
+                // 折线图
+                int y = height - padding - barHeight;
+                g2d.setColor(Color.BLUE);
+                if (i > 0) {
+                    double prevValue = (values.get(i - 1) - minValue) / valueRange;
+                    int prevY = height - padding - (int) (prevValue * chartHeight * 0.9);
+                    g2d.drawLine(padding + (i - 1) * barWidth + barWidth / 2, prevY, x + barWidth / 2, y);
+                }
+                g2d.fillOval(x + barWidth / 2 - 3, y - 3, 6, 6);
+            } else {
+                // 柱状图/直方图
+                g2d.setColor(new Color(79, 129, 189));
+                g2d.fillRect(x + 5, height - padding - barHeight, barWidth - 10, barHeight);
+            }
+            
+            // 绘制 X 轴标签
+            String label = names.get(i);
+            if (label.length() > 10) {
+                label = label.substring(0, 10) + "...";
+            }
+            g2d.setColor(Color.BLACK);
+            g2d.drawString(label, x, height - 10);
+        }
+        
+        g2d.dispose();
+        
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", baos);
+        return baos.toByteArray();
+    }
+    
+    /**
+     * 解析报告章节内容
+     */
+    private List<String> parseReportChapters(String content) {
+        List<String> chapters = new ArrayList<>();
+        String[] lines = content.split("\\r?\\n");
+        
+        StringBuilder currentChapter = new StringBuilder();
+        String currentChapterTitle = "";
+        
+        for (String line : lines) {
+            line = line.trim();
+            if (line.isEmpty()) continue;
+            
+            // 检测章节标题
+            if (line.startsWith("=== ")) {
+                // 保存当前章节
+                if (currentChapterTitle != "" && currentChapter.length() > 0) {
+                    chapters.add(currentChapterTitle);
+                    chapters.addAll(splitContentIntoLines(currentChapter.toString(), 80));
+                }
+                currentChapterTitle = line;
+                currentChapter = new StringBuilder();
+            } else {
+                currentChapter.append(line).append("\n");
+            }
+        }
+        
+        // 添加最后一个章节
+        if (currentChapterTitle != "") {
+            chapters.add(currentChapterTitle);
+            chapters.addAll(splitContentIntoLines(currentChapter.toString(), 80));
+        }
+        
+        return chapters;
+    }
+    
+    /**
+     * 将内容按指定长度分行
+     */
+    private List<String> splitContentIntoLines(String content, int maxLength) {
+        List<String> lines = new ArrayList<>();
+        String[] contentLines = content.split("\\n");
+        
+        for (String line : contentLines) {
+            while (line.length() > maxLength) {
+                int splitIndex = maxLength;
+                // 尽量在中文标点或空格处分割
+                for (int i = maxLength; i > maxLength - 10 && i > 0; i--) {
+                    char c = line.charAt(i);
+                    if (c == '，' || c == '。' || c == '；' || c == '：' || c == ' ') {
+                        splitIndex = i + 1;
+                        break;
+                    }
+                }
+                lines.add(line.substring(0, splitIndex));
+                line = line.substring(splitIndex);
+            }
+            if (!line.trim().isEmpty()) {
+                lines.add(line.trim());
+            }
+        }
+        
+        return lines;
     }
 
     /**
@@ -1156,6 +2034,12 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             case "hourGroup": return "小时分组";
             case "executionCount": return "执行次数";
             case "avgDuration": return "平均耗时";
+            // 新增字段映射
+            case "totalCount": return "总执行次数";
+            case "successRate": return "成功率(%)";
+            case "failureCount": return "失败次数";
+            case "successCount": return "成功次数";
+            case "suggestions": return "优化建议";
             default: return key; // 没有匹配的返回原key
         }
     }

@@ -1020,7 +1020,9 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
         
         reportData.put("weekData", weekData);
         reportData.put("totalExecutions", totalExecutions);
-        reportData.put("avgDailyExecutions", totalExecutions / 7.0);
+        // 计算实际天数的平均值，而不是固定除以7
+        long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) + 1;
+        reportData.put("avgDailyExecutions", daysBetween > 0 ? totalExecutions / (double) daysBetween : 0);
         reportData.put("dataSource", dataSource);
         reportData.put("dataSourceName", getDataSourceDisplayName(dataSource));
         reportData.put("startDate", startDate.format(DateTimeFormatter.ISO_DATE));
@@ -1158,13 +1160,23 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     @Override
     public StatisticsReportDTO getProtocolDistributionReport(String startDate, String endDate, String reportType) {
         try {
+            // 解析日期参数
+            LocalDateTime startTime = null;
+            LocalDateTime endTime = null;
+            if (startDate != null && endDate != null) {
+                LocalDate start = LocalDate.parse(startDate);
+                LocalDate end = LocalDate.parse(endDate);
+                startTime = start.atStartOfDay();
+                endTime = end.atTime(23, 59, 59);
+            }
+            
             // 根据报告类型获取统计信息
             Map<String, Object> reportData;
             switch (reportType != null ? reportType.toUpperCase() : "CATEGORY") {
                 case "CATEGORY":
                 default:
-                    // 只需要查询pdm_tool_protocol_type表的protocol_name分组统计
-                    List<Map<String, Object>> categoryStats = templateStatisticsMapper.getProtocolCategoryStats(null, null);
+                    // 查询指定日期范围内的协议类型分布统计
+                    List<Map<String, Object>> categoryStats = templateStatisticsMapper.getProtocolCategoryStats(startTime, endTime);
                     reportData = buildProtocolCategoryData(categoryStats);
                     break;
             }
@@ -1597,18 +1609,16 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
 
     @Override
     public CompareResultDTO getCompareReport(String reportType,
-                                              String metricType, 
                                               String group1StartDate, 
                                               String group1EndDate, 
                                               String group2StartDate, 
                                               String group2EndDate,
                                               String dataSource) {
-        log.info("获取统计对比报告，报告类型：{}，指标类型：{}，对比组1：{}~{}，对比组2：{}~{}，数据源：{}", 
-                reportType, metricType, group1StartDate, group1EndDate, group2StartDate, group2EndDate, dataSource);
+        log.info("获取统计对比报告，报告类型：{}，对比组1：{}~{}，对比组2：{}~{}，数据源：{}", 
+                reportType, group1StartDate, group1EndDate, group2StartDate, group2EndDate, dataSource);
         
         CompareResultDTO result = new CompareResultDTO();
         result.setReportType(reportType);
-        result.setMetricType(metricType);
         result.setMetricTypeName(getMetricTypeName(reportType));
         result.setGenerateTime(LocalDateTime.now());
         
@@ -1679,13 +1689,42 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
                 List<Map<String, Object>> weekData = (List<Map<String, Object>>) reportData.get("weekData");
                 for (Map<String, Object> day : weekData) {
                     Map<String, Object> item = new HashMap<>();
-                    item.put("name", day.get("dayName"));
+                    String dayName = safeGetString(day, "dayName");
+                    // 将英文星期名称转换为中文
+                    item.put("name", translateDayNameToChinese(dayName));
                     item.put("value", day.getOrDefault("executionCount", 0));
                     result.add(item);
                 }
             }
         }
         return result;
+    }
+
+    /**
+     * 将英文星期名称转换为中文
+     */
+    private String translateDayNameToChinese(String dayName) {
+        if (dayName == null) {
+            return "";
+        }
+        switch (dayName) {
+            case "Monday":
+                return "星期一";
+            case "Tuesday":
+                return "星期二";
+            case "Wednesday":
+                return "星期三";
+            case "Thursday":
+                return "星期四";
+            case "Friday":
+                return "星期五";
+            case "Saturday":
+                return "星期六";
+            case "Sunday":
+                return "星期日";
+            default:
+                return dayName;
+        }
     }
 
     /**
@@ -2164,8 +2203,8 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
                 summary.put("changePercentage", time1 > 0 ? (time2 - time1) / time1 * 100 : 0);
                 break;
             case "PROTOCOL_DISTRIBUTION":
-                long protoTotal1 = (Long) group1Summary.getOrDefault("total", 0L);
-                long protoTotal2 = (Long) group2Summary.getOrDefault("total", 0L);
+                long protoTotal1 = Long.valueOf(String.valueOf(group1Summary.getOrDefault("total", 0)));
+                long protoTotal2 = Long.valueOf(String.valueOf(group2Summary.getOrDefault("total", 0)));
                 summary.put("change", protoTotal2 - protoTotal1);
                 summary.put("changePercentage", protoTotal1 > 0 ? (double) (protoTotal2 - protoTotal1) / protoTotal1 * 100 : 0);
                 break;

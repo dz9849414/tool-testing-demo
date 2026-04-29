@@ -9,7 +9,7 @@ import lombok.Data;
 public class CompareRequestDTO {
     
     /**
-     * 报告类型（与metricType一致）
+     * 报告类型
      * WEEKLY_EXECUTION - 日执行量统计
      * SUCCESS_RATE - 成功率分析
      * RESPONSE_TIME - 平均响应时间
@@ -17,16 +17,6 @@ public class CompareRequestDTO {
      * FAILURE_REASONS - 失败原因TOP5
      */
     private String reportType;
-    
-    /**
-     * 指标类型
-     * WEEKLY_EXECUTION - 日执行量统计
-     * SUCCESS_RATE - 成功率分析
-     * RESPONSE_TIME - 平均响应时间
-     * PROTOCOL_DISTRIBUTION - 协议类型分布
-     * FAILURE_REASONS - 失败原因TOP5
-     */
-    private String metricType;
     
     /**
      * 对比组1开始日期 (yyyy-MM-dd)
