@@ -12,12 +12,12 @@ import java.time.LocalDateTime;
 
 /**
  * 协议文件导入导出记录表 实体类
- * 表名：pdm_tool_protocol_file_import_export
+ * 表名：pdm_tool_protocol_file_export
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
-@TableName("pdm_tool_protocol_file_import_export")
+@TableName("pdm_tool_protocol_file_export")
 public class ProtocolFileImportExport extends BaseEntity {
 
     private static final long serialVersionUID = 1L;

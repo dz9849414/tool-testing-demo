@@ -125,7 +125,7 @@ CREATE TABLE `pdm_tool_protocol_test_record`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='协议测试记录表';
 
-DROP TABLE IF EXISTS `pdm_tool_protocol_file_import_export`;
+DROP TABLE IF EXISTS `pdm_tool_protocol_file_export`;
 CREATE TABLE IF NOT EXISTS `pdm_tool_protocol_file_export` (
                                                                `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
                                                                `operation_type` VARCHAR(20) NOT NULL COMMENT '操作类型：EXPORT/IMPORT',
