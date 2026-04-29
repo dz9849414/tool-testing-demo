@@ -1,6 +1,8 @@
 package com.example.tooltestingdemo.controller.report;
 
 import com.example.tooltestingdemo.common.Result;
+import com.example.tooltestingdemo.dto.report.CompareRequestDTO;
+import com.example.tooltestingdemo.dto.report.CompareResultDTO;
 import com.example.tooltestingdemo.dto.report.StatisticsReportDTO;
 import com.example.tooltestingdemo.service.report.ITemplateStatisticsService;
 import com.example.tooltestingdemo.utils.SecurityUtils;
@@ -284,6 +286,79 @@ public class TemplateStatisticsController {
             return Result.success(summary);
         } catch (Exception e) {
             return Result.error("获取模板统计摘要失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/compare")
+    @Operation(summary = "获取统计对比报告")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:view')")
+    public Result<CompareResultDTO> getCompareReport(@RequestBody CompareRequestDTO request) {
+        try {
+            // 参数校验 - reportType
+            if (request.getReportType() == null || request.getReportType().trim().isEmpty()) {
+                return Result.error("报告类型不能为空");
+            }
+            
+            // 验证报告类型
+            String reportType = request.getReportType().toUpperCase();
+            if (!reportType.equals("WEEKLY_EXECUTION") && 
+                !reportType.equals("SUCCESS_RATE") && 
+                !reportType.equals("RESPONSE_TIME") && 
+                !reportType.equals("PROTOCOL_DISTRIBUTION") && 
+                !reportType.equals("FAILURE_REASONS")) {
+                return Result.error("报告类型不正确，请使用WEEKLY_EXECUTION/SUCCESS_RATE/RESPONSE_TIME/PROTOCOL_DISTRIBUTION/FAILURE_REASONS");
+            }
+            
+            // metricType固定为WEEKLY_EXECUTION
+            String metricType = "WEEKLY_EXECUTION";
+            
+            // 验证日期参数
+            if (request.getGroup1StartDate() == null || request.getGroup1StartDate().trim().isEmpty()) {
+                return Result.error("对比组1开始日期不能为空");
+            }
+            if (request.getGroup1EndDate() == null || request.getGroup1EndDate().trim().isEmpty()) {
+                return Result.error("对比组1结束日期不能为空");
+            }
+            if (request.getGroup2StartDate() == null || request.getGroup2StartDate().trim().isEmpty()) {
+                return Result.error("对比组2开始日期不能为空");
+            }
+            if (request.getGroup2EndDate() == null || request.getGroup2EndDate().trim().isEmpty()) {
+                return Result.error("对比组2结束日期不能为空");
+            }
+            
+            // 验证日期格式
+            try {
+                java.time.LocalDate.parse(request.getGroup1StartDate());
+                java.time.LocalDate.parse(request.getGroup1EndDate());
+                java.time.LocalDate.parse(request.getGroup2StartDate());
+                java.time.LocalDate.parse(request.getGroup2EndDate());
+            } catch (Exception e) {
+                return Result.error("日期格式不正确，请使用yyyy-MM-dd格式");
+            }
+            
+            // 验证数据源参数
+            String dataSource = request.getDataSource();
+            if (dataSource != null && !dataSource.trim().isEmpty()) {
+                String validDataSource = dataSource.toUpperCase();
+                if (!validDataSource.equals("JOB_LOG") && !validDataSource.equals("UNIFIED") && !validDataSource.equals("BATCH")) {
+                    return Result.error("数据源参数不正确，请使用JOB_LOG/UNIFIED/BATCH");
+                }
+            }
+            
+            // 调用Service获取对比报告（使用reportType作为实际统计类型，metricType固定为WEEKLY_EXECUTION）
+            CompareResultDTO result = templateStatisticsService.getCompareReport(
+                reportType,
+                metricType,
+                request.getGroup1StartDate(),
+                request.getGroup1EndDate(),
+                request.getGroup2StartDate(),
+                request.getGroup2EndDate(),
+                dataSource != null ? dataSource : "JOB_LOG"
+            );
+            
+            return Result.success("统计对比报告获取成功", result);
+        } catch (Exception e) {
+            return Result.error("获取统计对比报告失败：" + e.getMessage());
         }
     }
 }

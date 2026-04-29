@@ -134,4 +134,25 @@ public interface ITemplateStatisticsService {
      * @return 失败时间线数据列表
      */
     java.util.List<FailureTimelineDTO> getFailureTimelineData(Long templateId, LocalDateTime startTime, LocalDateTime endTime);
+    
+    /**
+     * 获取统计对比报告
+     * 
+     * @param reportType 报告类型（与metricType一致）：WEEKLY_EXECUTION/SUCCESS_RATE/RESPONSE_TIME/PROTOCOL_DISTRIBUTION/FAILURE_REASONS
+     * @param metricType 指标类型：WEEKLY_EXECUTION/SUCCESS_RATE/RESPONSE_TIME/PROTOCOL_DISTRIBUTION/FAILURE_REASONS
+     * @param group1StartDate 对比组1开始日期
+     * @param group1EndDate 对比组1结束日期
+     * @param group2StartDate 对比组2开始日期
+     * @param group2EndDate 对比组2结束日期
+     * @param dataSource 数据源：JOB_LOG/UNIFIED/BATCH
+     * @return 对比结果
+     */
+    com.example.tooltestingdemo.dto.report.CompareResultDTO getCompareReport(
+            String reportType,
+            String metricType, 
+            String group1StartDate, 
+            String group1EndDate, 
+            String group2StartDate, 
+            String group2EndDate,
+            String dataSource);
 }

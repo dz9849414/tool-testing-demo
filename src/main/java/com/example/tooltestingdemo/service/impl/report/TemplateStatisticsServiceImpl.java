@@ -2,6 +2,7 @@ package com.example.tooltestingdemo.service.impl.report;
 
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import com.example.tooltestingdemo.dto.report.CompareResultDTO;
 import com.example.tooltestingdemo.dto.report.FailureTimelineDTO;
 import com.example.tooltestingdemo.dto.report.ReportDTO;
 import com.example.tooltestingdemo.dto.report.ReportTemplateDTO;
@@ -1590,5 +1591,599 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
         reportData.put("generateTime", LocalDate.now().format(DateTimeFormatter.ISO_DATE));
         
         return reportData;
+    }
+
+    // ====================== 统计对比报告方法 ======================
+
+    @Override
+    public CompareResultDTO getCompareReport(String reportType,
+                                              String metricType, 
+                                              String group1StartDate, 
+                                              String group1EndDate, 
+                                              String group2StartDate, 
+                                              String group2EndDate,
+                                              String dataSource) {
+        log.info("获取统计对比报告，报告类型：{}，指标类型：{}，对比组1：{}~{}，对比组2：{}~{}，数据源：{}", 
+                reportType, metricType, group1StartDate, group1EndDate, group2StartDate, group2EndDate, dataSource);
+        
+        CompareResultDTO result = new CompareResultDTO();
+        result.setReportType(reportType);
+        result.setMetricType(metricType);
+        result.setMetricTypeName(getMetricTypeName(reportType));
+        result.setGenerateTime(LocalDateTime.now());
+        
+        // 根据reportType获取实际统计数据（直接调用现有的查询方法）
+        switch (reportType != null ? reportType.toUpperCase() : "WEEKLY_EXECUTION") {
+            case "SUCCESS_RATE":
+                // 调用现有的成功率分析接口
+                StatisticsReportDTO successRateReport1 = getSuccessRateReport(group1StartDate, group1EndDate, dataSource);
+                StatisticsReportDTO successRateReport2 = getSuccessRateReport(group2StartDate, group2EndDate, dataSource);
+                result.setData1(extractSuccessRateCompareData(successRateReport1));
+                result.setData2(extractSuccessRateCompareData(successRateReport2));
+                result.setSummary1(extractSuccessRateSummary(successRateReport1));
+                result.setSummary2(extractSuccessRateSummary(successRateReport2));
+                break;
+            case "RESPONSE_TIME":
+                // 调用现有的响应时间接口
+                List<Map<String, Object>> responseTimeData1 = getHourlyResponseTimeReportSimple(group1StartDate, group1EndDate, dataSource);
+                List<Map<String, Object>> responseTimeData2 = getHourlyResponseTimeReportSimple(group2StartDate, group2EndDate, dataSource);
+                result.setData1(responseTimeData1);
+                result.setData2(responseTimeData2);
+                result.setSummary1(calculateResponseTimeSummary(responseTimeData1));
+                result.setSummary2(calculateResponseTimeSummary(responseTimeData2));
+                break;
+            case "PROTOCOL_DISTRIBUTION":
+                // 调用现有的协议类型分布接口
+                StatisticsReportDTO protocolReport1 = getProtocolDistributionReport(group1StartDate, group1EndDate, "CATEGORY");
+                StatisticsReportDTO protocolReport2 = getProtocolDistributionReport(group2StartDate, group2EndDate, "CATEGORY");
+                result.setData1(extractProtocolDistributionCompareData(protocolReport1));
+                result.setData2(extractProtocolDistributionCompareData(protocolReport2));
+                result.setSummary1(extractProtocolDistributionSummary(protocolReport1));
+                result.setSummary2(extractProtocolDistributionSummary(protocolReport2));
+                break;
+            case "FAILURE_REASONS":
+                // 调用现有的失败原因TOP5接口
+                List<Map<String, Object>> failureReasonsData1 = getTopFailureReasonsReportSimple(group1StartDate, group1EndDate, dataSource);
+                List<Map<String, Object>> failureReasonsData2 = getTopFailureReasonsReportSimple(group2StartDate, group2EndDate, dataSource);
+                result.setData1(failureReasonsData1);
+                result.setData2(failureReasonsData2);
+                result.setSummary1(calculateFailureReasonsSummary(failureReasonsData1));
+                result.setSummary2(calculateFailureReasonsSummary(failureReasonsData2));
+                break;
+            case "WEEKLY_EXECUTION":
+            default:
+                // 调用现有的日执行量统计接口
+                StatisticsReportDTO weeklyReport1 = getWeeklyExecutionReport(group1StartDate, group1EndDate, dataSource);
+                StatisticsReportDTO weeklyReport2 = getWeeklyExecutionReport(group2StartDate, group2EndDate, dataSource);
+                result.setData1(extractWeeklyExecutionCompareData(weeklyReport1));
+                result.setData2(extractWeeklyExecutionCompareData(weeklyReport2));
+                result.setSummary1(extractWeeklyExecutionSummary(weeklyReport1));
+                result.setSummary2(extractWeeklyExecutionSummary(weeklyReport2));
+                break;
+        }
+        
+        // 计算对比摘要（使用reportType）
+        result.setSummary(calculateCompareSummary(result, reportType));
+        
+        return result;
+    }
+
+    /**
+     * 从周执行量报告中提取对比数据
+     */
+    private List<Map<String, Object>> extractWeeklyExecutionCompareData(StatisticsReportDTO report) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        if (report != null && report.getContent() != null && !report.getContent().isEmpty()) {
+            Map<String, Object> reportData = report.getContent().getJSONObject(0);
+            if (reportData != null && reportData.containsKey("weekData")) {
+                List<Map<String, Object>> weekData = (List<Map<String, Object>>) reportData.get("weekData");
+                for (Map<String, Object> day : weekData) {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("name", day.get("dayName"));
+                    item.put("value", day.getOrDefault("executionCount", 0));
+                    result.add(item);
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 从周执行量报告中提取摘要
+     */
+    private Map<String, Object> extractWeeklyExecutionSummary(StatisticsReportDTO report) {
+        Map<String, Object> summary = new HashMap<>();
+        if (report != null && report.getContent() != null && !report.getContent().isEmpty()) {
+            Map<String, Object> reportData = report.getContent().getJSONObject(0);
+            if (reportData != null && reportData.containsKey("summary")) {
+                summary = (Map<String, Object>) reportData.get("summary");
+            }
+        }
+        return summary;
+    }
+
+    /**
+     * 从成功率报告中提取对比数据
+     */
+    private List<Map<String, Object>> extractSuccessRateCompareData(StatisticsReportDTO report) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        if (report != null && report.getContent() != null && !report.getContent().isEmpty()) {
+            Map<String, Object> reportData = report.getContent().getJSONObject(0);
+            if (reportData != null && reportData.containsKey("rateData")) {
+                List<Map<String, Object>> rateData = (List<Map<String, Object>>) reportData.get("rateData");
+                for (Map<String, Object> item : rateData) {
+                    Map<String, Object> dataItem = new HashMap<>();
+                    dataItem.put("name", item.get("name"));
+                    dataItem.put("value", item.get("value"));
+                    dataItem.put("percentage", item.get("percentage"));
+                    result.add(dataItem);
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 从成功率报告中提取摘要
+     */
+    private Map<String, Object> extractSuccessRateSummary(StatisticsReportDTO report) {
+        Map<String, Object> summary = new HashMap<>();
+        if (report != null && report.getContent() != null && !report.getContent().isEmpty()) {
+            Map<String, Object> reportData = report.getContent().getJSONObject(0);
+            if (reportData != null && reportData.containsKey("summary")) {
+                summary = (Map<String, Object>) reportData.get("summary");
+            }
+        }
+        return summary;
+    }
+
+    /**
+     * 从协议类型分布报告中提取对比数据
+     */
+    private List<Map<String, Object>> extractProtocolDistributionCompareData(StatisticsReportDTO report) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        if (report != null && report.getContent() != null && !report.getContent().isEmpty()) {
+            Map<String, Object> reportData = report.getContent().getJSONObject(0);
+            if (reportData != null && reportData.containsKey("categoryData")) {
+                List<Map<String, Object>> categoryData = (List<Map<String, Object>>) reportData.get("categoryData");
+                for (Map<String, Object> item : categoryData) {
+                    Map<String, Object> dataItem = new HashMap<>();
+                    dataItem.put("name", item.get("categoryName"));
+                    dataItem.put("value", item.get("protocolCount"));
+                    result.add(dataItem);
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 从协议类型分布报告中提取摘要
+     */
+    private Map<String, Object> extractProtocolDistributionSummary(StatisticsReportDTO report) {
+        Map<String, Object> summary = new HashMap<>();
+        if (report != null && report.getContent() != null && !report.getContent().isEmpty()) {
+            Map<String, Object> reportData = report.getContent().getJSONObject(0);
+            if (reportData != null) {
+                summary.put("total", reportData.get("totalProtocolCount"));
+                summary.put("categoryCount", reportData.containsKey("categoryData") ? 
+                    ((List<?>) reportData.get("categoryData")).size() : 0);
+            }
+        }
+        return summary;
+    }
+
+    /**
+     * 获取指标类型显示名称
+     */
+    private String getMetricTypeName(String metricType) {
+        if (metricType == null) return "日执行量统计";
+        switch (metricType.toUpperCase()) {
+            case "SUCCESS_RATE": return "成功率分析";
+            case "RESPONSE_TIME": return "平均响应时间";
+            case "PROTOCOL_DISTRIBUTION": return "协议类型分布";
+            case "FAILURE_REASONS": return "失败原因TOP5";
+            case "WEEKLY_EXECUTION":
+            default: return "日执行量统计";
+        }
+    }
+
+    /**
+     * 获取日执行量对比数据
+     */
+    private List<Map<String, Object>> getWeeklyExecutionCompareData(String startDate, String endDate, String dataSource) {
+        try {
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+            LocalDateTime startTime = start.atStartOfDay();
+            LocalDateTime endTime = end.atTime(23, 59, 59);
+            
+            List<Map<String, Object>> weeklyStats;
+            switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
+                case "UNIFIED":
+                    weeklyStats = templateStatisticsMapper.getUnifiedWeeklyExecutionStats(startTime, endTime);
+                    break;
+                case "JOB_LOG":
+                default:
+                    weeklyStats = templateStatisticsMapper.getWeeklyExecutionStats(startTime, endTime);
+                    break;
+            }
+            
+            // 初始化周一到周日的数据
+            Map<String, Object> weekDays = new LinkedHashMap<>();
+            weekDays.put("Monday", createDayData("Monday", "星期一", 2));
+            weekDays.put("Tuesday", createDayData("Tuesday", "星期二", 3));
+            weekDays.put("Wednesday", createDayData("Wednesday", "星期三", 4));
+            weekDays.put("Thursday", createDayData("Thursday", "星期四", 5));
+            weekDays.put("Friday", createDayData("Friday", "星期五", 6));
+            weekDays.put("Saturday", createDayData("Saturday", "星期六", 7));
+            weekDays.put("Sunday", createDayData("Sunday", "星期日", 1));
+            
+            // 填充实际数据
+            for (Map<String, Object> stat : weeklyStats) {
+                String dayName = safeGetString(stat, "day_name");
+                BigDecimal executionCount = safeGetBigDecimal(stat, "execution_count");
+                if (dayName != null && weekDays.containsKey(dayName)) {
+                    Map<String, Object> dayData = (Map<String, Object>) weekDays.get(dayName);
+                    dayData.put("value", executionCount != null ? executionCount.longValue() : 0);
+                }
+            }
+            
+            // 转换为列表
+            List<Map<String, Object>> result = new ArrayList<>();
+            result.add((Map<String, Object>) weekDays.get("Monday"));
+            result.add((Map<String, Object>) weekDays.get("Tuesday"));
+            result.add((Map<String, Object>) weekDays.get("Wednesday"));
+            result.add((Map<String, Object>) weekDays.get("Thursday"));
+            result.add((Map<String, Object>) weekDays.get("Friday"));
+            result.add((Map<String, Object>) weekDays.get("Saturday"));
+            result.add((Map<String, Object>) weekDays.get("Sunday"));
+            
+            return result;
+        } catch (Exception e) {
+            log.error("获取日执行量对比数据失败", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 获取成功率对比数据
+     */
+    private List<Map<String, Object>> getSuccessRateCompareData(String startDate, String endDate, String dataSource) {
+        try {
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+            LocalDateTime startTime = start.atStartOfDay();
+            LocalDateTime endTime = end.atTime(23, 59, 59);
+            
+            Map<String, Object> stats;
+            switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
+                case "BATCH":
+                    stats = templateStatisticsMapper.getBatchSuccessRateStats(startTime, endTime);
+                    break;
+                case "UNIFIED":
+                    stats = templateStatisticsMapper.getUnifiedSuccessRateStats(startTime, endTime);
+                    break;
+                case "JOB_LOG":
+                default:
+                    stats = templateStatisticsMapper.getSuccessRateStats(startTime, endTime);
+                    break;
+            }
+            
+            BigDecimal totalCount = safeGetBigDecimal(stats, "total_count");
+            BigDecimal successCount = safeGetBigDecimal(stats, "success_count");
+            BigDecimal failureCount = safeGetBigDecimal(stats, "failure_count");
+            
+            long total = totalCount != null ? totalCount.longValue() : 0;
+            long success = successCount != null ? successCount.longValue() : 0;
+            long failure = failureCount != null ? failureCount.longValue() : 0;
+            
+            List<Map<String, Object>> result = new ArrayList<>();
+            
+            Map<String, Object> successData = new HashMap<>();
+            successData.put("name", "成功");
+            successData.put("value", success);
+            successData.put("percentage", total > 0 ? (double) success / total * 100 : 0);
+            result.add(successData);
+            
+            Map<String, Object> failureData = new HashMap<>();
+            failureData.put("name", "失败");
+            failureData.put("value", failure);
+            failureData.put("percentage", total > 0 ? (double) failure / total * 100 : 0);
+            result.add(failureData);
+            
+            return result;
+        } catch (Exception e) {
+            log.error("获取成功率对比数据失败", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 获取响应时间对比数据（按日期聚合）
+     */
+    private List<Map<String, Object>> getResponseTimeCompareData(String startDate, String endDate, String dataSource) {
+        try {
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+            
+            List<Map<String, Object>> result = new ArrayList<>();
+            
+            // 按日期遍历，获取每天的平均响应时间
+            LocalDate currentDate = start;
+            while (!currentDate.isAfter(end)) {
+                LocalDateTime startTime = currentDate.atStartOfDay();
+                LocalDateTime endTime = currentDate.atTime(23, 59, 59);
+                
+                List<Map<String, Object>> hourlyStats;
+                switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
+                    case "BATCH":
+                        hourlyStats = templateStatisticsMapper.getBatchHourlyResponseTimeStats(startTime, endTime);
+                        break;
+                    case "UNIFIED":
+                        hourlyStats = templateStatisticsMapper.getUnifiedHourlyResponseTimeStats(startTime, endTime);
+                        break;
+                    case "JOB_LOG":
+                    default:
+                        hourlyStats = templateStatisticsMapper.getHourlyResponseTimeStats(startTime, endTime);
+                        break;
+                }
+                
+                // 计算当日平均响应时间
+                double totalDuration = 0;
+                int totalExecutions = 0;
+                for (Map<String, Object> stat : hourlyStats) {
+                    BigDecimal executionCount = safeGetBigDecimal(stat, "execution_count");
+                    BigDecimal avgDuration = safeGetBigDecimal(stat, "avg_duration");
+                    if (executionCount != null && avgDuration != null) {
+                        totalDuration += avgDuration.doubleValue() * executionCount.longValue();
+                        totalExecutions += executionCount.longValue();
+                    }
+                }
+                
+                Map<String, Object> dayData = new HashMap<>();
+                dayData.put("name", currentDate.format(DateTimeFormatter.ISO_DATE));
+                dayData.put("value", totalExecutions > 0 ? totalDuration / totalExecutions : 0);
+                dayData.put("executionCount", totalExecutions);
+                
+                result.add(dayData);
+                
+                currentDate = currentDate.plusDays(1);
+            }
+            
+            return result;
+        } catch (Exception e) {
+            log.error("获取响应时间对比数据失败", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 获取协议类型分布对比数据
+     */
+    private List<Map<String, Object>> getProtocolDistributionCompareData(String startDate, String endDate, String dataSource) {
+        try {
+            // 协议类型分布不依赖时间范围，查询协议类型表
+            List<Map<String, Object>> categoryStats = templateStatisticsMapper.getProtocolCategoryStats(null, null);
+            
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (Map<String, Object> stat : categoryStats) {
+                String category = safeGetString(stat, "category");
+                BigDecimal protocolCount = safeGetBigDecimal(stat, "protocol_count");
+                
+                Map<String, Object> item = new HashMap<>();
+                item.put("name", category);
+                item.put("value", protocolCount != null ? protocolCount.longValue() : 0);
+                result.add(item);
+            }
+            
+            return result;
+        } catch (Exception e) {
+            log.error("获取协议类型分布对比数据失败", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 获取失败原因对比数据
+     */
+    private List<Map<String, Object>> getFailureReasonsCompareData(String startDate, String endDate, String dataSource) {
+        try {
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+            LocalDateTime startTime = start.atStartOfDay();
+            LocalDateTime endTime = end.atTime(23, 59, 59);
+            
+            List<Map<String, Object>> failureReasons;
+            switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
+                case "BATCH":
+                    failureReasons = templateStatisticsMapper.getBatchTopFailureReasons(startTime, endTime);
+                    break;
+                case "UNIFIED":
+                case "JOB_LOG":
+                default:
+                    failureReasons = templateStatisticsMapper.getTopFailureReasons(startTime, endTime);
+                    break;
+            }
+            
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (Map<String, Object> reason : failureReasons) {
+                String failureReason = safeGetString(reason, "failure_reason");
+                BigDecimal failureCount = safeGetBigDecimal(reason, "failure_count");
+                
+                Map<String, Object> item = new HashMap<>();
+                item.put("name", failureReason);
+                item.put("value", failureCount != null ? failureCount.longValue() : 0);
+                result.add(item);
+            }
+            
+            return result;
+        } catch (Exception e) {
+            log.error("获取失败原因对比数据失败", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 计算日执行量摘要
+     */
+    private Map<String, Object> calculateWeeklyExecutionSummary(List<Map<String, Object>> data) {
+        Map<String, Object> summary = new HashMap<>();
+        long total = 0;
+        long max = 0;
+        long min = Long.MAX_VALUE;
+        
+        for (Map<String, Object> day : data) {
+            long value = (Long) day.getOrDefault("value", 0L);
+            total += value;
+            max = Math.max(max, value);
+            min = Math.min(min, value);
+        }
+        
+        summary.put("total", total);
+        summary.put("avg", data.size() > 0 ? total / data.size() : 0);
+        summary.put("max", max);
+        summary.put("min", min == Long.MAX_VALUE ? 0 : min);
+        
+        return summary;
+    }
+
+    /**
+     * 计算成功率摘要
+     */
+    private Map<String, Object> calculateSuccessRateSummary(List<Map<String, Object>> data) {
+        Map<String, Object> summary = new HashMap<>();
+        long success = 0;
+        long failure = 0;
+        
+        for (Map<String, Object> item : data) {
+            String name = (String) item.get("name");
+            long value = (Long) item.getOrDefault("value", 0L);
+            if ("成功".equals(name)) {
+                success = value;
+            } else if ("失败".equals(name)) {
+                failure = value;
+            }
+        }
+        
+        long total = success + failure;
+        summary.put("total", total);
+        summary.put("success", success);
+        summary.put("failure", failure);
+        summary.put("successRate", total > 0 ? (double) success / total * 100 : 0);
+        
+        return summary;
+    }
+
+    /**
+     * 计算响应时间摘要
+     */
+    private Map<String, Object> calculateResponseTimeSummary(List<Map<String, Object>> data) {
+        Map<String, Object> summary = new HashMap<>();
+        double totalDuration = 0;
+        int totalExecutions = 0;
+        double max = 0;
+        double min = Double.MAX_VALUE;
+        
+        for (Map<String, Object> day : data) {
+            double value = (Double) day.getOrDefault("value", 0.0);
+            int executions = (Integer) day.getOrDefault("executionCount", 0);
+            totalDuration += value * executions;
+            totalExecutions += executions;
+            max = Math.max(max, value);
+            min = Math.min(min, value);
+        }
+        
+        summary.put("avgDuration", totalExecutions > 0 ? totalDuration / totalExecutions : 0);
+        summary.put("maxDuration", max);
+        summary.put("minDuration", min == Double.MAX_VALUE ? 0 : min);
+        summary.put("totalExecutions", totalExecutions);
+        
+        return summary;
+    }
+
+    /**
+     * 计算协议分布摘要
+     */
+    private Map<String, Object> calculateProtocolDistributionSummary(List<Map<String, Object>> data) {
+        Map<String, Object> summary = new HashMap<>();
+        long total = 0;
+        
+        for (Map<String, Object> item : data) {
+            long value = (Long) item.getOrDefault("value", 0L);
+            total += value;
+        }
+        
+        summary.put("total", total);
+        summary.put("categoryCount", data.size());
+        
+        return summary;
+    }
+
+    /**
+     * 计算失败原因摘要
+     */
+    private Map<String, Object> calculateFailureReasonsSummary(List<Map<String, Object>> data) {
+        Map<String, Object> summary = new HashMap<>();
+        long total = 0;
+        
+        for (Map<String, Object> item : data) {
+            long value = (Long) item.getOrDefault("value", 0L);
+            total += value;
+        }
+        
+        summary.put("total", total);
+        summary.put("topCount", data.size());
+        
+        return summary;
+    }
+
+    /**
+     * 计算对比摘要
+     */
+    private Map<String, Object> calculateCompareSummary(CompareResultDTO result, String reportType) {
+        Map<String, Object> summary = new HashMap<>();
+        
+        Map<String, Object> group1Summary = result.getSummary1();
+        Map<String, Object> group2Summary = result.getSummary2();
+        
+        if (group1Summary == null) group1Summary = new HashMap<>();
+        if (group2Summary == null) group2Summary = new HashMap<>();
+        
+        switch (reportType != null ? reportType.toUpperCase() : "WEEKLY_EXECUTION") {
+            case "SUCCESS_RATE":
+                double rate1 = (Double) group1Summary.getOrDefault("successRate", 0.0);
+                double rate2 = (Double) group2Summary.getOrDefault("successRate", 0.0);
+                summary.put("change", rate2 - rate1);
+                summary.put("changePercentage", rate1 > 0 ? (rate2 - rate1) / rate1 * 100 : 0);
+                break;
+            case "RESPONSE_TIME":
+                double time1 = (Double) group1Summary.getOrDefault("avgDuration", 0.0);
+                double time2 = (Double) group2Summary.getOrDefault("avgDuration", 0.0);
+                summary.put("change", time2 - time1);
+                summary.put("changePercentage", time1 > 0 ? (time2 - time1) / time1 * 100 : 0);
+                break;
+            case "PROTOCOL_DISTRIBUTION":
+                long protoTotal1 = (Long) group1Summary.getOrDefault("total", 0L);
+                long protoTotal2 = (Long) group2Summary.getOrDefault("total", 0L);
+                summary.put("change", protoTotal2 - protoTotal1);
+                summary.put("changePercentage", protoTotal1 > 0 ? (double) (protoTotal2 - protoTotal1) / protoTotal1 * 100 : 0);
+                break;
+            case "FAILURE_REASONS":
+                long failTotal1 = (Long) group1Summary.getOrDefault("total", 0L);
+                long failTotal2 = (Long) group2Summary.getOrDefault("total", 0L);
+                summary.put("change", failTotal2 - failTotal1);
+                summary.put("changePercentage", failTotal1 > 0 ? (double) (failTotal2 - failTotal1) / failTotal1 * 100 : 0);
+                break;
+            case "WEEKLY_EXECUTION":
+            default:
+                long total1 = (Long) group1Summary.getOrDefault("total", 0L);
+                long total2 = (Long) group2Summary.getOrDefault("total", 0L);
+                summary.put("change", total2 - total1);
+                summary.put("changePercentage", total1 > 0 ? (double) (total2 - total1) / total1 * 100 : 0);
+                break;
+        }
+        
+        return summary;
     }
 }

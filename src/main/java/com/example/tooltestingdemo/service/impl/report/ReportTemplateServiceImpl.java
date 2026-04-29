@@ -1,5 +1,6 @@
 package com.example.tooltestingdemo.service.impl.report;
 
+import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -165,7 +166,7 @@ public class ReportTemplateServiceImpl extends ServiceImpl<ReportTemplateMapper,
         template.setTemplateType(templateXml.getTemplateType());
         template.setApplicableScene(templateXml.getApplicableScene());
         template.setTemplateStructure(templateXml.getTemplateStructure());
-        template.setChapterStructure(templateXml.getChapterStructure());
+        template.setChapterStructure(templateXml.getChapterStructure().isEmpty() ? new JSONObject().toJSONString() : templateXml.getChapterStructure());
         template.setContent(templateXml.getContent());
         template.setStyleConfig(templateXml.getStyleConfig());
         template.setIsSystemTemplate(templateXml.getIsSystemTemplate() != null ? templateXml.getIsSystemTemplate() : false);
