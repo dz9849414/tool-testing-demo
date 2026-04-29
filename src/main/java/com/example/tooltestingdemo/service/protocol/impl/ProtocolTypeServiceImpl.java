@@ -7,11 +7,13 @@ import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.*;
 import com.example.tooltestingdemo.entity.SysUser;
+import com.example.tooltestingdemo.entity.protocol.ProtocolFileImportExport;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.enums.ProtocolTypeImportStrategy;
 import com.example.tooltestingdemo.mapper.SysUserMapper;
 import com.example.tooltestingdemo.mapper.protocol.ProtocolTypeMapper;
 import com.example.tooltestingdemo.service.SecurityService;
+import com.example.tooltestingdemo.service.protocol.IProtocolFileImportExportService;
 import com.example.tooltestingdemo.service.protocol.IProtocolTypeService;
 import com.example.tooltestingdemo.service.protocol.support.ProtocolTypeImportFailureReportStore;
 import com.example.tooltestingdemo.util.LocalDateUtil;
@@ -60,15 +62,18 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     private final SysUserMapper sysUserMapper;
     private final ProtocolTypeImportFailureReportStore failureReportStore;
     private final SecurityService securityService;
+    private final IProtocolFileImportExportService protocolFileImportExportService;
 
     public ProtocolTypeServiceImpl(ProtocolTypeMapper protocolTypeMapper,
                                    SysUserMapper sysUserMapper,
                                    ProtocolTypeImportFailureReportStore failureReportStore,
-                                   SecurityService securityService) {
+                                   SecurityService securityService,
+                                   IProtocolFileImportExportService protocolFileImportExportService) {
         this.protocolTypeMapper = protocolTypeMapper;
         this.sysUserMapper = sysUserMapper;
         this.failureReportStore = failureReportStore;
         this.securityService = securityService;
+        this.protocolFileImportExportService = protocolFileImportExportService;
     }
 
     @Override
@@ -305,7 +310,11 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
             writeDataRows(sheet, dataStyle, exportRows);
 
             workbook.write(outputStream);
-            writeExcelResponse(response, EXPORT_FILE_NAME + ".xlsx", outputStream.toByteArray());
+            byte[] bytes = outputStream.toByteArray();
+            writeExcelResponse(response, EXPORT_FILE_NAME + ".xlsx", bytes);
+
+            // 写入导出记录表
+            saveExportRecordForProtocolType(dto, exportRows, bytes.length);
         }
 
         log.info("导出协议类型成功: total={}, filterName={}, filterSystem={}, filterStatus={}",
@@ -736,6 +745,27 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
                                     SFunction<ProtocolType, ?> column) {
         Optional.ofNullable(start).ifPresent(value -> queryWrapper.ge(column, value));
         Optional.ofNullable(end).ifPresent(value -> queryWrapper.le(column, value));
+    }
+
+    private void saveExportRecordForProtocolType(ProtocolTypeQueryDTO dto,
+                                                 List<ProtocolTypeExportVO> exportRows,
+                                                 long fileSize) {
+        ProtocolFileImportExport record = new ProtocolFileImportExport();
+        record.setOperationType("EXPORT");
+        record.setFileName(EXPORT_FILE_NAME + ".xlsx");
+        record.setFileFormat("xlsx");
+        record.setFileSize(fileSize);
+        record.setStatus(1);
+        record.setSuccessCount(exportRows == null ? 0 : exportRows.size());
+        record.setFailCount(0);
+        record.setStartTime(LocalDateTime.now());
+        record.setEndTime(LocalDateTime.now());
+
+        Long operatorId = securityService.getCurrentUserId();
+        record.setCreateId(operatorId);
+        record.setCreateName(operatorId == null ? "系统" : String.valueOf(operatorId));
+
+        protocolFileImportExportService.save(record);
     }
 
     private List<ProtocolTypeExportVO> buildExportRows(List<ProtocolType> protocolTypes) {
