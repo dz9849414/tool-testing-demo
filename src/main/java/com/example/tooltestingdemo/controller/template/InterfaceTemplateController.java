@@ -27,7 +27,7 @@ import org.springframework.beans.BeanUtils;
 
 /**
  * 接口模板 Controller
- * 
+ *
  * 文件位置：src/main/java/com/example/tooltestingdemo/controller/template/InterfaceTemplateController.java
  */
 @Slf4j
@@ -41,15 +41,17 @@ public class InterfaceTemplateController {
 
     /**
      * 分页查询模板列表
-     * 
+     *
      * 接口地址：GET /api/template/page
-     * 
+     *
      * @param current 当前页
      * @param size 每页条数
      * @param folderId 文件夹ID
      * @param keyword 关键词
+     * @param protocolId 协议ID
      * @param protocolType 协议类型
      * @param status 状态
+     * @param extNum1 扩展数字字段1
      * @return 分页结果VO
      */
     @GetMapping("/page")
@@ -59,19 +61,21 @@ public class InterfaceTemplateController {
             @RequestParam(defaultValue = "10") Long size,
             @RequestParam(required = false) Long folderId,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long protocolId,
             @RequestParam(required = false) String protocolType,
-            @RequestParam(required = false) Integer status) {
-        
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) Long extNum1) {
+
         Page<InterfaceTemplate> page = new Page<>(current, size);
-        IPage<InterfaceTemplateVO> result = templateService.pageTemplates(page, folderId, keyword, protocolType, status);
+        IPage<InterfaceTemplateVO> result = templateService.pageTemplates(page, folderId, keyword, protocolId, protocolType, status, extNum1);
         return Result.success(result);
     }
 
     /**
      * 获取模板详情
-     * 
+     *
      * 接口地址：GET /api/template/{id}
-     * 
+     *
      * @param id 模板ID
      * @return 模板详情VO
      */
@@ -87,9 +91,9 @@ public class InterfaceTemplateController {
 
     /**
      * 创建模板（默认创建为草稿状态）
-     * 
+     *
      * 接口地址：POST /api/template
-     * 
+     *
      * @param dto 模板DTO（包含关联数据）
      * @return 创建后的模板VO（状态为草稿）
      */
@@ -102,9 +106,9 @@ public class InterfaceTemplateController {
 
     /**
      * 更新模板
-     * 
+     *
      * 接口地址：PUT /api/template/{id}
-     * 
+     *
      * @param id 模板ID
      * @param dto 模板DTO（包含关联数据）
      * @return 是否成功
@@ -121,27 +125,28 @@ public class InterfaceTemplateController {
 
     /**
      * 删除模板
-     * 
+     *
      * 接口地址：DELETE /api/template/{id}
-     * 
+     *
      * @param id 模板ID
      * @return 是否成功
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:delete')")
-    public Result<String> deleteTemplate(@PathVariable Long id) {
-        boolean success = templateService.deleteTemplate(id);
-        if (success) {
-            return Result.success("删除成功");
+    public Result<Map<String, Object>> deleteTemplate(@PathVariable Long id) {
+        Map<String, Object> result = templateService.deleteTemplate(id);
+        if (Boolean.TRUE.equals(result.get("deleted"))) {
+            Integer cleanedRelationCount = (Integer) result.get("cleanedRelationCount");
+            return Result.success("删除成功，清理关联数据 " + cleanedRelationCount + " 条", result);
         }
         return Result.error("删除失败");
     }
 
     /**
      * 批量删除模板
-     * 
+     *
      * 接口地址：DELETE /api/template/batch
-     * 
+     *
      * @param ids 模板ID数组
      * @return 删除结果，包含成功和失败的ID列表
      */
@@ -151,27 +156,31 @@ public class InterfaceTemplateController {
         if (ids == null || ids.length == 0) {
             return Result.error("模板ID列表不能为空");
         }
-        
-        Map<String, List<Long>> result = templateService.batchDeleteTemplates(ids);
-        
+
+        Map<String, Object> result = templateService.batchDeleteTemplates(ids);
+
         Map<String, Object> data = new HashMap<>();
-        data.put("successIds", result.get("success"));
-        data.put("failIds", result.get("fail"));
-        data.put("successCount", result.get("success").size());
-        data.put("failCount", result.get("fail").size());
-        
-        if (result.get("fail").isEmpty()) {
-            return Result.success("批量删除成功", data);
+        List<Long> successIds = (List<Long>) result.get("success");
+        List<Long> failIds = (List<Long>) result.get("fail");
+        data.put("successIds", successIds);
+        data.put("failIds", failIds);
+        data.put("successCount", successIds.size());
+        data.put("failCount", failIds.size());
+        data.put("cleanedRelationCount", result.get("cleanedRelationCount"));
+        data.put("cleanupDetails", result.get("cleanupDetails"));
+
+        if (failIds.isEmpty()) {
+            return Result.success("批量删除成功，清理关联数据 " + result.get("cleanedRelationCount") + " 条", data);
         } else {
-            return Result.success("批量删除部分成功", data);
+            return Result.success("批量删除部分成功，清理关联数据 " + result.get("cleanedRelationCount") + " 条", data);
         }
     }
 
     /**
      * 复制模板
-     * 
+     *
      * 接口地址：POST /api/template/{id}/copy
-     * 
+     *
      * @param id 原模板ID
      * @param newName 新模板名称
      * @return 新模板VO
@@ -185,9 +194,9 @@ public class InterfaceTemplateController {
 
     /**
      * 发布模板
-     * 
+     *
      * 接口地址：PUT /api/template/{id}/publish
-     * 
+     *
      * @param id 模板ID
      * @return 是否成功
      */
@@ -203,9 +212,9 @@ public class InterfaceTemplateController {
 
     /**
      * 归档模板
-     * 
+     *
      * 接口地址：PUT /api/template/{id}/archive
-     * 
+     *
      * @param id 模板ID
      * @return 是否成功
      */
@@ -221,9 +230,9 @@ public class InterfaceTemplateController {
 
     /**
      * 移动模板
-     * 
+     *
      * 接口地址：PUT /api/template/{id}/move
-     * 
+     *
      * @param id 模板ID
      * @param folderId 目标文件夹ID
      * @return 是否成功
@@ -242,9 +251,9 @@ public class InterfaceTemplateController {
 
     /**
      * 保存草稿（创建新模板）
-     * 
+     *
      * 接口地址：POST /api/template/draft
-     * 
+     *
      * @param dto 模板DTO
      * @return 保存后的模板VO
      */
@@ -257,9 +266,9 @@ public class InterfaceTemplateController {
 
     /**
      * 保存草稿（更新现有模板）
-     * 
+     *
      * 接口地址：PUT /api/template/{id}/draft
-     * 
+     *
      * @param id 模板ID
      * @param dto 模板DTO
      * @return 保存后的模板VO
@@ -273,9 +282,9 @@ public class InterfaceTemplateController {
 
     /**
      * 提交审核
-     * 
+     *
      * 接口地址：POST /api/template/{id}/submit
-     * 
+     *
      * @param id 模板ID
      * @param dto 模板DTO
      * @return 提交后的模板VO
@@ -309,9 +318,9 @@ public class InterfaceTemplateController {
 
     /**
      * 审核通过
-     * 
+     *
      * 接口地址：PUT /api/template/{id}/approve
-     * 
+     *
      * @param id 模板ID
      * @return 是否成功
      */
@@ -327,9 +336,9 @@ public class InterfaceTemplateController {
 
     /**
      * 审核驳回
-     * 
+     *
      * 接口地址：PUT /api/template/{id}/reject
-     * 
+     *
      * @param id 模板ID
      * @param reason 驳回原因
      * @return 是否成功
@@ -348,9 +357,9 @@ public class InterfaceTemplateController {
 
     /**
      * 上传文件附件
-     * 
+     *
      * 接口地址：POST /api/template/{id}/files
-     * 
+     *
      * @param id 模板ID
      * @param file 文件
      * @param fileCategory 文件类别（ATTACHMENT/REQUEST/RESPONSE）
@@ -363,14 +372,14 @@ public class InterfaceTemplateController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(required = false, defaultValue = "ATTACHMENT") String fileCategory,
             @RequestParam(required = false) String description) {
-        
+
         TemplateFile templateFile = fileService.uploadFile(id, file, fileCategory, description);
         return Result.success("上传成功", templateFile);
     }
 
     /**
      * 批量上传文件
-     * 
+     *
      * 接口地址：POST /api/template/{id}/files/batch
      */
     @PostMapping("/{id}/files/batch")
@@ -378,14 +387,14 @@ public class InterfaceTemplateController {
             @PathVariable Long id,
             @RequestParam("files") List<MultipartFile> files,
             @RequestParam(required = false, defaultValue = "ATTACHMENT") String fileCategory) {
-        
+
         List<TemplateFile> result = fileService.uploadFiles(id, files, fileCategory);
         return Result.success("上传成功", result);
     }
 
     /**
      * 获取模板文件列表
-     * 
+     *
      * 接口地址：GET /api/template/{id}/files
      */
     @GetMapping("/{id}/files")
@@ -397,7 +406,7 @@ public class InterfaceTemplateController {
 
     /**
      * 删除文件
-     * 
+     *
      * 接口地址：DELETE /api/template/files/{fileId}
      */
     @DeleteMapping("/files/{fileId}")
@@ -412,20 +421,20 @@ public class InterfaceTemplateController {
 
     /**
      * 下载文件
-     * 
+     *
      * 接口地址：GET /api/template/files/{fileId}/download
      */
     @GetMapping("/files/{fileId}/download")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:edit')")
     public ResponseEntity<byte[]> downloadFile(@PathVariable Long fileId) {
         TemplateFile file = fileService.getFileById(fileId);
-        
+
         if (file == null) {
             return ResponseEntity.notFound().build();
         }
 
         byte[] fileContent = fileService.downloadFile(fileId);
-        
+
         // 对文件名进行URL编码，防止中文乱码
         String encodedFileName = URLEncoder.encode(file.getFileOriginalName(), StandardCharsets.UTF_8)
                 .replace("+", "%20");
@@ -438,7 +447,7 @@ public class InterfaceTemplateController {
 
     /**
      * 通过文件名下载文件（用于直接URL访问）
-     * 
+     *
      * 接口地址：GET /api/template/file/download/{filename}
      */
     @GetMapping("/file/download/{filename:.+}")
@@ -446,7 +455,7 @@ public class InterfaceTemplateController {
     public ResponseEntity<byte[]> downloadFileByName(@PathVariable String filename) {
         // 根据文件名查找文件记录
         List<TemplateFile> files = fileService.getFilesByTemplateId(0L); // 这里需要从service层提供按文件名查询的方法
-        
+
         // 简化为直接通过路径访问，实际应该通过数据库查询
         return ResponseEntity.notFound().build();
     }

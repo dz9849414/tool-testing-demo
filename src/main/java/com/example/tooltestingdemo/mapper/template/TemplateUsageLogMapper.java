@@ -38,4 +38,14 @@ public interface TemplateUsageLogMapper extends BaseMapper<TemplateUsageLog> {
      * SQL ID：countByTemplateId
      */
     int countByTemplateId(@Param("templateId") Long templateId);
+
+    /**
+     * 根据模板ID删除使用记录
+     */
+    default int deleteByTemplateId(Long templateId) {
+        return this.delete(
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<TemplateUsageLog>()
+                .eq(TemplateUsageLog::getTemplateId, templateId)
+        );
+    }
 }

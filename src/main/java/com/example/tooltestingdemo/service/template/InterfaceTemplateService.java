@@ -48,15 +48,19 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
      * @param page 分页参数
      * @param folderId 文件夹ID
      * @param keyword 关键词
+     * @param protocolId 协议ID
      * @param protocolType 协议类型
      * @param status 状态
+     * @param extNum1 扩展数字字段1
      * @return 分页结果VO
      */
     IPage<InterfaceTemplateVO> pageTemplates(Page<InterfaceTemplate> page,
                                               Long folderId,
                                               String keyword,
+                                              Long protocolId,
                                               String protocolType,
-                                              Integer status);
+                                              Integer status,
+                                              Long extNum1);
 
     /**
      * 复制模板
@@ -89,7 +93,7 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
      * @param id 模板ID
      * @return 是否成功
      */
-    boolean deleteTemplate(Long id);
+    Map<String, Object> deleteTemplate(Long id);
 
     /**
      * 批量删除模板（逻辑删除）
@@ -97,7 +101,7 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
      * @param ids 模板ID数组
      * @return 删除结果，包含成功和失败的ID列表
      */
-    Map<String, List<Long>> batchDeleteTemplates(Long[] ids);
+    Map<String, Object> batchDeleteTemplates(Long[] ids);
 
     /**
      * 移动模板到指定文件夹

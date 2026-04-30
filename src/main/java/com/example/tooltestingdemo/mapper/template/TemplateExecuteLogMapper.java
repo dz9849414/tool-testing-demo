@@ -9,4 +9,14 @@ import org.apache.ibatis.annotations.Mapper;
  */
 @Mapper
 public interface TemplateExecuteLogMapper extends BaseMapper<TemplateExecuteLog> {
+
+    /**
+     * 根据模板ID删除执行日志
+     */
+    default int deleteByTemplateId(Long templateId) {
+        return this.delete(
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<TemplateExecuteLog>()
+                .eq(TemplateExecuteLog::getTemplateId, templateId)
+        );
+    }
 }

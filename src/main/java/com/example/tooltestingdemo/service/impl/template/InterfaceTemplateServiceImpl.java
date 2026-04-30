@@ -49,7 +49,14 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     private final TemplatePostProcessorMapper postProcessorMapper;
     private final TemplateVariableMapper variableMapper;
     private final TemplateHistoryMapper historyMapper;
+    private final TemplateEnvironmentMapper environmentMapper;
+    private final TemplateFavoriteMapper favoriteMapper;
     private final TemplateFileMapper fileMapper;
+    private final TemplateShareMapper shareMapper;
+    private final TemplateUsageLogMapper usageLogMapper;
+    private final TemplateExecuteLogMapper executeLogMapper;
+    private final TemplateJobItemMapper jobItemMapper;
+    private final TemplateJobLogMapper jobLogMapper;
     private final TemplateValidator templateValidator;
 
     // ========== 基础 CRUD ==========
@@ -69,15 +76,22 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
             InterfaceTemplateVO oldVO = getTemplateDetail(id);
 
             BeanUtils.copyProperties(dto, template, "id", "version", "status", "createTime");
-            String newVersion = VersionGenerator.incrementMinorVersion(template.getVersion());
-            template.setVersion(newVersion);
+            String oldVersion = template.getVersion();
+            boolean versionUp = shouldIncrementVersion(dto.getVersionUp());
+            String currentVersion = versionUp
+                ? VersionGenerator.incrementMinorVersion(oldVersion)
+                : oldVersion;
+            template.setVersion(currentVersion);
             updateById(template);
-            deleteRelatedData(id);
+            deleteTemplateConfigData(id);
             saveRelatedData(id, dto);
 
             InterfaceTemplateVO newVO = getTemplateDetail(id);
-            saveHistory(oldTemplate, oldVO, newVO, "UPDATE", "更新模板，版本号：" + newVersion);
-            log.info("更新模板成功: id={}, version={}", id, newVersion);
+            String historySummary = versionUp
+                ? "更新模板，版本号：" + currentVersion
+                : "更新模板，版本号不变：" + currentVersion;
+            saveHistory(oldTemplate, oldVO, newVO, "UPDATE", historySummary);
+            log.info("更新模板成功: id={}, version={}, versionUp={}", id, currentVersion, dto.getVersionUp());
             return true;
         }).orElse(false);
     }
@@ -93,8 +107,10 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
 
     @Override
     public IPage<InterfaceTemplateVO> pageTemplates(Page<InterfaceTemplate> page, Long folderId,
-                                                     String keyword, String protocolType, Integer status) {
-        IPage<InterfaceTemplate> entityPage = baseMapper.selectTemplatePage(page, folderId, keyword, protocolType, status);
+                                                     String keyword, Long protocolId, String protocolType, Integer status,
+                                                     Long extNum1) {
+        IPage<InterfaceTemplate> entityPage = baseMapper.selectTemplatePage(
+            page, folderId, keyword, protocolId, protocolType, status, extNum1);
 
         Page<InterfaceTemplateVO> voPage = new Page<>(entityPage.getCurrent(), entityPage.getSize(), entityPage.getTotal());
         voPage.setPages(entityPage.getPages());
@@ -146,31 +162,53 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean deleteTemplate(Long id) {
+    public Map<String, Object> deleteTemplate(Long id) {
         return Optional.ofNullable(getById(id)).map(t -> {
             InterfaceTemplateVO oldVO = getTemplateDetail(id);
             t.setStatus(TemplateEnums.TemplateStatus.DISABLED.getCode());
             if (!updateById(t)) {
-                return false;
+                return buildDeleteResult(false, 0, Collections.emptyMap());
             }
 
+            Map<String, Integer> cleanupDetails = deleteTemplateAllRelations(id);
+            int cleanedRelationCount = cleanupDetails.values().stream().mapToInt(Integer::intValue).sum();
+
             InterfaceTemplateVO newVO = getTemplateDetail(id);
-            saveHistory(t, oldVO, newVO, "DELETE", "删除模板");
-            return removeById(id);
-        }).orElse(false);
+            saveHistory(t, oldVO, newVO, "DELETE", "删除模板，清理关联数据：" + cleanedRelationCount + "条");
+            boolean deleted = removeById(id);
+            return buildDeleteResult(deleted, cleanedRelationCount, cleanupDetails);
+        }).orElseGet(() -> buildDeleteResult(false, 0, Collections.emptyMap()));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Map<String, List<Long>> batchDeleteTemplates(Long[] ids) {
-        Map<Boolean, List<Long>> result = Stream.of(ids)
-            .collect(Collectors.partitioningBy(this::deleteTemplate));
+    public Map<String, Object> batchDeleteTemplates(Long[] ids) {
+        List<Long> successIds = new ArrayList<>();
+        List<Long> failIds = new ArrayList<>();
+        int cleanedRelationCount = 0;
+        Map<Long, Map<String, Integer>> cleanupDetails = new LinkedHashMap<>();
 
-        Map<String, List<Long>> map = new HashMap<>();
-        map.put("success", result.get(true));
-        map.put("fail", result.get(false));
-        log.info("批量删除完成: 成功={}, 失败={}", result.get(true).size(), result.get(false).size());
-        return map;
+        for (Long id : ids) {
+            Map<String, Object> deleteResult = deleteTemplate(id);
+            if (Boolean.TRUE.equals(deleteResult.get("deleted"))) {
+                successIds.add(id);
+                Integer currentCleaned = (Integer) deleteResult.get("cleanedRelationCount");
+                cleanedRelationCount += currentCleaned == null ? 0 : currentCleaned;
+                @SuppressWarnings("unchecked")
+                Map<String, Integer> currentDetails = (Map<String, Integer>) deleteResult.get("cleanupDetails");
+                cleanupDetails.put(id, currentDetails == null ? Collections.emptyMap() : currentDetails);
+            } else {
+                failIds.add(id);
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", successIds);
+        result.put("fail", failIds);
+        result.put("cleanedRelationCount", cleanedRelationCount);
+        result.put("cleanupDetails", cleanupDetails);
+        log.info("批量删除完成: 成功={}, 失败={}, 清理关联数据={}", successIds.size(), failIds.size(), cleanedRelationCount);
+        return result;
     }
 
     // ========== 草稿与审核 ==========
@@ -255,7 +293,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
                 .orElseThrow(() -> new TemplateValidationException(TemplateValidationException.ErrorType.OPERATION_NOT_ALLOWED, "当前状态不可编辑"));
 
             oldVO = getTemplateDetail(id);
-            deleteRelatedData(id);
+            deleteTemplateConfigData(id);
         }
 
         Long templateId = doSaveTemplate(id, dto, TemplateEnums.TemplateStatus.DRAFT.getCode(), newVersion,
@@ -270,6 +308,10 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         }
 
         return newVO;
+    }
+
+    private boolean shouldIncrementVersion(Integer versionUp) {
+        return Objects.equals(versionUp, 1);
     }
 
     private Long doSaveTemplate(Long id, InterfaceTemplateDTO dto, Integer status, String version, String desc) {
@@ -428,7 +470,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         });
     }
 
-    private void deleteRelatedData(Long templateId) {
+    private void deleteTemplateConfigData(Long templateId) {
         headerMapper.deleteByTemplateId(templateId);
         parameterMapper.deleteByTemplateId(templateId);
         formDataMapper.deleteByTemplateId(templateId);
@@ -436,11 +478,31 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         preProcessorMapper.deleteByTemplateId(templateId);
         postProcessorMapper.deleteByTemplateId(templateId);
         variableMapper.deleteByTemplateId(templateId);
-
         deleteFiles(templateId);
     }
 
-    private void deleteFiles(Long templateId) {
+    private Map<String, Integer> deleteTemplateAllRelations(Long templateId) {
+        Map<String, Integer> cleanupDetails = new LinkedHashMap<>();
+        cleanupDetails.put("headers", headerMapper.deleteByTemplateId(templateId));
+        cleanupDetails.put("parameters", parameterMapper.deleteByTemplateId(templateId));
+        cleanupDetails.put("formData", formDataMapper.deleteByTemplateId(templateId));
+        cleanupDetails.put("assertions", assertionMapper.deleteByTemplateId(templateId));
+        cleanupDetails.put("preProcessors", preProcessorMapper.deleteByTemplateId(templateId));
+        cleanupDetails.put("postProcessors", postProcessorMapper.deleteByTemplateId(templateId));
+        cleanupDetails.put("variables", variableMapper.deleteByTemplateId(templateId));
+        cleanupDetails.put("environments", environmentMapper.deleteByTemplateId(templateId));
+        cleanupDetails.put("favorites", favoriteMapper.deleteByTemplateId(templateId));
+        cleanupDetails.put("shares", shareMapper.deleteByTemplateId(templateId));
+        cleanupDetails.put("usageLogs", usageLogMapper.deleteByTemplateId(templateId));
+        cleanupDetails.put("executeLogs", executeLogMapper.deleteByTemplateId(templateId));
+        cleanupDetails.put("jobItems", jobItemMapper.deleteByTemplateId(templateId));
+        cleanupDetails.put("jobLogs", jobLogMapper.deleteByTemplateId(templateId));
+        cleanupDetails.put("histories", historyMapper.deleteByTemplateId(templateId));
+        cleanupDetails.put("files", deleteFiles(templateId));
+        return cleanupDetails;
+    }
+
+    private int deleteFiles(Long templateId) {
         fileMapper.selectByTemplateId(templateId).forEach(file -> {
             try {
                 Files.deleteIfExists(Paths.get(file.getFilePath()));
@@ -448,7 +510,15 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
                 log.warn("删除物理文件失败");
             }
         });
-        fileMapper.deleteByTemplateId(templateId);
+        return fileMapper.deleteByTemplateId(templateId);
+    }
+
+    private Map<String, Object> buildDeleteResult(boolean deleted, int cleanedRelationCount, Map<String, Integer> cleanupDetails) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("deleted", deleted);
+        result.put("cleanedRelationCount", cleanedRelationCount);
+        result.put("cleanupDetails", cleanupDetails);
+        return result;
     }
 
     private void saveHistory(InterfaceTemplate template, InterfaceTemplateVO oldVO, InterfaceTemplateVO newVO, String opType, String summary) {

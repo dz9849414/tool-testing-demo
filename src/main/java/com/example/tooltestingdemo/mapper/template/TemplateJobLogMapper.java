@@ -24,4 +24,14 @@ public interface TemplateJobLogMapper extends BaseMapper<TemplateJobLog> {
      * @return
      */
     List<TemplateJobLog> selectLastLogsByJobIds(@Param("jobIds") List<Long> jobIds);
+
+    /**
+     * 根据模板ID删除任务日志
+     */
+    default int deleteByTemplateId(Long templateId) {
+        return this.delete(
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<TemplateJobLog>()
+                .eq(TemplateJobLog::getTemplateId, templateId)
+        );
+    }
 }

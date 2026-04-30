@@ -1,7 +1,6 @@
 package com.example.tooltestingdemo.controller.protocol;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.example.tooltestingdemo.annotation.ProtocolPermissionFilter;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.dto.ProtocolConfigCreateDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigModifyDTO;

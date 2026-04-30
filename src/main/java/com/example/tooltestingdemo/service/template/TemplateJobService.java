@@ -28,6 +28,11 @@ public interface TemplateJobService extends IService<TemplateJob> {
             Page<TemplateJob> page, String keyword, Integer status);
 
     /**
+     * 根据模板ID查询关联任务列表（附带最近一次执行状态）
+     */
+    List<TemplateJobListVO> listJobsByTemplateId(Long templateId);
+
+    /**
      * 创建任务
      */
     TemplateJob createJob(TemplateJob job);
@@ -74,6 +79,31 @@ public interface TemplateJobService extends IService<TemplateJob> {
      * @return 包含 status 和 details（若已完成）
      */
     Map<String, Object> getBatchTriggerResult(String batchId);
+
+    /**
+     * 查询异步批量执行进度
+     */
+    Map<String, Object> getBatchTriggerProgress(String batchId);
+
+    /**
+     * 暂停异步批量执行
+     */
+    Map<String, Object> pauseBatchTrigger(String batchId);
+
+    /**
+     * 取消异步批量执行
+     */
+    Map<String, Object> cancelBatchTrigger(String batchId);
+
+    /**
+     * 恢复已暂停的异步批量执行
+     */
+    Map<String, Object> resumeBatchTrigger(String batchId);
+
+    /**
+     * 重试失败的批量执行项
+     */
+    Map<String, Object> retryFailedBatchTrigger(String batchId);
 
     /**
      * 查询任务最近日志

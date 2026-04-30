@@ -395,6 +395,8 @@ public class TemplateEnums {
     public enum JobBatchStatus {
         PENDING("PENDING", "待处理"),
         RUNNING("RUNNING", "运行中"),
+        PAUSED("PAUSED", "已暂停"),
+        CANCELED("CANCELED", "已取消"),
         DONE("DONE", "已完成"),
         FAILED("FAILED", "失败");
 

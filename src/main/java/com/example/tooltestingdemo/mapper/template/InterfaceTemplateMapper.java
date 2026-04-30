@@ -26,8 +26,10 @@ public interface InterfaceTemplateMapper extends BaseMapper<InterfaceTemplate> {
     IPage<InterfaceTemplate> selectTemplatePage(Page<InterfaceTemplate> page, 
                                                  @Param("folderId") Long folderId,
                                                  @Param("keyword") String keyword,
+                                                 @Param("protocolId") Long protocolId,
                                                  @Param("protocolType") String protocolType,
-                                                 @Param("status") Integer status);
+                                                 @Param("status") Integer status,
+                                                 @Param("extNum1") Long extNum1);
 
     /**
      * 查询模板的所有版本
