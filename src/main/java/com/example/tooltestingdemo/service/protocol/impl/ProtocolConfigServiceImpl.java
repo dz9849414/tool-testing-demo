@@ -65,6 +65,7 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ProtocolConfig createProtocolConfig(ProtocolConfigCreateDTO dto) {
+        log.info("服务-新增协议配置开始, protocolId={}, configName={}", dto.getProtocolId(), dto.getConfigName());
         validateUrlConfig(dto.getUrlConfigList());
         validateAuthConfig(dto.getAuthConfigList());
 
@@ -87,30 +88,39 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         entity.setAuthConfig(toJsonOrNull(dto.getAuthConfigList()));
 
         this.save(entity);
+        log.info("服务-新增协议配置完成, configId={}", entity.getId());
         return entity;
     }
 
     @Override
     public IPage<ProtocolConfigVO> getProtocolConfigList(ProtocolConfigQueryDTO dto) {
         ProtocolConfigQueryDTO query = dto == null ? new ProtocolConfigQueryDTO() : dto;
+        log.info("服务-分页查询协议配置开始, protocolId={}, configName={}, status={}, current={}, size={}",
+                query.getProtocolId(), query.getConfigName(), query.getStatus(), query.getCurrent(), query.getSize());
         IPage<ProtocolConfig> page = this.page(query.toPage(), buildQueryWrapper(query));
+        log.info("服务-分页查询协议配置完成, total={}, records={}", page.getTotal(), page.getRecords() == null ? 0 : page.getRecords().size());
         return page.convert(this::toVO);
     }
 
     @Override
     public ProtocolConfigVO getProtocolConfigDetail(Long id) {
+        log.info("服务-查询协议配置详情开始, configId={}", id);
         ProtocolConfig config = this.getById(id);
         if (config == null) {
+            log.warn("服务-查询协议配置详情失败, configId={}, reason=not_found", id);
             throw new RuntimeException("协议配置不存在");
         }
+        log.info("服务-查询协议配置详情完成, configId={}", id);
         return toVO(config);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ProtocolConfigVO modifyProtocolConfig(ProtocolConfigModifyDTO dto) {
+        log.info("服务-编辑协议配置开始, configId={}", dto.getId());
         ProtocolConfig existing = this.getById(dto.getId());
         if (existing == null) {
+            log.warn("服务-编辑协议配置失败, configId={}, reason=not_found", dto.getId());
             throw new RuntimeException("协议配置不存在");
         }
         if (dto.getUrlConfigList() != null) {
@@ -139,20 +149,25 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         updateEntity.setAuthConfig(dto.getAuthConfigList() == null ? existing.getAuthConfig() : toJsonOrNull(dto.getAuthConfigList()));
 
         if (!this.updateById(updateEntity)) {
+            log.warn("服务-编辑协议配置失败, configId={}, reason=update_failed", dto.getId());
             throw new RuntimeException("协议配置编辑失败");
         }
+        log.info("服务-编辑协议配置完成, configId={}", dto.getId());
         return toVO(this.getById(existing.getId()));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ProtocolConfigVO updateProtocolConfigStatus(ProtocolConfigStatusUpdateDTO dto) {
+        log.info("服务-更新协议配置状态开始, configId={}, status={}", dto.getId(), dto.getStatus());
         ProtocolConfig existing = this.getById(dto.getId());
         if (existing == null) {
+            log.warn("服务-更新协议配置状态失败, configId={}, reason=not_found", dto.getId());
             throw new RuntimeException("协议配置不存在");
         }
         Integer targetStatus = resolveStatus(dto.getStatus(), null);
         if (Objects.equals(existing.getStatus(), targetStatus)) {
+            log.info("服务-更新协议配置状态跳过, configId={}, reason=status_unchanged", dto.getId());
             return toVO(existing);
         }
 
@@ -160,16 +175,20 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         updateEntity.setId(existing.getId());
         updateEntity.setStatus(targetStatus);
         if (!this.updateById(updateEntity)) {
+            log.warn("服务-更新协议配置状态失败, configId={}, reason=update_failed", dto.getId());
             throw new RuntimeException("协议配置状态更新失败");
         }
+        log.info("服务-更新协议配置状态完成, configId={}, status={}", dto.getId(), targetStatus);
         return toVO(this.getById(existing.getId()));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteProtocolConfig(Long id) {
+        log.info("服务-删除协议配置开始, configId={}", id);
         ProtocolConfig existing = this.getById(id);
         if (existing == null) {
+            log.warn("服务-删除协议配置失败, configId={}, reason=not_found", id);
             throw new RuntimeException("协议配置不存在");
         }
 
@@ -185,26 +204,33 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
                 .set(ProtocolConfig::getUpdateTime, now);
 
         if (this.baseMapper.update(null, updateWrapper) <= 0) {
+            log.warn("服务-删除协议配置失败, configId={}, reason=update_failed", id);
             throw new RuntimeException("协议配置删除失败");
         }
+        log.info("服务-删除协议配置完成, configId={}, operatorId={}", id, operatorId);
     }
 
     @Override
     public void downloadImportTemplate(HttpServletResponse response) throws IOException {
+        log.info("服务-下载导入模板开始");
         ClassPathResource resource = new ClassPathResource(IMPORT_TEMPLATE_PATH);
         if (!resource.exists()) {
+            log.warn("服务-下载导入模板失败, reason=template_not_found, path={}", IMPORT_TEMPLATE_PATH);
             throw new RuntimeException("协议配置导入模板不存在");
         }
         byte[] fileBytes = FileCopyUtils.copyToByteArray(resource.getInputStream());
         writeExcelResponse(response, IMPORT_TEMPLATE_FILE_NAME, fileBytes);
+        log.info("服务-下载导入模板完成, fileName={}, size={}", IMPORT_TEMPLATE_FILE_NAME, fileBytes.length);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ProtocolConfigImportResultVO importProtocolConfigs(MultipartFile file) throws IOException {
+        log.info("服务-导入协议配置开始, fileName={}", file == null ? null : file.getOriginalFilename());
         validateImportFile(file);
         List<RowImportData> importRows = parseImportRows(file);
         if (importRows.isEmpty()) {
+            log.warn("服务-导入协议配置失败, reason=empty_rows");
             throw new RuntimeException("导入文件中没有可处理的数据");
         }
 
@@ -223,10 +249,11 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         String failureReportId = null;
         if (!failures.isEmpty()) {
             failureReportId = failureReportStore.save(buildFailureReportFileName(), buildFailureReportContent(failures));
+            log.warn("服务-导入协议配置存在失败记录, failureCount={}, failureReportId={}", failures.size(), failureReportId);
         }
 
         String message = String.format("导入完成：成功 %d 条，失败 %d 条", successCount, failures.size());
-        return ProtocolConfigImportResultVO.builder()
+        ProtocolConfigImportResultVO result = ProtocolConfigImportResultVO.builder()
                 .success(failures.isEmpty())
                 .message(message)
                 .totalCount(importRows.size())
@@ -236,20 +263,30 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
                 .failureReportDownloadUrl(failureReportId == null ? null : "/api/protocol/protocolConfig/import/failures/" + failureReportId)
                 .importTime(LocalDateTime.now())
                 .build();
+        log.info("服务-导入协议配置完成, totalCount={}, successCount={}, failCount={}",
+                result.getTotalCount(), result.getSuccessCount(), result.getFailCount());
+        return result;
     }
 
     @Override
     public void downloadImportFailureReport(String reportId, HttpServletResponse response) throws IOException {
+        log.info("服务-下载导入失败原因文件开始, reportId={}", reportId);
         ProtocolConfigImportFailureReportStore.FailureReportResource reportResource = failureReportStore.get(reportId);
         if (reportResource == null) {
+            log.warn("服务-下载导入失败原因文件失败, reportId={}, reason=report_not_found_or_expired", reportId);
             throw new RuntimeException("失败原因文件不存在或已过期");
         }
         writeExcelResponse(response, reportResource.getFileName(), reportResource.getContent());
+        log.info("服务-下载导入失败原因文件完成, reportId={}, fileName={}, size={}",
+                reportId, reportResource.getFileName(), reportResource.getContent().length);
     }
 
     @Override
     public void exportProtocolConfigs(ProtocolConfigQueryDTO dto, HttpServletResponse response) throws IOException {
-        List<ProtocolConfig> configs = this.list(buildQueryWrapper(dto == null ? new ProtocolConfigQueryDTO() : dto));
+        ProtocolConfigQueryDTO query = dto == null ? new ProtocolConfigQueryDTO() : dto;
+        log.info("服务-导出协议配置开始, protocolId={}, configName={}, status={}",
+                query.getProtocolId(), query.getConfigName(), query.getStatus());
+        List<ProtocolConfig> configs = this.list(buildQueryWrapper(query));
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             XSSFSheet sheet = workbook.createSheet("协议配置");
             XSSFCellStyle headerStyle = createHeaderStyle(workbook);
@@ -266,6 +303,7 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
             writeExcelResponse(response, EXPORT_FILE_NAME + ".xlsx", bytes);
 
             saveExportRecordForProtocolConfig(configs, bytes.length);
+            log.info("服务-导出协议配置完成, exportCount={}, fileSize={}", configs.size(), bytes.length);
         }
     }
 
@@ -795,6 +833,7 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
     
     @Override
     public java.util.List<com.example.tooltestingdemo.vo.ProtocolPermissionVO.AssignablePermission> getAssignableProtocols() {
+        log.info("服务-查询可分配协议权限开始");
         // 查询所有启用的协议配置
         LambdaQueryWrapper<ProtocolConfig> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(ProtocolConfig::getStatus, 1) // 只查询启用的协议配置
@@ -803,9 +842,11 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         List<ProtocolConfig> protocolConfigs = this.list(queryWrapper);
         
         // 转换为AssignablePermission对象
-        return protocolConfigs.stream()
+        List<com.example.tooltestingdemo.vo.ProtocolPermissionVO.AssignablePermission> assignablePermissions = protocolConfigs.stream()
                 .map(this::convertToAssignablePermission)
                 .collect(java.util.stream.Collectors.toList());
+        log.info("服务-查询可分配协议权限完成, count={}", assignablePermissions.size());
+        return assignablePermissions;
     }
     
     /**
