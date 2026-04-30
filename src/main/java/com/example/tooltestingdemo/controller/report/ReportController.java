@@ -160,7 +160,8 @@ public class ReportController {
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:auto-generate')")
     public Result<Long> autoGenerateReport(
             @RequestParam String reportType,
-            @RequestParam String dataSourceIds) {
+            @RequestParam String dataSourceIds,
+            @RequestParam(required = false) Long templateId) {
         try {
             // 参数校验
             if (reportType == null || reportType.trim().isEmpty()) {
@@ -184,7 +185,7 @@ public class ReportController {
                 return Result.error("数据源ID格式不正确，请使用逗号分隔的ID列表或JSON数组格式");
             }
             
-            Long reportId = reportService.autoGenerateReport(reportType, processedDataSourceIds);
+            Long reportId = reportService.autoGenerateReport(reportType, processedDataSourceIds, templateId);
             return Result.success("报告自动生成成功", reportId);
         } catch (Exception e) {
             return Result.error("自动生成报告失败：" + e.getMessage());

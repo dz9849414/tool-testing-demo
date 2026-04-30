@@ -45,7 +45,7 @@ public interface IReportService extends IService<Report> {
      * 
      * @return 报告ID
      */
-    Long autoGenerateReport(String reportType, String dataSourceIds);
+    Long autoGenerateReport(String reportType, String dataSourceIds, Long templateId);
 
 
 

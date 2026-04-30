@@ -144,10 +144,20 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     }
 
     @Override
-    public Long autoGenerateReport(String reportType, String dataSourceIds) {
+    public Long autoGenerateReport(String reportType, String dataSourceIds, Long templateId) {
         try {
             // 根据reportType获取对应的模板
-            ReportTemplate template = getTemplateByReportType(reportType);
+            ReportTemplate template = null;
+            if (templateId != null) {
+                // 如果传入了模板ID，直接根据ID查询模板
+                template = reportTemplateService.getById(templateId);
+                if (template != null) {
+                    log.info("使用指定模板ID: {} 生成报告", templateId);
+                }
+            } else {
+                // 如果没有传入模板ID，使用系统预设模板
+                template = getTemplateByReportType(reportType);
+            }
             
             // 构建报告DTO
             ReportDTO reportDTO = new ReportDTO();
@@ -215,11 +225,12 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             LambdaQueryWrapper<ReportTemplate> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(ReportTemplate::getTemplateType, reportType)
                        .eq(ReportTemplate::getStatus, 1)
+                       .eq(ReportTemplate::getIsSystemTemplate, 1)
                        .orderByDesc(ReportTemplate::getSortOrder)
                        .last("LIMIT 1");
             return reportTemplateService.getOne(queryWrapper);
         } catch (Exception e) {
-            log.warn("未找到报告类型 {} 对应的模板", reportType);
+            log.warn("未找到报告类型 {} 对应的系统模板", reportType);
             return null;
         }
     }
