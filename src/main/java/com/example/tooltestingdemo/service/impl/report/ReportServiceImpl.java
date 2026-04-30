@@ -646,7 +646,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     }
 
     /**
-     * 构建优化建议数据
+     * 构建下周计划数据（优化建议）
      */
     private JSONObject buildOptimizationSuggestions(String startDate, String endDate, String dataSource) {
         JSONObject suggestions = new JSONObject();
@@ -656,33 +656,81 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         List<String> suggestionList = new ArrayList<>();
         
         try {
-            // 根据统计数据生成优化建议
+            // 获取统计数据
             StatisticsReportDTO successRateReport = templateStatisticsService.getSuccessRateReport(startDate, endDate, dataSource);
+            
+            // 一、本周总结
+            suggestionList.add("【本周总结】");
             if (successRateReport != null && successRateReport.getContent() != null && !successRateReport.getContent().isEmpty()) {
                 JSONObject successData = successRateReport.getContent().getJSONObject(0);
                 if (successData.containsKey("summary")) {
                     JSONObject summary = successData.getJSONObject("summary");
                     double successRate = summary.getDoubleValue("successRate");
-                    
-                    if (successRate < 90) {
-                        suggestionList.add("当前成功率低于90%，建议检查失败原因并优化测试用例");
-                    }
-                    
+                    long totalCount = summary.getLongValue("totalCount");
                     long failureCount = summary.getLongValue("failureCount");
+                    
+                    suggestionList.add("  执行任务：" + totalCount + " 次");
+                    suggestionList.add("  成功率：" + String.format("%.1f", successRate) + "%");
+                    suggestionList.add("  失败次数：" + failureCount + " 次");
+                    
+                    if (successRate >= 90) {
+                        suggestionList.add("  [OK] 本周执行情况良好，成功率达标");
+                    } else {
+                        suggestionList.add("  [WARN] 本周成功率未达标，需重点关注");
+                    }
+                }
+            } else {
+                suggestionList.add("  暂无执行数据");
+            }
+            
+            // 二、下周计划
+            suggestionList.add("");
+            suggestionList.add("【下周计划】");
+            
+            // 2.1 问题修复
+            suggestionList.add("  -- 问题修复：");
+            if (successRateReport != null && successRateReport.getContent() != null && !successRateReport.getContent().isEmpty()) {
+                JSONObject successData = successRateReport.getContent().getJSONObject(0);
+                if (successData.containsKey("summary")) {
+                    JSONObject summary = successData.getJSONObject("summary");
+                    long failureCount = summary.getLongValue("failureCount");
+                    double successRate = summary.getDoubleValue("successRate");
+                    
                     if (failureCount > 0) {
-                        suggestionList.add("发现" + failureCount + "次失败，建议分析失败原因TOP5进行针对性优化");
+                        suggestionList.add("    * 分析 " + failureCount + " 次失败原因，制定修复方案");
+                    }
+                    if (successRate < 90) {
+                        suggestionList.add("    * 优化测试用例，提升执行成功率");
                     }
                 }
             }
+            suggestionList.add("    * 跟进历史遗留问题处理进度");
             
-            // 添加通用建议
-            suggestionList.add("建议定期检查模板执行日志，及时发现潜在问题");
-            suggestionList.add("根据性能趋势分析，合理调整任务调度时间");
-            suggestionList.add("关注协议分布变化，及时更新协议支持");
+            // 2.2 日常维护
+            suggestionList.add("  -- 日常维护：");
+            suggestionList.add("    * 定期检查模板执行日志");
+            suggestionList.add("    * 根据性能趋势调整任务调度时间");
+            suggestionList.add("    * 关注协议分布变化，及时更新支持");
+            
+            // 2.3 优化改进
+            suggestionList.add("  -- 优化改进：");
+            suggestionList.add("    * 优化执行效率，减少耗时");
+            suggestionList.add("    * 完善异常处理机制");
+            
+            // 三、风险评估
+            suggestionList.add("");
+            suggestionList.add("【风险评估】");
+            suggestionList.add("  * 暂无重大风险");
+            suggestionList.add("  * 需关注执行稳定性");
+            
+            // 四、需要支持
+            suggestionList.add("");
+            suggestionList.add("【需要支持】");
+            suggestionList.add("  * 暂无需要协调的事项");
             
         } catch (Exception e) {
-            log.warn("构建优化建议失败", e);
-            suggestionList.add("建议根据报告数据分析进行相应优化");
+            log.warn("构建下周计划失败", e);
+            suggestionList.add("根据报告数据分析进行相应优化");
         }
         
         suggestions.put("suggestions", suggestionList);
@@ -1187,6 +1235,15 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 } else if ("SUCCESS_RATE".equalsIgnoreCase(report.getReportType()) && report.getContent() != null && !report.getContent().trim().isEmpty()) {
                     // 处理 SUCCESS_RATE 类型报告
                     generateSuccessRateReportContent(document, font, report.getContent(), coverStream);
+                } else if ("FAILURE_REASONS".equalsIgnoreCase(report.getReportType()) && report.getContent() != null && !report.getContent().trim().isEmpty()) {
+                    // 处理 FAILURE_REASONS 类型报告
+                    generateFailureReasonsReportContent(document, font, report.getContent(), coverStream);
+                } else if ("PROTOCOL_DISTRIBUTION".equalsIgnoreCase(report.getReportType()) && report.getContent() != null && !report.getContent().trim().isEmpty()) {
+                    // 处理 PROTOCOL_DISTRIBUTION 类型报告
+                    generateProtocolDistributionReportContent(document, font, report.getContent(), coverStream);
+                } else if ("WEEKLY_EXECUTION".equalsIgnoreCase(report.getReportType()) && report.getContent() != null && !report.getContent().trim().isEmpty()) {
+                    // 处理 WEEKLY_EXECUTION 类型报告
+                    generateWeeklyExecutionReportContent(document, font, report.getContent(), coverStream);
                 } else {
                     // 其他类型：继续在第一页输出部分内容
                     String reportContent = buildReportContent(report, pageRange);
@@ -1828,6 +1885,613 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     }
     
     /**
+     * 生成 FAILURE_REASONS 类型报告内容（根据模板结构动态生成）
+     */
+    private void generateFailureReasonsReportContent(PDDocument document, PDType0Font font, String content, PDPageContentStream coverStream) throws Exception {
+        JSONArray sections = JSON.parseArray(content);
+        
+        PDPage currentPage = null;
+        PDPageContentStream contentStream = null;
+        int y = 640; // 从封面页继续，紧凑布局
+        
+        // 判断是否使用封面流继续输出
+        if (coverStream != null) {
+            contentStream = coverStream;
+        } else {
+            currentPage = new PDPage();
+            document.addPage(currentPage);
+            contentStream = new PDPageContentStream(document, currentPage);
+            y = 770; // 新页面从顶部开始
+        }
+        
+        contentStream.setFont(font, 11);
+        
+        for (int i = 0; i < sections.size(); i++) {
+            JSONObject section = sections.getJSONObject(i);
+            String type = section.getString("type");
+            String title = section.getString("title");
+            
+            // 检查是否需要新页面
+            if (y < 60) {
+                if (contentStream != coverStream) {
+                    contentStream.close();
+                }
+                currentPage = new PDPage();
+                document.addPage(currentPage);
+                contentStream = new PDPageContentStream(document, currentPage);
+                contentStream.setFont(font, 11);
+                y = 770;
+            }
+            
+            // 章节标题
+            contentStream.beginText();
+            contentStream.setFont(font, 13);
+            contentStream.newLineAtOffset(50, y);
+            contentStream.showText("=== " + title + " ===");
+            contentStream.endText();
+            y -= 18;
+            
+            // 分隔线
+            contentStream.moveTo(50, y);
+            contentStream.lineTo(562, y);
+            contentStream.stroke();
+            y -= 12;
+            
+            if ("text".equals(type)) {
+                // 文本类型：直接输出内容
+                JSONObject data = section.getJSONObject("data");
+                if (data != null) {
+                    for (String key : data.keySet()) {
+                        if (y < 40) {
+                            if (contentStream != coverStream) {
+                                contentStream.close();
+                            }
+                            currentPage = new PDPage();
+                            document.addPage(currentPage);
+                            contentStream = new PDPageContentStream(document, currentPage);
+                            contentStream.setFont(font, 11);
+                            y = 770;
+                        }
+                        
+                        Object value = data.get(key);
+                        String displayKey = convertToChineseKey(key);
+                        
+                        if (value instanceof JSONArray) {
+                            // suggestions 数组：每行单独显示
+                            contentStream.beginText();
+                            contentStream.setFont(font, 11);
+                            contentStream.newLineAtOffset(50, y);
+                            contentStream.showText(displayKey + "：");
+                            contentStream.endText();
+                            y -= 14;
+                            
+                            JSONArray suggestions = (JSONArray) value;
+                            int idx = 1;
+                            for (Object suggestion : suggestions) {
+                                if (y < 40) {
+                                    if (contentStream != coverStream) {
+                                        contentStream.close();
+                                    }
+                                    currentPage = new PDPage();
+                                    document.addPage(currentPage);
+                                    contentStream = new PDPageContentStream(document, currentPage);
+                                    contentStream.setFont(font, 11);
+                                    y = 770;
+                                }
+                                // 每行单独创建文本块，确保不重叠
+                                contentStream.beginText();
+                                contentStream.setFont(font, 11);
+                                contentStream.newLineAtOffset(50, y);
+                                contentStream.showText("  " + idx + ". " + suggestion);
+                                contentStream.endText();
+                                y -= 14;
+                                idx++;
+                            }
+                        } else {
+                            // 普通文本：每行单独创建文本块
+                            contentStream.beginText();
+                            contentStream.setFont(font, 11);
+                            contentStream.newLineAtOffset(50, y);
+                            contentStream.showText(displayKey + "：" + value);
+                            contentStream.endText();
+                            y -= 14;
+                        }
+                    }
+                }
+            } else if ("chart".equals(type)) {
+                // 图表类型：生成图表并插入
+                String chartType = section.getString("chartType");
+                JSONArray chartData = null;
+                
+                // 尝试从 data 字段获取图表数据
+                if (section.containsKey("data")) {
+                    Object dataObj = section.get("data");
+                    if (dataObj instanceof JSONArray) {
+                        chartData = (JSONArray) dataObj;
+                    } else if (dataObj instanceof JSONObject) {
+                        JSONObject data = (JSONObject) dataObj;
+                        // 尝试从 rateData 字段获取数据（嵌套格式）
+                        if (data.containsKey("rateData")) {
+                            chartData = data.getJSONArray("rateData");
+                        } else if (data.containsKey("summary")) {
+                            // 如果只有 summary，尝试从其他地方获取数据
+                            chartData = new JSONArray();
+                        }
+                    }
+                }
+                
+                // 如果没有数据，生成空图表占位
+                if (chartData == null || chartData.isEmpty()) {
+                    contentStream.beginText();
+                    contentStream.setFont(font, 11);
+                    contentStream.newLineAtOffset(50, y);
+                    contentStream.showText("暂无数据");
+                    contentStream.endText();
+                    y -= 14;
+                    continue;
+                }
+                
+                // 生成图表图片
+                byte[] chartImage = generateChartImage(chartData, chartType, title);
+                
+                // 检查图片数据是否有效
+                if (chartImage == null || chartImage.length == 0) {
+                    contentStream.beginText();
+                    contentStream.setFont(font, 11);
+                    contentStream.newLineAtOffset(50, y);
+                    contentStream.showText("图表生成失败");
+                    contentStream.endText();
+                    y -= 14;
+                    continue;
+                }
+                
+                // 计算图片位置和大小（紧凑布局）
+                float imageWidth = 500;
+                float imageHeight = 180;
+                
+                if (y - imageHeight < 40) {
+                    if (contentStream != coverStream) {
+                        contentStream.close();
+                    }
+                    currentPage = new PDPage();
+                    document.addPage(currentPage);
+                    contentStream = new PDPageContentStream(document, currentPage);
+                    contentStream.setFont(font, 11);
+                    y = 770;
+                }
+                
+                // 尝试插入图表图片，优雅处理异常
+                try {
+                    PDImageXObject image = PDImageXObject.createFromByteArray(document, chartImage, "chart");
+                    contentStream.drawImage(image, 36, y - imageHeight, imageWidth, imageHeight);
+                    y -= (imageHeight + 15);
+                } catch (Exception e) {
+                    log.warn("插入图表图片失败: {}", e.getMessage());
+                    contentStream.beginText();
+                    contentStream.setFont(font, 11);
+                    contentStream.newLineAtOffset(50, y);
+                    contentStream.showText("图表显示异常");
+                    contentStream.endText();
+                    y -= 14;
+                }
+            }
+        }
+        
+        // 如果不是封面流，需要关闭
+        if (contentStream != coverStream && contentStream != null) {
+            contentStream.close();
+        }
+    }
+    
+    /**
+     * 生成 PROTOCOL_DISTRIBUTION 类型报告内容（根据模板结构动态生成）
+     */
+    private void generateProtocolDistributionReportContent(PDDocument document, PDType0Font font, String content, PDPageContentStream coverStream) throws Exception {
+        JSONArray sections = JSON.parseArray(content);
+        
+        PDPage currentPage = null;
+        PDPageContentStream contentStream = null;
+        int y = 640; // 从封面页继续，紧凑布局
+        
+        // 判断是否使用封面流继续输出
+        if (coverStream != null) {
+            contentStream = coverStream;
+        } else {
+            currentPage = new PDPage();
+            document.addPage(currentPage);
+            contentStream = new PDPageContentStream(document, currentPage);
+            y = 770; // 新页面从顶部开始
+        }
+        
+        contentStream.setFont(font, 11);
+        
+        for (int i = 0; i < sections.size(); i++) {
+            JSONObject section = sections.getJSONObject(i);
+            String type = section.getString("type");
+            String title = section.getString("title");
+            
+            // 检查是否需要新页面
+            if (y < 60) {
+                if (contentStream != coverStream) {
+                    contentStream.close();
+                }
+                currentPage = new PDPage();
+                document.addPage(currentPage);
+                contentStream = new PDPageContentStream(document, currentPage);
+                contentStream.setFont(font, 11);
+                y = 770;
+            }
+            
+            // 章节标题
+            contentStream.beginText();
+            contentStream.setFont(font, 13);
+            contentStream.newLineAtOffset(50, y);
+            contentStream.showText("=== " + title + " ===");
+            contentStream.endText();
+            y -= 18;
+            
+            // 分隔线
+            contentStream.moveTo(50, y);
+            contentStream.lineTo(562, y);
+            contentStream.stroke();
+            y -= 12;
+            
+            if ("text".equals(type)) {
+                // 文本类型：直接输出内容
+                JSONObject data = section.getJSONObject("data");
+                if (data != null) {
+                    for (String key : data.keySet()) {
+                        if (y < 40) {
+                            if (contentStream != coverStream) {
+                                contentStream.close();
+                            }
+                            currentPage = new PDPage();
+                            document.addPage(currentPage);
+                            contentStream = new PDPageContentStream(document, currentPage);
+                            contentStream.setFont(font, 11);
+                            y = 770;
+                        }
+                        
+                        Object value = data.get(key);
+                        String displayKey = convertToChineseKey(key);
+                        
+                        if (value instanceof JSONArray) {
+                            // suggestions 数组：每行单独显示
+                            contentStream.beginText();
+                            contentStream.setFont(font, 11);
+                            contentStream.newLineAtOffset(50, y);
+                            contentStream.showText(displayKey + "：");
+                            contentStream.endText();
+                            y -= 14;
+                            
+                            JSONArray suggestions = (JSONArray) value;
+                            int idx = 1;
+                            for (Object suggestion : suggestions) {
+                                if (y < 40) {
+                                    if (contentStream != coverStream) {
+                                        contentStream.close();
+                                    }
+                                    currentPage = new PDPage();
+                                    document.addPage(currentPage);
+                                    contentStream = new PDPageContentStream(document, currentPage);
+                                    contentStream.setFont(font, 11);
+                                    y = 770;
+                                }
+                                // 每行单独创建文本块，确保不重叠
+                                contentStream.beginText();
+                                contentStream.setFont(font, 11);
+                                contentStream.newLineAtOffset(50, y);
+                                contentStream.showText("  " + idx + ". " + suggestion);
+                                contentStream.endText();
+                                y -= 14;
+                                idx++;
+                            }
+                        } else {
+                            // 普通文本：每行单独创建文本块
+                            contentStream.beginText();
+                            contentStream.setFont(font, 11);
+                            contentStream.newLineAtOffset(50, y);
+                            contentStream.showText(displayKey + "：" + value);
+                            contentStream.endText();
+                            y -= 14;
+                        }
+                    }
+                }
+            } else if ("chart".equals(type)) {
+                // 图表类型：生成图表并插入
+                String chartType = section.getString("chartType");
+                JSONArray chartData = null;
+                
+                // 尝试从 data 字段获取图表数据
+                if (section.containsKey("data")) {
+                    Object dataObj = section.get("data");
+                    if (dataObj instanceof JSONArray) {
+                        chartData = (JSONArray) dataObj;
+                    } else if (dataObj instanceof JSONObject) {
+                        JSONObject data = (JSONObject) dataObj;
+                        // 尝试从 categoryData 字段获取数据（协议分布数据）
+                        if (data.containsKey("categoryData")) {
+                            chartData = data.getJSONArray("categoryData");
+                        } 
+                        // 尝试从 weekData 字段获取数据（周数据）
+                        else if (data.containsKey("weekData")) {
+                            chartData = data.getJSONArray("weekData");
+                        }
+                        // 尝试从 rateData 字段获取数据（嵌套格式）
+                        else if (data.containsKey("rateData")) {
+                            chartData = data.getJSONArray("rateData");
+                        }
+                    }
+                }
+                
+                // 如果没有数据，生成空图表占位
+                if (chartData == null || chartData.isEmpty()) {
+                    contentStream.beginText();
+                    contentStream.setFont(font, 11);
+                    contentStream.newLineAtOffset(50, y);
+                    contentStream.showText("暂无数据");
+                    contentStream.endText();
+                    y -= 14;
+                    continue;
+                }
+                
+                // 生成图表图片
+                byte[] chartImage = generateChartImage(chartData, chartType, title);
+                
+                // 检查图片数据是否有效
+                if (chartImage == null || chartImage.length == 0) {
+                    contentStream.beginText();
+                    contentStream.setFont(font, 11);
+                    contentStream.newLineAtOffset(50, y);
+                    contentStream.showText("图表生成失败");
+                    contentStream.endText();
+                    y -= 14;
+                    continue;
+                }
+                
+                // 计算图片位置和大小（紧凑布局）
+                float imageWidth = 500;
+                float imageHeight = 180;
+                
+                if (y - imageHeight < 40) {
+                    if (contentStream != coverStream) {
+                        contentStream.close();
+                    }
+                    currentPage = new PDPage();
+                    document.addPage(currentPage);
+                    contentStream = new PDPageContentStream(document, currentPage);
+                    contentStream.setFont(font, 11);
+                    y = 770;
+                }
+                
+                // 尝试插入图表图片，优雅处理异常
+                try {
+                    PDImageXObject image = PDImageXObject.createFromByteArray(document, chartImage, "chart");
+                    contentStream.drawImage(image, 36, y - imageHeight, imageWidth, imageHeight);
+                    y -= (imageHeight + 15);
+                } catch (Exception e) {
+                    log.warn("插入图表图片失败: {}", e.getMessage());
+                    contentStream.beginText();
+                    contentStream.setFont(font, 11);
+                    contentStream.newLineAtOffset(50, y);
+                    contentStream.showText("图表显示异常");
+                    contentStream.endText();
+                    y -= 14;
+                }
+            }
+        }
+        
+        // 如果不是封面流，需要关闭
+        if (contentStream != coverStream && contentStream != null) {
+            contentStream.close();
+        }
+    }
+    
+    /**
+     * 生成 WEEKLY_EXECUTION 类型报告内容（根据模板结构动态生成）
+     */
+    private void generateWeeklyExecutionReportContent(PDDocument document, PDType0Font font, String content, PDPageContentStream coverStream) throws Exception {
+        JSONArray sections = JSON.parseArray(content);
+        
+        PDPage currentPage = null;
+        PDPageContentStream contentStream = null;
+        int y = 640; // 从封面页继续，紧凑布局
+        
+        // 判断是否使用封面流继续输出
+        if (coverStream != null) {
+            contentStream = coverStream;
+        } else {
+            currentPage = new PDPage();
+            document.addPage(currentPage);
+            contentStream = new PDPageContentStream(document, currentPage);
+            y = 770; // 新页面从顶部开始
+        }
+        
+        contentStream.setFont(font, 11);
+        
+        for (int i = 0; i < sections.size(); i++) {
+            JSONObject section = sections.getJSONObject(i);
+            String type = section.getString("type");
+            String title = section.getString("title");
+            
+            // 检查是否需要新页面
+            if (y < 60) {
+                if (contentStream != coverStream) {
+                    contentStream.close();
+                }
+                currentPage = new PDPage();
+                document.addPage(currentPage);
+                contentStream = new PDPageContentStream(document, currentPage);
+                contentStream.setFont(font, 11);
+                y = 770;
+            }
+            
+            // 章节标题
+            contentStream.beginText();
+            contentStream.setFont(font, 13);
+            contentStream.newLineAtOffset(50, y);
+            contentStream.showText("=== " + title + " ===");
+            contentStream.endText();
+            y -= 18;
+            
+            // 分隔线
+            contentStream.moveTo(50, y);
+            contentStream.lineTo(562, y);
+            contentStream.stroke();
+            y -= 12;
+            
+            if ("text".equals(type)) {
+                // 文本类型：直接输出内容
+                JSONObject data = section.getJSONObject("data");
+                if (data != null) {
+                    for (String key : data.keySet()) {
+                        if (y < 40) {
+                            if (contentStream != coverStream) {
+                                contentStream.close();
+                            }
+                            currentPage = new PDPage();
+                            document.addPage(currentPage);
+                            contentStream = new PDPageContentStream(document, currentPage);
+                            contentStream.setFont(font, 11);
+                            y = 770;
+                        }
+                        
+                        Object value = data.get(key);
+                        String displayKey = convertToChineseKey(key);
+                        
+                        if (value instanceof JSONArray) {
+                            // suggestions 数组：每行单独显示
+                            contentStream.beginText();
+                            contentStream.setFont(font, 11);
+                            contentStream.newLineAtOffset(50, y);
+                            contentStream.showText(displayKey + "：");
+                            contentStream.endText();
+                            y -= 14;
+                            
+                            JSONArray suggestions = (JSONArray) value;
+                            int idx = 1;
+                            for (Object suggestion : suggestions) {
+                                if (y < 40) {
+                                    if (contentStream != coverStream) {
+                                        contentStream.close();
+                                    }
+                                    currentPage = new PDPage();
+                                    document.addPage(currentPage);
+                                    contentStream = new PDPageContentStream(document, currentPage);
+                                    contentStream.setFont(font, 11);
+                                    y = 770;
+                                }
+                                // 每行单独创建文本块，确保不重叠
+                                contentStream.beginText();
+                                contentStream.setFont(font, 11);
+                                contentStream.newLineAtOffset(50, y);
+                                contentStream.showText("  " + idx + ". " + suggestion);
+                                contentStream.endText();
+                                y -= 14;
+                                idx++;
+                            }
+                        } else {
+                            // 普通文本：每行单独创建文本块
+                            contentStream.beginText();
+                            contentStream.setFont(font, 11);
+                            contentStream.newLineAtOffset(50, y);
+                            contentStream.showText(displayKey + "：" + value);
+                            contentStream.endText();
+                            y -= 14;
+                        }
+                    }
+                }
+            } else if ("chart".equals(type)) {
+                // 图表类型：生成图表并插入
+                String chartType = section.getString("chartType");
+                JSONArray chartData = null;
+                
+                // 尝试从 data 字段获取图表数据
+                if (section.containsKey("data")) {
+                    Object dataObj = section.get("data");
+                    if (dataObj instanceof JSONArray) {
+                        chartData = (JSONArray) dataObj;
+                    } else if (dataObj instanceof JSONObject) {
+                        JSONObject data = (JSONObject) dataObj;
+                        // 尝试从 weekData 字段获取数据（周执行数据）
+                        if (data.containsKey("weekData")) {
+                            chartData = data.getJSONArray("weekData");
+                        }
+                        // 尝试从 rateData 字段获取数据（成功率数据）
+                        else if (data.containsKey("rateData")) {
+                            chartData = data.getJSONArray("rateData");
+                        }
+                        // 尝试从 categoryData 字段获取数据（分类数据）
+                        else if (data.containsKey("categoryData")) {
+                            chartData = data.getJSONArray("categoryData");
+                        }
+                    }
+                }
+                
+                // 如果没有数据，生成空图表占位
+                if (chartData == null || chartData.isEmpty()) {
+                    contentStream.beginText();
+                    contentStream.setFont(font, 11);
+                    contentStream.newLineAtOffset(50, y);
+                    contentStream.showText("暂无数据");
+                    contentStream.endText();
+                    y -= 14;
+                    continue;
+                }
+                
+                // 生成图表图片
+                byte[] chartImage = generateChartImage(chartData, chartType, title);
+                
+                // 检查图片数据是否有效
+                if (chartImage == null || chartImage.length == 0) {
+                    contentStream.beginText();
+                    contentStream.setFont(font, 11);
+                    contentStream.newLineAtOffset(50, y);
+                    contentStream.showText("图表生成失败");
+                    contentStream.endText();
+                    y -= 14;
+                    continue;
+                }
+                
+                // 计算图片位置和大小（紧凑布局）
+                float imageWidth = 500;
+                float imageHeight = 180;
+                
+                if (y - imageHeight < 40) {
+                    if (contentStream != coverStream) {
+                        contentStream.close();
+                    }
+                    currentPage = new PDPage();
+                    document.addPage(currentPage);
+                    contentStream = new PDPageContentStream(document, currentPage);
+                    contentStream.setFont(font, 11);
+                    y = 770;
+                }
+                
+                // 尝试插入图表图片，优雅处理异常
+                try {
+                    PDImageXObject image = PDImageXObject.createFromByteArray(document, chartImage, "chart");
+                    contentStream.drawImage(image, 36, y - imageHeight, imageWidth, imageHeight);
+                    y -= (imageHeight + 15);
+                } catch (Exception e) {
+                    log.warn("插入图表图片失败: {}", e.getMessage());
+                    contentStream.beginText();
+                    contentStream.setFont(font, 11);
+                    contentStream.newLineAtOffset(50, y);
+                    contentStream.showText("图表显示异常");
+                    contentStream.endText();
+                    y -= 14;
+                }
+            }
+        }
+        
+        // 如果不是封面流，需要关闭
+        if (contentStream != coverStream && contentStream != null) {
+            contentStream.close();
+        }
+    }
+    
+    /**
      * 添加作业日志图表章节
      */
     private boolean addJobLogChartSection(PDDocument document, PDType0Font font, PDPageContentStream contentStream, 
@@ -1903,20 +2567,37 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             List<String> names = new ArrayList<>();
             List<Double> values = new ArrayList<>();
             
-            // 检查数据格式：支持直接数组格式和嵌套在 rateData 中的格式
+            // 检查数据格式：支持多种嵌套格式
             JSONArray chartData = data;
-            if (data != null && data.size() == 1) {
-                // 可能是嵌套格式 {"rateData": [...], "summary": {...}}
+            
+            if (data != null && data.size() > 0) {
+                // 检查是否是嵌套格式（第一个元素包含 rateData/weekData/categoryData）
                 JSONObject firstItem = data.getJSONObject(0);
+                
+                // 支持 rateData 格式（成功率数据）
                 if (firstItem.containsKey("rateData")) {
                     chartData = firstItem.getJSONArray("rateData");
                 }
+                // 支持 weekData 格式（周执行数据）
+                else if (firstItem.containsKey("weekData")) {
+                    chartData = firstItem.getJSONArray("weekData");
+                }
+                // 支持 categoryData 格式（分类数据）
+                else if (firstItem.containsKey("categoryData")) {
+                    chartData = firstItem.getJSONArray("categoryData");
+                }
+                // 否则直接使用原数据数组（已经提取的数据）
             }
             
             for (int i = 0; i < chartData.size(); i++) {
                 JSONObject item = chartData.getJSONObject(i);
-                names.add(item.getString("name"));
-                values.add(item.getDouble("value"));
+                // 支持多种字段名：name/dayNameCn, value/executionCount
+                String name = item.containsKey("name") ? item.getString("name") : 
+                              (item.containsKey("dayNameCn") ? item.getString("dayNameCn") : "");
+                double value = item.containsKey("value") ? item.getDouble("value") : 
+                              (item.containsKey("executionCount") ? item.getDouble("executionCount") : 0);
+                names.add(name);
+                values.add(value);
             }
             
             // 生成 HTML 内容
@@ -2059,11 +2740,11 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         // 绘制轴标签（旋转90度显示Y轴标签）
         g2d.drawString("分类", width / 2 - 15, height - 8);
         
-        // 检查数据是否都是整数
-        boolean allIntegers = values.stream().allMatch(v -> v == Math.floor(v));
+        // 检查数据是否都是整数（过滤null值）
+        boolean allIntegers = values.stream().filter(v -> v != null).allMatch(v -> v == Math.floor(v));
         
-        // 计算数据范围（从0开始）
-        double maxValue = values.stream().mapToDouble(Double::doubleValue).max().orElse(1);
+        // 计算数据范围（从0开始，过滤null值）
+        double maxValue = values.stream().filter(v -> v != null).mapToDouble(Double::doubleValue).max().orElse(1);
         
         // 向上取整到合适的刻度值（如果是整数数据，使用整数刻度）
         if (allIntegers) {
@@ -2109,8 +2790,14 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             int prevX = -1;
             
             for (int i = 0; i < values.size(); i++) {
+                // 处理null值
+                Double value = values.get(i);
+                if (value == null) {
+                    continue;
+                }
+                
                 // 使用与Y轴刻度相同的计算逻辑
-                double normalizedValue = values.get(i) / maxValue;
+                double normalizedValue = value / maxValue;
                 int pointY = height - padding - (int) (normalizedValue * chartHeight);
                 int x = padding + gap + i * (barWidth + gap) + barWidth / 2;
                 
@@ -2123,7 +2810,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 
                 // 在数据点上方显示数值标签（整数显示为整数）
                 g2d.setColor(Color.BLACK);
-                String valueLabel = allIntegers ? String.format("%d", (int) values.get(i).doubleValue()) : String.format("%.1f", values.get(i));
+                String valueLabel = allIntegers ? String.format("%d", (int) value.doubleValue()) : String.format("%.1f", value);
                 FontMetrics fm = g2d.getFontMetrics(font);
                 int labelWidth = fm.stringWidth(valueLabel);
                 g2d.drawString(valueLabel, x - labelWidth / 2, pointY - 8);
@@ -2133,17 +2820,23 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 
                 // 绘制 X 轴标签
                 String label = names.get(i);
-                if (label.length() > 8) {
+                if (label != null && label.length() > 8) {
                     label = label.substring(0, 8) + "...";
                 }
-                int xLabelWidth = fm.stringWidth(label);
-                g2d.drawString(label, x - xLabelWidth / 2, height - 15);
+                int xLabelWidth = fm.stringWidth(label != null ? label : "");
+                g2d.drawString(label != null ? label : "", x - xLabelWidth / 2, height - 15);
             }
         } else {
             // 柱状图/直方图（与Y轴刻度使用相同的计算逻辑）
             for (int i = 0; i < values.size(); i++) {
+                // 处理null值
+                Double value = values.get(i);
+                if (value == null) {
+                    continue;
+                }
+                
                 // 使用与Y轴刻度相同的计算逻辑
-                double normalizedValue = values.get(i) / maxValue;
+                double normalizedValue = value / maxValue;
                 int barHeight = (int) (normalizedValue * chartHeight);
                 int x = padding + gap + i * (barWidth + gap);
                 
@@ -2153,14 +2846,14 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 
                 // 绘制数值标签（整数显示为整数）
                 g2d.setColor(Color.BLACK);
-                String valueLabel = allIntegers ? String.format("%d", (int) values.get(i).doubleValue()) : String.format("%.1f", values.get(i));
+                String valueLabel = allIntegers ? String.format("%d", (int) value.doubleValue()) : String.format("%.1f", value);
                 FontMetrics fm = g2d.getFontMetrics(font);
                 int labelWidth = fm.stringWidth(valueLabel);
                 g2d.drawString(valueLabel, x + barWidth / 2 - labelWidth / 2, height - padding - barHeight - 5);
                 
                 // 绘制 X 轴标签
                 String label = names.get(i);
-                if (label.length() > 8) {
+                if (label != null && label.length() > 8) {
                     label = label.substring(0, 8) + "...";
                 }
                 int xLabelWidth = fm.stringWidth(label);
