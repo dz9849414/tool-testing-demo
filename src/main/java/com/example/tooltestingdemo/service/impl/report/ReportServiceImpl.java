@@ -30,13 +30,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.nio.charset.StandardCharsets;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 
@@ -164,6 +161,10 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             // 获取模板结构和章节结构
             String chapterStructure = template != null ? template.getChapterStructure() : null;
             String templateStructure = template != null ? template.getTemplateStructure() : null;
+            String styleConfig = template != null ? template.getStyleConfig() : "{}";
+            
+            // 将模板的样式配置复制到报告中
+            reportDTO.setStyleConfig(styleConfig);
             
             // 优先级：chapter_structure > template_structure > 旧逻辑
             if (chapterStructure != null && !chapterStructure.trim().isEmpty() && 
@@ -1172,7 +1173,41 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
      */
     public void generatePdfReport(Report report, File exportFile, String pageRange) {
         try (PDDocument document = new PDDocument()) {
-            PDType0Font font = PDType0Font.load(document, getClass().getResourceAsStream("/fonts/simhei.ttf"));
+            // 解析样式配置
+            String styleConfig = report.getStyleConfig();
+            String fontName = "SimHei";
+            int fontSize = 11;
+            
+            if (styleConfig != null && !styleConfig.trim().isEmpty() && styleConfig.startsWith("{")) {
+                try {
+                    JSONObject styleJson = JSONObject.parseObject(styleConfig);
+                    if (styleJson.containsKey("font")) {
+                        fontName = styleJson.getString("font");
+                    }
+                    if (styleJson.containsKey("fontSize")) {
+                        fontSize = styleJson.getIntValue("fontSize");
+                    }
+                } catch (Exception e) {
+                    log.warn("解析styleConfig失败，使用默认样式", e);
+                }
+            }
+            
+            // 根据字体名称选择字体文件
+            String fontPath = "/fonts/simhei.ttf"; // 默认字体
+            if ("Arial".equalsIgnoreCase(fontName)) {
+                fontPath = "/fonts/Arial.ttf";
+            } else if ("宋体".equalsIgnoreCase(fontName) || "SimSun".equalsIgnoreCase(fontName)) {
+                fontPath = "/fonts/simsun.ttf";
+            }
+            
+            // 尝试加载指定字体，如果失败则使用默认字体
+            InputStream fontStream = getClass().getResourceAsStream(fontPath);
+            if (fontStream == null) {
+                log.warn("字体文件不存在: {}，使用默认字体", fontPath);
+                fontStream = getClass().getResourceAsStream("/fonts/simhei.ttf");
+            }
+            
+            PDType0Font font = PDType0Font.load(document, fontStream);
             
             // ========= 第一页：报告封面和基本信息（紧凑布局）=========
             PDPage coverPage = new PDPage();
