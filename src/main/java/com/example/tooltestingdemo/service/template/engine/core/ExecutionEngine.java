@@ -148,6 +148,12 @@ public class ExecutionEngine {
         template.setMethod(templateVO.getMethod());
         template.setBaseUrl(templateVO.getBaseUrl());
         template.setPath(templateVO.getPath());
+        template.setFullUrl(templateVO.getFullUrl());
+        template.setBodyContent(templateVO.getBodyContent());
+        template.setConnectTimeout(templateVO.getConnectTimeout());
+        template.setReadTimeout(templateVO.getReadTimeout());
+        template.setCharset(templateVO.getCharset());
+        template.setExtField5(templateVO.getExtField5());
         context.setTemplate(template);
 
         // 3. 获取执行器并验证
@@ -294,6 +300,13 @@ public class ExecutionEngine {
         entity.setRetryCount(vo.getRetryCount());
         entity.setRetryInterval(vo.getRetryInterval());
         entity.setCharset(vo.getCharset());
+        entity.setExtField1(vo.getExtField1());
+        entity.setExtField2(vo.getExtField2());
+        entity.setExtField3(vo.getExtField3());
+        entity.setExtField4(vo.getExtField4());
+        entity.setExtField5(vo.getExtField5());
+        entity.setExtNum1(vo.getExtNum1());
+        entity.setExtNum2(vo.getExtNum2());
         return entity;
     }
 

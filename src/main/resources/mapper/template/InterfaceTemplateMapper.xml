@@ -74,7 +74,7 @@
         SELECT
             <include refid="Base_Column_List"/>
         FROM pdm_tool_interface_template
-        WHERE 1=1
+        WHERE     (is_deleted = 0 OR is_deleted IS NULL)
         <if test="folderId != null and folderId !='' ">
             AND folder_id = #{folderId}
         </if>

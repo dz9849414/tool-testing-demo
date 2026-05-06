@@ -9,9 +9,9 @@ import java.util.Map;
 
 /**
  * 执行器工厂
- * 
+ *
  * 管理所有 TemplateExecutor 实例，根据协议类型获取对应的执行器
- * 
+ *
  * @author PDM接口测试工具
  * @since 1.0
  */
@@ -23,7 +23,7 @@ public class ExecutorFactory {
 
     /**
      * 构造函数
-     * 
+     *
      * Spring 会自动注入所有 TemplateExecutor 实现类
      *
      * @param executors 执行器列表
@@ -42,7 +42,7 @@ public class ExecutorFactory {
     /**
      * 获取执行器
      *
-     * @param type 协议类型，如 "HTTP", "HTTPS", "SQL"
+     * @param type 协议类型，如 "HTTP", "HTTPS", "SQL","TCP","UDP"
      * @return 对应的执行器
      * @throws UnsupportedOperationException 当不支持该协议类型时抛出
      */
@@ -50,22 +50,22 @@ public class ExecutorFactory {
         if (type == null) {
             throw new IllegalArgumentException("协议类型不能为空");
         }
-        
+
         String upperType = type.toUpperCase();
         TemplateExecutor executor = executorMap.get(upperType);
-        
+
         if (executor == null) {
             // 尝试兼容 HTTP/HTTPS
             if ("HTTPS".equals(upperType)) {
                 executor = executorMap.get("HTTP");
             }
         }
-        
+
         if (executor == null) {
-            throw new UnsupportedOperationException("不支持的协议类型: " + type + 
+            throw new UnsupportedOperationException("不支持的协议类型: " + type +
                     "，支持的类型: " + executorMap.keySet());
         }
-        
+
         return executor;
     }
 
@@ -80,7 +80,7 @@ public class ExecutorFactory {
             return false;
         }
         String upperType = type.toUpperCase();
-        return executorMap.containsKey(upperType) || 
+        return executorMap.containsKey(upperType) ||
                ("HTTPS".equals(upperType) && executorMap.containsKey("HTTP"));
     }
 

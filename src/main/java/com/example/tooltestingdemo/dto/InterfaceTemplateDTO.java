@@ -61,6 +61,11 @@ public class InterfaceTemplateDTO {
     private String path;
 
     /**
+     * 完整URL，TCP/UDP可使用 tcp://host:port 或 udp://host:port
+     */
+    private String fullUrl;
+
+    /**
      * 认证类型：NONE/BASIC/DIGEST/OAUTH1/OAUTH2/BEARER/APIKEY/JWT
      */
     private String authType;
