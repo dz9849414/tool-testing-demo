@@ -49,6 +49,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -73,6 +74,7 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
 
     @Override
     public ProtocolTestRecord testConnect(Long configId) {
+        log.info("连通性测试开始: configId={}", configId);
         ProtocolConfig config = getRequiredConfig(configId);
         String url = resolvePrimaryUrl(config);
         int connectTimeoutMs = config.getTimeoutConnect() == null ? 5000 : config.getTimeoutConnect();
@@ -84,8 +86,10 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
         requestMeta.put("timeoutConnect", connectTimeoutMs);
         requestMeta.put("timeoutRead", readTimeoutMs);
 
-        return executeAndSave(config, ProtocolTestRecord.TestType.CONNECT.name(), ProtocolTestRecord.TestScenario.NETWORK.name(),
+        ProtocolTestRecord record = executeAndSave(config, ProtocolTestRecord.TestType.CONNECT.name(), ProtocolTestRecord.TestScenario.NETWORK.name(),
                 url, HttpMethod.GET, null, requestMeta, connectTimeoutMs, readTimeoutMs);
+        log.info("连通性测试结束: configId={}, recordId={}, resultStatus={}", configId, record.getId(), record.getResultStatus());
+        return record;
     }
 
     @Override
@@ -97,6 +101,8 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
         String baseUrl = resolvePrimaryUrl(config);
         String fullUrl = buildTransferUrl(baseUrl, dto.getPath(), dto.getQueryParams());
         HttpMethod httpMethod = resolveHttpMethod(dto.getMethod());
+        log.info("协议转发测试开始: configId={}, method={}, path={}",
+                dto.getConfigId(), httpMethod.name(), Objects.toString(dto.getPath(), ""));
         int connectTimeoutMs = config.getTimeoutConnect() == null ? 5000 : config.getTimeoutConnect();
         int readTimeoutMs = config.getTimeoutRead() == null ? 30000 : config.getTimeoutRead();
 
@@ -119,20 +125,32 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
         requestMeta.put("timeoutConnect", connectTimeoutMs);
         requestMeta.put("timeoutRead", readTimeoutMs);
 
-        return executeAndSave(config, ProtocolTestRecord.TestType.TRANSFER.name(), ProtocolTestRecord.TestScenario.PROTOCOL.name(),
+        ProtocolTestRecord record = executeAndSave(config, ProtocolTestRecord.TestType.TRANSFER.name(), ProtocolTestRecord.TestScenario.PROTOCOL.name(),
                 fullUrl, httpMethod, entity, requestMeta, connectTimeoutMs, readTimeoutMs);
+        log.info("协议转发测试结束: configId={}, recordId={}, resultStatus={}, responseCode={}",
+                dto.getConfigId(), record.getId(), record.getResultStatus(), record.getResponseCode());
+        return record;
     }
 
     @Override
     public IPage<ProtocolTestRecord> getProtocolTestRecordList(ProtocolTestRecordQueryDTO dto) {
         ProtocolTestRecordQueryDTO query = dto == null ? new ProtocolTestRecordQueryDTO() : dto;
-        return this.page(query.toPage(), buildQueryWrapper(query));
+        log.info("分页查询协议测试记录: protocolId={}, configId={}, testType={}, testScenario={}, resultStatus={}, createTimeStart={}, createTimeEnd={}, current={}, size={}",
+                query.getProtocolId(), query.getConfigId(), query.getTestType(), query.getTestScenario(), query.getResultStatus(),
+                query.getCreateTimeStart(), query.getCreateTimeEnd(), query.getCurrent(), query.getSize());
+        IPage<ProtocolTestRecord> page = this.page(query.toPage(), buildQueryWrapper(query));
+        log.info("分页查询协议测试记录完成: total={}, currentSize={}", page.getTotal(), page.getRecords().size());
+        return page;
     }
 
     @Override
     public void exportProtocolTestRecords(ProtocolTestRecordQueryDTO dto, HttpServletResponse response) throws IOException {
         ProtocolTestRecordQueryDTO query = dto == null ? new ProtocolTestRecordQueryDTO() : dto;
+        log.info("导出协议测试记录开始: protocolId={}, configId={}, testType={}, testScenario={}, resultStatus={}, createTime范围=[{}, {}]",
+                query.getProtocolId(), query.getConfigId(), query.getTestType(), query.getTestScenario(), query.getResultStatus(),
+                query.getCreateTimeStart(), query.getCreateTimeEnd());
         List<ProtocolTestRecord> records = this.list(buildQueryWrapper(query));
+        log.info("导出协议测试记录待写入行数: {}", records.size());
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             XSSFSheet sheet = workbook.createSheet("协议测试记录");
             XSSFCellStyle headerStyle = createHeaderStyle(workbook);
@@ -144,7 +162,9 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
             writeDataRows(sheet, dataStyle, records);
 
             workbook.write(outputStream);
-            writeExcelResponse(response, EXPORT_FILE_NAME + "_" + LocalDateTime.now().format(FILE_TIME_FORMATTER) + ".xlsx", outputStream.toByteArray());
+            String exportFileName = EXPORT_FILE_NAME + "_" + LocalDateTime.now().format(FILE_TIME_FORMATTER) + ".xlsx";
+            writeExcelResponse(response, exportFileName, outputStream.toByteArray());
+            log.info("导出协议测试记录完成: fileName={}, rows={}", exportFileName, records.size());
         }
     }
 
@@ -229,6 +249,8 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
         ProtocolTestRecord record = initRecord(config, testType, testScenario);
         record.setTestData(toJson(requestMeta));
         long start = System.currentTimeMillis();
+        log.info("协议测试HTTP调用开始: configId={}, protocolId={}, testType={}, testScenario={}, method={}, url={}",
+                config.getId(), config.getProtocolId(), testType, testScenario, method.name(), url);
         try {
             RestTemplate template = buildRestTemplateWithTimeouts(connectTimeoutMs, readTimeoutMs);
             ResponseEntity<String> response = template.exchange(url, method, requestEntity, String.class);
@@ -240,6 +262,11 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
                     : ProtocolTestRecord.ResultStatus.FAILED.name());
             record.setErrorMessage(response.getStatusCode().is2xxSuccessful() ? null : truncate("HTTP状态非2xx"));
             record.setComparisonResult(buildResponseSummary(response.getBody(), response.getStatusCode().value()));
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("协议测试HTTP调用成功: configId={}, httpStatus={}, responseTimeMs={}", config.getId(), response.getStatusCode().value(), elapsed);
+            } else {
+                log.warn("协议测试HTTP返回非2xx: configId={}, httpStatus={}, responseTimeMs={}", config.getId(), response.getStatusCode().value(), elapsed);
+            }
         } catch (HttpStatusCodeException ex) {
             long elapsed = System.currentTimeMillis() - start;
             record.setResponseTime((int) elapsed);
@@ -247,17 +274,23 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
             record.setResultStatus(ProtocolTestRecord.ResultStatus.FAILED.name());
             record.setErrorMessage(truncate(ex.getStatusText()));
             record.setComparisonResult(buildResponseSummary(ex.getResponseBodyAsString(), ex.getStatusCode().value()));
+            log.warn("协议测试HTTP客户端异常(仍落库): configId={}, url={}, httpStatus={}, responseTimeMs={}, message={}",
+                    config.getId(), url, ex.getStatusCode().value(), elapsed, truncate(ex.getMessage()));
         } catch (Exception ex) {
             long elapsed = System.currentTimeMillis() - start;
             record.setResponseTime((int) elapsed);
             record.setResponseCode("0");
             record.setResultStatus(ProtocolTestRecord.ResultStatus.FAILED.name());
             record.setErrorMessage(truncate(ex.getMessage()));
+            log.error("协议测试HTTP调用失败: configId={}, method={}, url={}, responseTimeMs={}",
+                    config.getId(), method.name(), url, elapsed, ex);
         }
 
         record.setCreateTime(LocalDateTime.now());
         record.setUpdateTime(LocalDateTime.now());
         save(record);
+        log.info("协议测试记录已保存: recordId={}, configId={}, resultStatus={}, responseCode={}, responseTimeMs={}",
+                record.getId(), config.getId(), record.getResultStatus(), record.getResponseCode(), record.getResponseTime());
         return record;
     }
 
@@ -336,6 +369,7 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
         }
         ProtocolConfig config = protocolConfigService.getById(configId);
         if (config == null) {
+            log.warn("协议配置不存在: configId={}", configId);
             throw new IllegalArgumentException("协议配置不存在");
         }
         return config;
