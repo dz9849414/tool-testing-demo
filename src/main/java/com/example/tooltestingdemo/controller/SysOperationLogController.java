@@ -3,6 +3,7 @@ package com.example.tooltestingdemo.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.common.ErrorStatus;
 import com.example.tooltestingdemo.common.Result;
+import com.example.tooltestingdemo.dto.OperationLogImportResultDTO;
 import com.example.tooltestingdemo.entity.SysOperationLog;
 import com.example.tooltestingdemo.service.SysOperationLogService;
 import com.example.tooltestingdemo.util.OperationLogNameUtils;
@@ -16,6 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
@@ -31,6 +33,8 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -38,6 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/operation-logs")
 @RequiredArgsConstructor
+@Slf4j
 public class SysOperationLogController {
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -205,11 +210,11 @@ public class SysOperationLogController {
             XSSFCellStyle headerStyle = buildHeaderStyle(workbook);
             XSSFCellStyle dataStyle = buildDataStyle(workbook);
             String[] headers = {
-                    "Log ID", "User ID", "Username", "Role ID", "Module",
+                    "Log ID", "Trace ID", "User ID", "Username", "Role ID", "Module",
                     "Operation", "Method", "Request URL", "Request Params", "IP Address",
-                    "User Agent", "Status", "Error Message", "Execute Time(ms)", "Create Time"
+                    "User Agent", "Status", "Error Message", "Execute Time(ms)", "Create Time", "Method JSON"
             };
-            int[] columnWidths = {36, 20, 20, 20, 24, 20, 20, 36, 50, 18, 36, 12, 36, 18, 24};
+            int[] columnWidths = {36, 40, 20, 20, 20, 24, 20, 20, 36, 50, 18, 36, 12, 36, 18, 24, 80};
 
             XSSFRow headerRow = sheet.createRow(0);
             for (int i = 0; i < headers.length; i++) {
@@ -223,20 +228,22 @@ public class SysOperationLogController {
             for (SysOperationLog log : logs) {
                 XSSFRow row = sheet.createRow(rowIndex++);
                 setCellValue(row, 0, log.getId(), dataStyle);
-                setCellValue(row, 1, log.getUserId(), dataStyle);
-                setCellValue(row, 2, log.getUsername(), dataStyle);
-                setCellValue(row, 3, log.getRoleId(), dataStyle);
-                setCellValue(row, 4, OperationLogNameUtils.getModuleDisplayName(log.getModule()), dataStyle);
-                setCellValue(row, 5, log.getOperation(), dataStyle);
-                setCellValue(row, 6, log.getMethod(), dataStyle);
-                setCellValue(row, 7, log.getRequestUrl(), dataStyle);
-                setCellValue(row, 8, log.getRequestParams(), dataStyle);
-                setCellValue(row, 9, log.getIpAddress(), dataStyle);
-                setCellValue(row, 10, log.getUserAgent(), dataStyle);
-                setCellValue(row, 11, log.getStatus() == 1 ? "SUCCESS" : "FAILED", dataStyle);
-                setCellValue(row, 12, log.getErrorMessage(), dataStyle);
-                setCellValue(row, 13, log.getExecuteTime(), dataStyle);
-                setCellValue(row, 14, log.getCreateTime(), dataStyle);
+                setCellValue(row, 1, log.getTraceId(), dataStyle);
+                setCellValue(row, 2, log.getUserId(), dataStyle);
+                setCellValue(row, 3, log.getUsername(), dataStyle);
+                setCellValue(row, 4, log.getRoleId(), dataStyle);
+                setCellValue(row, 5, OperationLogNameUtils.getModuleDisplayName(log.getModule()), dataStyle);
+                setCellValue(row, 6, log.getOperation(), dataStyle);
+                setCellValue(row, 7, log.getMethod(), dataStyle);
+                setCellValue(row, 8, log.getRequestUrl(), dataStyle);
+                setCellValue(row, 9, log.getRequestParams(), dataStyle);
+                setCellValue(row, 10, log.getIpAddress(), dataStyle);
+                setCellValue(row, 11, log.getUserAgent(), dataStyle);
+                setCellValue(row, 12, log.getStatus() == 1 ? "SUCCESS" : "FAILED", dataStyle);
+                setCellValue(row, 13, log.getErrorMessage(), dataStyle);
+                setCellValue(row, 14, log.getExecuteTime(), dataStyle);
+                setCellValue(row, 15, log.getCreateTime(), dataStyle);
+                setCellValue(row, 16, log.getMethodJson(), dataStyle);
             }
 
             try (OutputStream outputStream = response.getOutputStream()) {
@@ -285,5 +292,35 @@ public class SysOperationLogController {
             cell.setCellValue(value.toString());
         }
         cell.setCellStyle(style);
+    }
+
+    @PostMapping("/import/excel")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:log:api')")
+    public Result<OperationLogImportResultDTO> importOperationLogsFromExcel(
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @RequestParam(value = "executeRollback", defaultValue = "true") boolean executeRollback,
+            @RequestParam(value = "useMethodJson", defaultValue = "true") boolean useMethodJson) {
+        try {
+            if (file.isEmpty()) {
+                return Result.error("请选择要导入的文件");
+            }
+
+            String filename = file.getOriginalFilename();
+            if (filename == null || (!filename.endsWith(".xlsx") && !filename.endsWith(".xls"))) {
+                return Result.error("只支持Excel文件格式（.xlsx或.xls）");
+            }
+
+            OperationLogImportResultDTO result = operationLogService.importOperationLogsFromExcel(
+                    file.getInputStream(), executeRollback, useMethodJson);
+
+            if (result.getFailureCount() == 0) {
+                return Result.success("导入成功", result);
+            } else {
+                return Result.success("导入完成，部分失败", result);
+            }
+        } catch (Exception e) {
+            log.error("导入操作日志失败", e);
+            return Result.error("导入操作日志失败：" + e.getMessage());
+        }
     }
 }

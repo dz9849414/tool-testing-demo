@@ -1,5 +1,6 @@
 package com.example.tooltestingdemo.config;
 
+import com.example.tooltestingdemo.util.MethodCallChainTracker;
 import com.example.tooltestingdemo.util.TraceIdContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -48,6 +49,9 @@ public class TraceIdInterceptor implements HandlerInterceptor {
 
         TraceIdContext.set(traceId);
         request.setAttribute(TraceIdContext.TRACE_ID_KEY, traceId);
+        
+        // 启动方法调用链跟踪
+        MethodCallChainTracker.startTracking(traceId);
 
         if (traceIdProperties.isIncludeInResponseHeader()) {
             response.setHeader(traceIdProperties.getResponseHeader(), traceId);
@@ -61,6 +65,12 @@ public class TraceIdInterceptor implements HandlerInterceptor {
      */
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+        String traceId = TraceIdContext.get();
         TraceIdContext.clear();
+        
+        // 清理方法调用链跟踪数据
+        if (traceId != null) {
+            MethodCallChainTracker.clearTracking(traceId);
+        }
     }
 }

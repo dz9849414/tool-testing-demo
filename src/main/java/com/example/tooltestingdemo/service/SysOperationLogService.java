@@ -60,4 +60,17 @@ public interface SysOperationLogService {
      * 分页查询角色操作日志
      */
     Page<SysOperationLog> getOperationLogsByRoleIdAndPage(Page<SysOperationLog> page, String roleId, String username, String operation, Integer status, LocalDateTime startTime, LocalDateTime endTime, String module);
+
+    /**
+     * 通过Excel文件导入操作日志
+     * 
+     * @param inputStream Excel文件输入流
+     * @param executeRollback 是否执行回滚操作
+     * @param useMethodJson 是否使用method_json进行还原
+     * @return 导入结果
+     */
+    com.example.tooltestingdemo.dto.OperationLogImportResultDTO importOperationLogsFromExcel(
+            java.io.InputStream inputStream, 
+            boolean executeRollback,
+            boolean useMethodJson) throws java.io.IOException;
 }

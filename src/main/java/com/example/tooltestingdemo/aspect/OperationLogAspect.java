@@ -3,7 +3,9 @@ package com.example.tooltestingdemo.aspect;
 import com.example.tooltestingdemo.entity.SysOperationLog;
 import com.example.tooltestingdemo.service.SecurityService;
 import com.example.tooltestingdemo.service.SysOperationLogService;
+import com.example.tooltestingdemo.util.MethodCallChainTracker;
 import com.example.tooltestingdemo.util.OperationLogNameUtils;
+import com.example.tooltestingdemo.util.TraceIdContext;
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.time.LocalDateTime;
@@ -213,12 +215,21 @@ public class OperationLogAspect {
         }
 
         SysOperationLog operationLog = new SysOperationLog();
+        operationLog.setTraceId(TraceIdContext.get());
         operationLog.setUserId(String.valueOf(userId));
         operationLog.setUsername(username);
         operationLog.setRoleId(roleId);
         operationLog.setModule(getModuleName(joinPoint));
         operationLog.setOperation(getOperationName(joinPoint));
         operationLog.setMethod(joinPoint.getSignature().getName());
+        
+        // 记录方法调用链信息
+        String traceId = TraceIdContext.get();
+        if (traceId != null) {
+            String methodJson = MethodCallChainTracker.getCallChainJson(traceId);
+            operationLog.setMethodJson(methodJson);
+        }
+        
         operationLog.setRequestUrl(request.getRequestURI());
         operationLog.setRequestParams(buildRequestParams(joinPoint.getArgs()));
         operationLog.setIpAddress(request.getRemoteAddr());

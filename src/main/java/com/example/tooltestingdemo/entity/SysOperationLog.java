@@ -15,6 +15,9 @@ public class SysOperationLog {
     @TableId(value = "id", type = IdType.ASSIGN_ID)
     private String id;
     
+    @TableField(value = "trace_id")
+    private String traceId;
+    
     @TableField(value = "user_id")
     private String userId;
     
@@ -32,6 +35,9 @@ public class SysOperationLog {
     
     @TableField(value = "method")
     private String method;
+    
+    @TableField(value = "method_json")
+    private String methodJson;
     
     @TableField(value = "request_url")
     private String requestUrl;
