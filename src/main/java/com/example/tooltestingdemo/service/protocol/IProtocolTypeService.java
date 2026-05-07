@@ -48,4 +48,6 @@ public interface IProtocolTypeService extends IService<ProtocolType> {
     void deleteProtocolType(Long id);
 
     ProtocolTypeDeleteResultVO batchDeleteProtocolTypes(Long[] ids);
+
+    ProtocolType relationTemplate(ProtocolTypeModifyDTO dto);
 }

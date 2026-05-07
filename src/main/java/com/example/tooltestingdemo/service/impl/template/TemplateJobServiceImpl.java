@@ -349,6 +349,15 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
         acquireBatchKey(snapshot.getJobIds(), batchId);
         insertBatchRecord(batchId, TemplateEnums.JobBatchStatus.PENDING.getCode(), snapshot);
         startBatchExecution(snapshot, batchId, false);
+
+        // 更新执行时间
+        LocalDateTime currentTime = LocalDateTime.now();
+        for (Long id : ids) {
+            TemplateJob updateEntity = new TemplateJob();
+            updateEntity.setId(id);
+            updateEntity.setLastExecuteTime(currentTime);
+            updateById(updateEntity);
+        }
         return batchId;
     }
 

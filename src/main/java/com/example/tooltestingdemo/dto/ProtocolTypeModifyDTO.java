@@ -25,4 +25,8 @@ public class ProtocolTypeModifyDTO {
     private String description;
 
     private Integer version;
+
+    private Long templateId;
+
+    private String templateName;
 }
