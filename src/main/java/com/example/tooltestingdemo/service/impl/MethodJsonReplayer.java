@@ -3,7 +3,9 @@ package com.example.tooltestingdemo.service.impl;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.tooltestingdemo.dto.OperationLogImportDTO;
+import com.example.tooltestingdemo.util.MpIgnoreDeleteUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
@@ -72,96 +74,64 @@ public class MethodJsonReplayer {
         // 根据方法参数类型解析参数
         Object[] args = parseRequestParams(logDTO.getRequestParams(), targetMethod);
 
-        // 根据ID查询，如果存在则更新，不存在则执行原方法
-        boolean shouldInvoke = true;
-        if (args.length > 0) {
-            shouldInvoke = !checkAndUpdateIfExists(args[0], bean);
-        }
-
-        if (shouldInvoke) {
-            try {
-                targetMethod.invoke(bean, args);
-            } catch (Exception e) {
-                // 检查是否是主键冲突异常
-                String errorMsg = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
-                if (errorMsg != null && errorMsg.contains("Duplicate entry") && errorMsg.contains("PRIMARY")) {
-                    throw new RuntimeException("记录已存在", e);
+        try {
+            // 先尝试执行原方法（插入）
+            targetMethod.invoke(bean, args);
+            log.info("执行方法成功: {}.{}", className, methodName);
+        } catch (Exception e) {
+            // 检查是否是主键冲突异常
+            String errorMsg = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+            if (errorMsg != null && errorMsg.contains("Duplicate entry") && errorMsg.contains("PRIMARY")) {
+                // 主键冲突，执行更新操作
+                log.info("插入失败，主键冲突，执行更新操作: {}.{}", className, methodName);
+                if (args.length > 0) {
+                    executeUpdateOnDuplicate(args[0], bean);
                 }
+            } else {
                 throw e;
             }
         }
-
-        log.info("执行方法成功: {}.{}", className, methodName);
     }
 
     /**
-     * 根据ID查询记录，如果存在则更新，返回true；不存在则返回false
+     * 直接返回false，让调用方执行原方法（插入）
+     * 如果插入失败（主键冲突），会在调用方捕获异常并执行更新
      */
     private boolean checkAndUpdateIfExists(Object param, Object bean) {
+        return false;
+    }
+
+    /**
+     * 当插入失败（主键冲突）时执行更新操作，将is_deleted置为0
+     */
+    private void executeUpdateOnDuplicate(Object param, Object bean) {
         try {
-            // 获取参数对象的ID字段
             Field idField = param.getClass().getDeclaredField("id");
             idField.setAccessible(true);
             Object idValue = idField.get(param);
 
             if (idValue == null) {
-                return false;
+                log.warn("更新操作失败：参数ID为空");
+                return;
             }
 
-            // 查找getById方法
-            Method getByIdMethod = null;
-            for (Method method : bean.getClass().getMethods()) {
-                if ("getById".equals(method.getName()) && method.getParameterTypes().length == 1) {
-                    getByIdMethod = method;
-                    break;
-                }
-            }
-
-            if (getByIdMethod == null) {
-                return false;
-            }
-
-            // 执行查询
-            Object existingRecord = null;
+            // 将is_deleted置为0（恢复逻辑删除的记录）
             try {
-                existingRecord = getByIdMethod.invoke(bean, idValue);
-            } catch (Exception e) {
-                // 尝试类型转换后调用
-                Class<?> paramType = getByIdMethod.getParameterTypes()[0];
-                Object convertedId = convertIdType(idValue, paramType);
-                if (convertedId != null) {
-                    existingRecord = getByIdMethod.invoke(bean, convertedId);
-                }
+                Field isDeletedField = param.getClass().getDeclaredField("isDeleted");
+                isDeletedField.setAccessible(true);
+                isDeletedField.set(param, 0);
+                log.info("将is_deleted置为0: id={}", idValue);
+            } catch (NoSuchFieldException e) {
+                // 忽略，有些实体可能没有isDeleted字段
             }
 
-            if (existingRecord == null) {
-                log.info("记录不存在，将执行原方法: id={}", idValue);
-                return false;
-            }
-
-            // 记录存在，执行更新操作
-            log.info("记录已存在，将执行更新操作: id={}", idValue);
-
-            // 查找updateById方法
-            Method updateByIdMethod = null;
-            for (Method method : bean.getClass().getMethods()) {
-                if ("updateById".equals(method.getName()) && method.getParameterTypes().length == 1) {
-                    updateByIdMethod = method;
-                    break;
-                }
-            }
-
-            if (updateByIdMethod != null) {
-                // 将param的字段值复制到existingRecord
-                copyFields(param, existingRecord);
-                updateByIdMethod.invoke(bean, existingRecord);
-                log.info("更新记录成功: id={}", idValue);
-            }
-
-            return true;
+            // 使用ApplicationContext获取MpIgnoreDeleteUtil bean，执行更新并绕过逻辑删除限制
+            MpIgnoreDeleteUtil util = applicationContext.getBean(MpIgnoreDeleteUtil.class);
+            util.updateByIdIgnoreLogicDelete(bean, param);
+            log.info("更新记录成功（已绕过逻辑删除限制）: id={}", idValue);
         } catch (Exception e) {
-            log.debug("检查并更新记录时发生异常: {}", e.getMessage());
-            return false;
+            log.error("执行更新操作失败: {}", e.getMessage(), e);
+            throw new RuntimeException("更新操作失败: " + e.getMessage(), e);
         }
     }
 

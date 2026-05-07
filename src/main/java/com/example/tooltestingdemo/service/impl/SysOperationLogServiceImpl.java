@@ -152,10 +152,9 @@ public class SysOperationLogServiceImpl extends ServiceImpl<SysOperationLogMappe
     @Override
     public List<SysOperationLog> getOperationLogsByRoleIdAndTimeRange(String roleId, LocalDateTime startTime, LocalDateTime endTime) {
         LambdaQueryWrapper<SysOperationLog> queryWrapper = new LambdaQueryWrapper<>();
-        if (roleId != null) {
+        // 如果roleId为0或null，不添加roleId查询条件（查询所有角色）
+        if (roleId != null && !roleId.isEmpty() && !"0".equals(roleId)) {
             queryWrapper.eq(SysOperationLog::getRoleId, roleId);
-        } else {
-            queryWrapper.isNull(SysOperationLog::getRoleId);
         }
         
         if (startTime != null) {
@@ -174,10 +173,9 @@ public class SysOperationLogServiceImpl extends ServiceImpl<SysOperationLogMappe
     public Page<SysOperationLog> getOperationLogsByRoleIdAndPage(Page<SysOperationLog> page, String roleId, String username, String operation, Integer status, LocalDateTime startTime, LocalDateTime endTime, String module) {
         LambdaQueryWrapper<SysOperationLog> queryWrapper = new LambdaQueryWrapper<>();
         
-        if (roleId != null) {
+        // 如果roleId为0或null，不添加roleId查询条件（查询所有角色）
+        if (roleId != null && !roleId.isEmpty() && !"0".equals(roleId)) {
             queryWrapper.eq(SysOperationLog::getRoleId, roleId);
-        } else {
-            queryWrapper.isNull(SysOperationLog::getRoleId);
         }
         
         if (username != null && !username.isEmpty()) {

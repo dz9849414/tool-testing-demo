@@ -1,5 +1,6 @@
 package com.example.tooltestingdemo.controller;
 
+import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.common.ErrorStatus;
 import com.example.tooltestingdemo.common.Result;
@@ -147,21 +148,32 @@ public class SysOperationLogController {
             @RequestParam(required = false) String username,
             @RequestParam(required = false) String operation,
             @RequestParam(required = false) Integer status,
-            @RequestParam(required = false) String startTime,
-            @RequestParam(required = false) String endTime,
             @RequestParam(required = false) String module,
+            /** 开始时间，格式: yyyy-MM-dd HH:mm:ss */
+            @RequestParam(required = false) String startTime,
+            /** 结束时间，格式: yyyy-MM-dd HH:mm:ss */
+            @RequestParam(required = false) String endTime,
             HttpServletResponse response) throws IOException {
+
+        // 参数验证
+        if (!isValidDateTime(startTime)) {
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write(JSON.toJSONString(Result.error(ErrorStatus.BAD_REQUEST, "startTime格式错误，必须为: yyyy-MM-dd HH:mm:ss")));
+            return;
+        }
+        if (!isValidDateTime(endTime)) {
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write(JSON.toJSONString(Result.error(ErrorStatus.BAD_REQUEST, "endTime格式错误，必须为: yyyy-MM-dd HH:mm:ss")));
+            return;
+        }
 
         LocalDateTime start = parseDateTime(startTime);
         LocalDateTime end = parseDateTime(endTime);
-        if (start == null && startTime != null && !startTime.isEmpty()) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write("startTime format must be yyyy-MM-dd HH:mm:ss");
-            return;
-        }
-        if (end == null && endTime != null && !endTime.isEmpty()) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write("endTime format must be yyyy-MM-dd HH:mm:ss");
+
+        // 验证时间范围
+        if (start != null && end != null && start.isAfter(end)) {
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write(JSON.toJSONString(Result.error(ErrorStatus.BAD_REQUEST, "开始时间不能晚于结束时间")));
             return;
         }
 
@@ -210,9 +222,9 @@ public class SysOperationLogController {
             XSSFCellStyle headerStyle = buildHeaderStyle(workbook);
             XSSFCellStyle dataStyle = buildDataStyle(workbook);
             String[] headers = {
-                    "Log ID", "Trace ID", "User ID", "Username", "Role ID", "Module",
-                    "Operation", "Method", "Request URL", "Request Params", "IP Address",
-                    "User Agent", "Status", "Error Message", "Execute Time(ms)", "Create Time", "Method JSON"
+                    "日志ID", "追踪ID", "用户ID", "用户名", "角色ID", "模块",
+                    "操作", "方法", "请求URL", "请求参数", "IP地址",
+                    "用户代理", "状态", "错误信息", "执行时间(ms)", "创建时间", "方法调用链"
             };
             int[] columnWidths = {36, 40, 20, 20, 20, 24, 20, 20, 36, 50, 18, 36, 12, 36, 18, 24, 80};
 
