@@ -417,6 +417,28 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         return result;
     }
 
+    @Override
+    public ProtocolType relationTemplate(ProtocolTypeModifyDTO dto) {
+        ProtocolType existing = protocolTypeMapper.selectById(dto.getId());
+        if (existing == null) {
+            throw new RuntimeException("协议类型不存在");
+        }
+
+        ProtocolType updateEntity = new ProtocolType();
+        updateEntity.setId(existing.getId());
+        updateEntity.setTemplateId(dto.getTemplateId());
+        updateEntity.setTemplateName(existing.getTemplateName());
+        if (protocolTypeMapper.updateById(updateEntity) <= 0) {
+            throw new RuntimeException("关联模板失败");
+        }
+
+        log.info("关联模板成功: id={}, templateId={}",
+                existing.getId(), dto.getTemplateId());
+        existing.setTemplateId(dto.getTemplateId());
+        existing.setTemplateName(dto.getTemplateName());
+        return existing;
+    }
+
     private long getRelatedProjectCount(Long protocolId) {
         Long count = protocolTypeMapper.countRelatedProjects(protocolId);
         return count == null ? 0L : count;

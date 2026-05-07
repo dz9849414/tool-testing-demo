@@ -64,4 +64,14 @@ public class ProtocolType extends BaseEntity {
      */
     @Version
     private Integer version;
+
+    /**
+     * 关联模板ID
+     */
+    private Long templateId;
+
+    /**
+     * 关联模板名称
+     */
+    private String templateName;
 }

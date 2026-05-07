@@ -165,4 +165,14 @@ public class ProtocolTypeController {
         ProtocolTypeDeleteResultVO result = protocolTypeService.batchDeleteProtocolTypes(dto.getIds());
         return Result.success(result.getSummaryMessage(), result);
     }
+
+    /**
+     * 协议类型关联模板
+     */
+    @PostMapping("/relationTemplate")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:type:edit')")
+    public Result<ProtocolType> relationTemplate(@RequestBody @Valid ProtocolTypeModifyDTO dto) {
+        ProtocolType vo = protocolTypeService.relationTemplate(dto);
+        return Result.success("关联成功", vo);
+    }
 }
