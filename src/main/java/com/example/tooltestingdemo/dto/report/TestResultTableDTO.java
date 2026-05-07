@@ -45,4 +45,13 @@ public class TestResultTableDTO {
     
     /** 扩展字段 */
     private Map<String, Object> extraFields;
+    
+    /** 响应码 */
+    private Integer statusCode;
+    
+    /** 协议类型 */
+    private String protocolType;
+    
+    /** 数据源 */
+    private String dataSource;
 }

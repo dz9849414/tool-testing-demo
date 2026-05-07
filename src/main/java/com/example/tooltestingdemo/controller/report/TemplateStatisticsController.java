@@ -131,13 +131,13 @@ public class TemplateStatisticsController {
     public Result<Object> getHourlyResponseTimeReportSimple(
             @RequestParam String startDate,
             @RequestParam String endDate,
-            @RequestParam(defaultValue = "JOB_LOG") String dataSource) {
+            @RequestParam(defaultValue = "EXECUTE_LOG") String dataSource) {
         try {
             // 参数校验
             if (dataSource != null && !dataSource.trim().isEmpty()) {
                 String validDataSource = dataSource.toUpperCase();
-                if (!validDataSource.equals("JOB_LOG") && !validDataSource.equals("UNIFIED") && !validDataSource.equals("BATCH")) {
-                    return Result.error("数据源参数不正确，请使用JOB_LOG/UNIFIED/BATCH");
+                if (!validDataSource.equals("JOB_LOG") && !validDataSource.equals("UNIFIED") && !validDataSource.equals("BATCH") && !validDataSource.equals("EXECUTE_LOG")) {
+                    return Result.error("数据源参数不正确，请使用JOB_LOG/UNIFIED/BATCH/EXECUTE_LOG");
                 }
             }
 
@@ -179,13 +179,13 @@ public class TemplateStatisticsController {
     public Result<StatisticsReportDTO> getWeeklyExecutionReport(
             @RequestParam String startDate,
             @RequestParam String endDate,
-            @RequestParam(defaultValue = "JOB_LOG") String dataSource) {
+            @RequestParam(defaultValue = "EXECUTE_LOG") String dataSource) {
         try {
             // 参数校验
             if (dataSource != null && !dataSource.trim().isEmpty()) {
                 String validDataSource = dataSource.toUpperCase();
-                if (!validDataSource.equals("JOB_LOG") && !validDataSource.equals("UNIFIED")) {
-                    return Result.error("数据源参数不正确，请使用JOB_LOG/UNIFIED");
+                if (!validDataSource.equals("JOB_LOG") && !validDataSource.equals("UNIFIED") && !validDataSource.equals("EXECUTE_LOG")) {
+                    return Result.error("数据源参数不正确，请使用JOB_LOG/UNIFIED/EXECUTE_LOG");
                 }
             }
 

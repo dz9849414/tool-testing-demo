@@ -71,4 +71,7 @@ public class ReportDTO {
     
     /** 修改时间 */
     private LocalDateTime updateTime;
+    
+    /** 关联的测试结果列表 */
+    private java.util.List<TestResultTableDTO> testResults;
 }

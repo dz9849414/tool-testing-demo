@@ -8,8 +8,11 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.common.PageResult;
 import com.example.tooltestingdemo.dto.report.*;
 import com.example.tooltestingdemo.entity.report.Report;
+import com.example.tooltestingdemo.entity.template.TemplateExecuteLog;
 import com.example.tooltestingdemo.entity.template.TemplateJobLog;
+import com.example.tooltestingdemo.enums.ReportTypeEnum;
 import com.example.tooltestingdemo.mapper.report.ReportMapper;
+import com.example.tooltestingdemo.mapper.template.TemplateExecuteLogMapper;
 import com.example.tooltestingdemo.mapper.template.TemplateJobLogMapper;
 import com.example.tooltestingdemo.service.report.IReportService;
 import com.example.tooltestingdemo.service.report.IReportTemplateService;
@@ -50,6 +53,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
 
     private final ReportMapper reportMapper;
     private final TemplateJobLogMapper templateJobLogMapper;
+    private final TemplateExecuteLogMapper templateExecuteLogMapper;
     private final ITemplateStatisticsService templateStatisticsService;
     private final IReportTemplateService reportTemplateService;
 
@@ -167,6 +171,13 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             reportDTO.setGenerateType("AUTO");
             reportDTO.setDataSourceIds(dataSourceIds);
             reportDTO.setStatus("DRAFT");
+            
+            // 设置模板ID：优先使用传入的templateId，如果没有传入则使用获取到的模板ID
+            Long actualTemplateId = templateId;
+            if (actualTemplateId == null && template != null) {
+                actualTemplateId = template.getId();
+            }
+            reportDTO.setTemplateId(actualTemplateId);
             
             // 获取模板结构和章节结构
             String chapterStructure = template != null ? template.getChapterStructure() : null;
@@ -4278,7 +4289,100 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     private ReportDTO convertToDTO(Report report) {
         ReportDTO dto = new ReportDTO();
         BeanUtils.copyProperties(report, dto);
+        
+        // 将原始JSON内容格式化为可读文本，与PDF导出保持一致
+        String formattedContent = buildReportContent(report, "");
+        dto.setContent(formattedContent);
+        
+        // 翻译name和description字段中的英文报告类型为中文
+        dto.setReportType(ReportTypeEnum.translateReportType(dto.getReportType()));
+        dto.setName(ReportTypeEnum.translateReportType(dto.getName()));
+        dto.setDescription(ReportTypeEnum.translateReportType(dto.getDescription()));
+        
+        // 获取报告关联的测试结果
+        List<TestResultTableDTO> testResults = getTestResultsByReport(report);
+        dto.setTestResults(testResults);
+        
         return dto;
+    }
+    
+    /**
+     * 根据报告获取关联的测试结果
+     */
+    private List<TestResultTableDTO> getTestResultsByReport(Report report) {
+        List<TestResultTableDTO> results = new ArrayList<>();
+        
+        try {
+            // 从content字段提取时间范围
+            String content = report.getContent();
+            if (content != null && !content.trim().isEmpty()) {
+                String startDate = null;
+                String endDate = null;
+                
+                if (content.startsWith("[")) {
+                    // content是JSON数组格式：[{"data": {...}, "type": "...", ...}, ...]
+                    JSONArray contentArray = JSON.parseArray(content);
+                    for (int i = 0; i < contentArray.size(); i++) {
+                        JSONObject item = contentArray.getJSONObject(i);
+                        if (item != null && item.containsKey("data")) {
+                            JSONObject dataJson = item.getJSONObject("data");
+                            if (dataJson != null) {
+                                // 提取时间范围
+                                if (startDate == null && dataJson.containsKey("startDate")) {
+                                    startDate = dataJson.getString("startDate");
+                                }
+                                if (endDate == null && dataJson.containsKey("endDate")) {
+                                    endDate = dataJson.getString("endDate");
+                                }
+                                
+                                // 如果已经获取到时间范围，提前退出循环
+                                if (startDate != null && endDate != null) {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } else if (content.startsWith("{")) {
+                    // content是JSON对象格式
+                    JSONObject contentJson = JSON.parseObject(content);
+                    if (contentJson.containsKey("startDate")) {
+                        startDate = contentJson.getString("startDate");
+                    }
+                    if (contentJson.containsKey("endDate")) {
+                        endDate = contentJson.getString("endDate");
+                    }
+                }
+                
+                // 如果获取到时间范围，查询该区间的测试结果
+                if (startDate != null && endDate != null) {
+                    LambdaQueryWrapper<TemplateExecuteLog> queryWrapper = new LambdaQueryWrapper<>();
+                    
+                    // 添加时间范围条件
+                    queryWrapper.between(TemplateExecuteLog::getExecuteAt, startDate, endDate + " 23:59:59");
+                    queryWrapper.orderByDesc(TemplateExecuteLog::getExecuteAt);
+                    queryWrapper.last("LIMIT 20"); // 最多返回20条测试结果
+                    
+                    List<TemplateExecuteLog> executeLogs = templateExecuteLogMapper.selectList(queryWrapper);
+                    
+                    for (TemplateExecuteLog log : executeLogs) {
+                        Map<String, Object> logMap = new HashMap<>();
+                        logMap.put("id", log.getId());
+                        logMap.put("executeTime", log.getExecuteAt());
+                        logMap.put("durationMs", log.getDurationMs());
+                        logMap.put("status", log.getSuccess() != null && log.getSuccess() == 1 ? "成功" : "失败");
+                        logMap.put("statusCode", log.getStatusCode());
+                        logMap.put("protocolType", log.getTemplateName());
+                        logMap.put("dataSource", "pdm_tool_template_execute_log");
+                        logMap.put("errorMsg", log.getErrorMsg());
+                        results.add(convertToTestResultTableDTO(logMap));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("获取报告关联测试结果失败 - reportId: {}", report.getId(), e);
+        }
+        
+        return results;
     }
 
     // ====================== 测试结果展示相关方法实现 ======================
@@ -4461,19 +4565,22 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         TestResultTableDTO result = new TestResultTableDTO();
         
         Long logId = (Long) jobLog.get("id");
-        Long templateId = (Long) jobLog.get("templateId");
-        Integer success = (Integer) jobLog.get("success");
         Long durationMs = (Long) jobLog.get("durationMs");
-        LocalDateTime createTime = (LocalDateTime) jobLog.get("createTime");
+        LocalDateTime executeTime = (LocalDateTime) jobLog.get("executeTime");
+        String status = (String) jobLog.get("status");
+        Integer statusCode = (Integer) jobLog.get("statusCode");
+        String protocolType = (String) jobLog.get("protocolType");
+        String dataSource = (String) jobLog.get("dataSource");
+        String errorMsg = (String) jobLog.get("errorMsg");
         
-        result.setId("log_" + logId);
-        result.setTestType("TEMPLATE_EXECUTE");
-        result.setName("模板执行 - " + (templateId != null ? "模板" + templateId : "未知模板"));
-        result.setStatus(success != null && success == 1 ? "SUCCESS" : "FAILED");
-        result.setExecutor("系统用户"); // 实际项目中需要关联用户表
+        result.setId(logId != null ? "log_" + logId : null);
+        result.setExecuteTime(executeTime);
         result.setDuration(durationMs != null ? durationMs : 0L);
-        result.setSuccessRate(success != null && success == 1 ? 100.0 : 0.0);
-        result.setExecuteTime(createTime);
+        result.setStatus(status);
+        result.setStatusCode(statusCode);
+        result.setProtocolType(protocolType);
+        result.setDataSource(dataSource);
+        result.setErrorMessage(errorMsg);
         
         return result;
     }

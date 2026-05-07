@@ -940,13 +940,16 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
             
             // 根据数据源获取统计信息
             List<Map<String, Object>> weeklyStats;
-            switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
+            switch (dataSource != null ? dataSource.toUpperCase() : "EXECUTE_LOG") {
                 case "UNIFIED":
                     weeklyStats = templateStatisticsMapper.getUnifiedWeeklyExecutionStats(startTime, endTime);
                     break;
                 case "JOB_LOG":
-                default:
                     weeklyStats = templateStatisticsMapper.getWeeklyExecutionStats(startTime, endTime);
+                    break;
+                case "EXECUTE_LOG":
+                default:
+                    weeklyStats = templateStatisticsMapper.getUnifiedWeeklyExecutionStats(startTime, endTime);
                     break;
             }
             

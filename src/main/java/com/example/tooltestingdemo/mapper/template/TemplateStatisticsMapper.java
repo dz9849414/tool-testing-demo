@@ -314,14 +314,14 @@ public interface TemplateStatisticsMapper {
     // ====================== 成功率分析统计方法 ======================
 
     /**
-     * 获取成功率分析统计（JOB_LOG数据源）
+     * 获取成功率分析统计（EXECUTE_LOG数据源）
      */
     @Select("SELECT " +
             "COUNT(*) as total_count, " +
             "SUM(success) as success_count, " +
             "COUNT(*) - SUM(success) as failure_count, " +
             "ROUND(SUM(success) * 100.0 / COUNT(*), 2) as success_rate " +
-            "FROM pdm_tool_template_job_log " +
+            "FROM pdm_tool_template_execute_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime}")
     Map<String, Object> getSuccessRateStats(@Param("startTime") LocalDateTime startTime,
                                            @Param("endTime") LocalDateTime endTime);
