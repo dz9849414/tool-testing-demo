@@ -136,15 +136,17 @@ CREATE TABLE `pdm_tool_sys_user_organization` (
 DROP TABLE IF EXISTS `pdm_tool_sys_operation_log`;
 CREATE TABLE `pdm_tool_sys_operation_log` (
     `id` VARCHAR(50) NOT NULL COMMENT '日志ID',
+    `trace_id` VARCHAR(64) COMMENT '追踪ID，用于链路追踪和日志还原追踪',
     `user_id` VARCHAR(50) COMMENT '操作用户ID',
     `username` VARCHAR(64) COMMENT '操作用户名',
     `role_id` VARCHAR(50) COMMENT '角色ID',
     `operation` VARCHAR(128) NOT NULL COMMENT '操作内容',
     `module` VARCHAR(64) COMMENT '操作模块',
     `method` VARCHAR(128) COMMENT '操作方法',
+    `method_json` VARCHAR(1024) COMMENT '方法调用链JSON',
     `request_url` VARCHAR(512) COMMENT '请求URL',
     `request_params` TEXT COMMENT '请求参数',
-    `ip_address` VARCHAR(64) COMMENT 'IP地址',
+    `ip_address` VARCHAR(128) COMMENT 'IP地址',
     `user_agent` VARCHAR(512) COMMENT '用户代理',
     `status` TINYINT DEFAULT 1 COMMENT '操作状态：0-失败，1-成功',
     `error_message` TEXT COMMENT '错误信息',
