@@ -4539,6 +4539,14 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         dto.setName(ReportTypeEnum.translateReportType(dto.getName()));
         dto.setDescription(ReportTypeEnum.translateReportType(dto.getDescription()));
         
+        // 根据templateId获取模板名称
+        if (report.getTemplateId() != null) {
+            ReportTemplateDTO template = reportTemplateService.getTemplateDetail(report.getTemplateId());
+            if (template != null) {
+                dto.setTemplateName(template.getName());
+            }
+        }
+        
         return dto;
     }
     
