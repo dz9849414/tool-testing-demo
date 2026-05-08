@@ -766,7 +766,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
                                     LocalDateTime end,
                                     SFunction<ProtocolType, ?> column) {
         Optional.ofNullable(start).ifPresent(value -> queryWrapper.ge(column, value));
-        Optional.ofNullable(end).ifPresent(value -> queryWrapper.le(column, value));
+        Optional.ofNullable(end).ifPresent(value -> queryWrapper.lt(column, value));
     }
 
     private void saveExportRecordForProtocolType(ProtocolTypeQueryDTO dto,
