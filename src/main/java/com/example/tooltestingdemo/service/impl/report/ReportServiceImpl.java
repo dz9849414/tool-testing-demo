@@ -11,7 +11,11 @@ import com.example.tooltestingdemo.entity.report.Report;
 import com.example.tooltestingdemo.entity.protocol.ProtocolTestRecord;
 import com.example.tooltestingdemo.entity.template.TemplateExecuteLog;
 import com.example.tooltestingdemo.entity.template.TemplateJobLog;
+import com.example.tooltestingdemo.enums.FailureRateLevel;
+import com.example.tooltestingdemo.enums.HttpErrorCode;
 import com.example.tooltestingdemo.enums.ReportTypeEnum;
+import com.example.tooltestingdemo.enums.SuccessRateLevel;
+import com.example.tooltestingdemo.enums.SystemLoadLevel;
 import com.example.tooltestingdemo.mapper.protocol.ProtocolTestRecordMapper;
 import com.example.tooltestingdemo.mapper.report.ReportMapper;
 import com.example.tooltestingdemo.mapper.template.TemplateExecuteLogMapper;
@@ -4016,8 +4020,38 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             // 进行统计分析
             Map<String, Object> statistics = analyzeReports(reports);
             
-            // 添加预警检测
-            List<Map<String, Object>> warnings = detectWarnings(statistics, reports);
+            // 解析时间范围参数（支持多种日期格式）
+            LocalDateTime startDateTime = null;
+            LocalDateTime endDateTime = null;
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            
+            if (startTime != null && !startTime.trim().isEmpty()) {
+                try {
+                    startDateTime = LocalDateTime.parse(startTime, formatter);
+                } catch (Exception e) {
+                    // 尝试其他格式
+                    try {
+                        startDateTime = LocalDateTime.parse(startTime);
+                    } catch (Exception ex) {
+                        log.warn("无法解析开始时间: {}", startTime);
+                    }
+                }
+            }
+            if (endTime != null && !endTime.trim().isEmpty()) {
+                try {
+                    endDateTime = LocalDateTime.parse(endTime, formatter);
+                } catch (Exception e) {
+                    // 尝试其他格式
+                    try {
+                        endDateTime = LocalDateTime.parse(endTime);
+                    } catch (Exception ex) {
+                        log.warn("无法解析结束时间: {}", endTime);
+                    }
+                }
+            }
+            
+            // 添加预警检测（使用传入的时间范围）
+            List<Map<String, Object>> warnings = detectWarnings(statistics, reports, startDateTime, endDateTime);
             statistics.put("warnings", warnings);
             
             // 添加时间范围信息
@@ -4074,7 +4108,15 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         for (Report report : reports) {
             if (report.getContent() != null && !report.getContent().trim().isEmpty()) {
                 try {
-                    JSONObject content = JSON.parseObject(report.getContent());
+                    String contentStr = report.getContent().trim();
+                    
+                    // 查找包含summary的对象
+                    JSONObject summaryObj = findSummaryObject(contentStr);
+                    
+                    if (summaryObj == null) {
+                        continue;
+                    }
+                    
                     Map<String, Object> reportAnalysis = new HashMap<>();
                     
                     reportAnalysis.put("reportId", report.getId());
@@ -4082,17 +4124,15 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                     reportAnalysis.put("reportType", report.getReportType());
                     
                     // 分析成功率数据
-                    if (content.containsKey("summary")) {
-                        JSONObject summary = content.getJSONObject("summary");
-                        reportAnalysis.put("successRate", summary.getDouble("successRate"));
-                        reportAnalysis.put("failureRate", summary.getDouble("failureRate"));
-                        reportAnalysis.put("totalCount", summary.getInteger("totalCount"));
-                    }
+                    JSONObject summary = summaryObj.getJSONObject("summary");
+                    reportAnalysis.put("successRate", summary.getDouble("successRate"));
+                    reportAnalysis.put("failureRate", summary.getDouble("failureRate"));
+                    reportAnalysis.put("totalCount", summary.getInteger("totalCount"));
                     
                     // 分析时间范围
-                    if (content.containsKey("startDate") && content.containsKey("endDate")) {
-                        reportAnalysis.put("startDate", content.getString("startDate"));
-                        reportAnalysis.put("endDate", content.getString("endDate"));
+                    if (summaryObj.containsKey("startDate") && summaryObj.containsKey("endDate")) {
+                        reportAnalysis.put("startDate", summaryObj.getString("startDate"));
+                        reportAnalysis.put("endDate", summaryObj.getString("endDate"));
                     }
                     
                     analysis.add(reportAnalysis);
@@ -4104,6 +4144,46 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         }
         
         return analysis;
+    }
+    
+    /**
+     * 查找包含summary的JSON对象
+     * 支持两种格式：
+     * 格式1: [{"type": "chart", "data": {"summary": {...}}}, ...]
+     * 格式2: [{"summary": {...}, ...}]
+     */
+    private JSONObject findSummaryObject(String contentStr) {
+        if (!contentStr.startsWith("[")) {
+            return null;
+        }
+        
+        JSONArray array = JSON.parseArray(contentStr);
+        if (array == null || array.isEmpty()) {
+            return null;
+        }
+        
+        // 遍历数组，查找包含summary的对象
+        for (int i = 0; i < array.size(); i++) {
+            JSONObject item = array.getJSONObject(i);
+            
+            // 格式1: {"type": "chart", "data": {"summary": {...}}}
+            if (item.containsKey("data")) {
+                Object dataObj = item.get("data");
+                if (dataObj instanceof JSONObject) {
+                    JSONObject data = (JSONObject) dataObj;
+                    if (data.containsKey("summary")) {
+                        return data;
+                    }
+                }
+            }
+            
+            // 格式2: {"summary": {...}}
+            if (item.containsKey("summary")) {
+                return item;
+            }
+        }
+        
+        return null;
     }
     
     /**
@@ -4119,9 +4199,13 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         for (Report report : reports) {
             if (report.getContent() != null && !report.getContent().trim().isEmpty()) {
                 try {
-                    JSONObject content = JSON.parseObject(report.getContent());
-                    if (content.containsKey("summary")) {
-                        JSONObject summary = content.getJSONObject("summary");
+                    String contentStr = report.getContent().trim();
+                    
+                    // 查找包含summary的对象
+                    JSONObject summaryObj = findSummaryObject(contentStr);
+                    
+                    if (summaryObj != null && summaryObj.containsKey("summary")) {
+                        JSONObject summary = summaryObj.getJSONObject("summary");
                         successRates.add(summary.getDouble("successRate"));
                         failureRates.add(summary.getDouble("failureRate"));
                     }
@@ -4150,23 +4234,24 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     /**
      * 检测预警
      */
-    private List<Map<String, Object>> detectWarnings(Map<String, Object> statistics, List<Report> reports) {
+    private List<Map<String, Object>> detectWarnings(Map<String, Object> statistics, List<Report> reports, 
+                                                      LocalDateTime startTime, LocalDateTime endTime) {
         List<Map<String, Object>> warnings = new ArrayList<>();
         
         // 1. 接口响应突然变慢（环比上涨 50%+）
-        detectResponseTimeWarnings(statistics, warnings);
+        detectResponseTimeWarnings(statistics, warnings, startTime, endTime);
         
         // 2. 成功率骤降、批量报错
-        detectSuccessRateWarnings(statistics, warnings);
+        detectSuccessRateWarnings(statistics, warnings, startTime, endTime);
         
         // 3. 并发下资源瓶颈
-        detectResourceBottleneckWarnings(statistics, warnings);
+        detectResourceBottleneckWarnings(statistics, warnings, startTime, endTime);
         
         // 4. 重复频发 BUG、高频错误码
-        detectFrequentErrorWarnings(reports, warnings);
+        detectFrequentErrorWarnings(reports, warnings, startTime, endTime);
         
         // 5. 数据断言大面积失败
-        detectAssertionFailureWarnings(reports, warnings);
+        detectAssertionFailureWarnings(reports, warnings, startTime, endTime);
         
         return warnings;
     }
@@ -4174,21 +4259,57 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     /**
      * 检测响应时间预警
      */
-    private void detectResponseTimeWarnings(Map<String, Object> statistics, List<Map<String, Object>> warnings) {
-        // 模拟响应时间分析（实际应从历史数据计算环比）
-        double avgResponseTime = 1200; // 当前平均响应时间（ms）
-        double lastPeriodResponseTime = 800; // 上一周期平均响应时间（ms）
+    private void detectResponseTimeWarnings(Map<String, Object> statistics, List<Map<String, Object>> warnings,
+                                            LocalDateTime startTime, LocalDateTime endTime) {
+        // 使用传入的时间范围，如果未传入则使用默认值（最近7天）
+        LocalDateTime currentStart = startTime != null ? startTime : LocalDateTime.now().minusDays(7);
+        LocalDateTime currentEnd = endTime != null ? endTime : LocalDateTime.now();
         
-        if (lastPeriodResponseTime > 0) {
-            double increaseRate = (avgResponseTime - lastPeriodResponseTime) / lastPeriodResponseTime * 100;
+        // 计算上一周期（与当前周期相同长度）
+        long daysDiff = java.time.Duration.between(currentStart, currentEnd).toDays();
+        LocalDateTime lastStart = currentStart.minusDays(daysDiff);
+        LocalDateTime lastEnd = currentStart;
+        
+        LambdaQueryWrapper<TemplateExecuteLog> currentQuery = new LambdaQueryWrapper<>();
+        currentQuery.eq(TemplateExecuteLog::getIsDeleted, 0);
+        currentQuery.ge(TemplateExecuteLog::getExecuteAt, currentStart);
+        currentQuery.le(TemplateExecuteLog::getExecuteAt, currentEnd);
+        
+        List<TemplateExecuteLog> currentLogs = templateExecuteLogMapper.selectList(currentQuery);
+        
+        if (!currentLogs.isEmpty()) {
+            long currentTotalDuration = currentLogs.stream()
+                .filter(log -> log.getDurationMs() != null)
+                .mapToLong(TemplateExecuteLog::getDurationMs)
+                .sum();
+            double currentAvgResponseTime = currentTotalDuration / (double) currentLogs.size();
             
-            if (increaseRate >= 50) {
-                warnings.add(createWarning(
-                    "接口响应变慢",
-                    "HIGH",
-                    "接口响应时间环比上涨 " + String.format("%.2f", increaseRate) + "%",
-                    "建议检查服务器性能和网络状况"
-                ));
+            // 上一周期（与当前周期相同长度）
+            LambdaQueryWrapper<TemplateExecuteLog> lastQuery = new LambdaQueryWrapper<>();
+            lastQuery.eq(TemplateExecuteLog::getIsDeleted, 0);
+            lastQuery.between(TemplateExecuteLog::getExecuteAt, lastStart, lastEnd);
+            
+            List<TemplateExecuteLog> lastLogs = templateExecuteLogMapper.selectList(lastQuery);
+            
+            if (!lastLogs.isEmpty()) {
+                long lastTotalDuration = lastLogs.stream()
+                    .filter(log -> log.getDurationMs() != null)
+                    .mapToLong(TemplateExecuteLog::getDurationMs)
+                    .sum();
+                double lastAvgResponseTime = lastTotalDuration / (double) lastLogs.size();
+                
+                if (lastAvgResponseTime > 0) {
+                    double increaseRate = (currentAvgResponseTime - lastAvgResponseTime) / lastAvgResponseTime * 100;
+                    
+                    if (increaseRate >= 50) {
+                        warnings.add(createWarning(
+                            "接口响应变慢",
+                            "HIGH",
+                            "接口响应时间环比上涨 " + String.format("%.2f", increaseRate) + "%",
+                            "建议检查服务器性能和网络状况"
+                        ));
+                    }
+                }
             }
         }
     }
@@ -4196,20 +4317,23 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     /**
      * 检测成功率预警
      */
-    private void detectSuccessRateWarnings(Map<String, Object> statistics, List<Map<String, Object>> warnings) {
+    private void detectSuccessRateWarnings(Map<String, Object> statistics, List<Map<String, Object>> warnings,
+                                           LocalDateTime startTime, LocalDateTime endTime) {
         Map<String, Object> metrics = (Map<String, Object>) statistics.get("performanceMetrics");
         
         if (metrics.containsKey("avgSuccessRate")) {
             double avgSuccessRate = (double) metrics.get("avgSuccessRate");
             double minSuccessRate = (double) metrics.get("minSuccessRate");
             
-            // 成功率低于90%触发预警
-            if (avgSuccessRate < 90) {
+            // 使用SuccessRateLevel枚举获取预警信息
+            SuccessRateLevel rateLevel = SuccessRateLevel.fromRate(avgSuccessRate);
+            
+            if (rateLevel.needsWarning()) {
                 warnings.add(createWarning(
-                    "成功率偏低",
-                    "HIGH",
-                    "平均成功率仅为 " + String.format("%.2f", avgSuccessRate) + "%",
-                    "建议检查接口稳定性和数据质量"
+                    "接口链路存在性能瓶颈",
+                    rateLevel.getWarningLevel(),
+                    "平均成功率仅为 " + String.format("%.2f", avgSuccessRate) + "%，" + rateLevel.getDescription(),
+                    rateLevel.getSuggestion()
                 ));
             }
             
@@ -4231,36 +4355,47 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     /**
      * 检测资源瓶颈预警
      */
-    private void detectResourceBottleneckWarnings(Map<String, Object> statistics, List<Map<String, Object>> warnings) {
-        // 模拟资源监控数据
-        double cpuUsage = 85; // CPU使用率
-        double memoryUsage = 92; // 内存使用率
-        int connectionCount = 950; // 连接数
+    private void detectResourceBottleneckWarnings(Map<String, Object> statistics, List<Map<String, Object>> warnings,
+                                                  LocalDateTime startTime, LocalDateTime endTime) {
+        // 从数据库获取执行日志统计，分析系统负载
+        LambdaQueryWrapper<TemplateExecuteLog> queryWrapper = new LambdaQueryWrapper<>();
         
-        if (cpuUsage > 80) {
-            warnings.add(createWarning(
-                "CPU使用率过高",
-                "HIGH",
-                "CPU使用率达到 " + cpuUsage + "%",
-                "建议优化代码或扩容服务器"
-            ));
+        // 使用传入的时间范围，如果未传入则使用默认值（最近24小时）
+        LocalDateTime queryStart = startTime != null ? startTime : LocalDateTime.now().minusHours(24);
+        LocalDateTime queryEnd = endTime != null ? endTime : LocalDateTime.now();
+        
+        queryWrapper.eq(TemplateExecuteLog::getIsDeleted, 0);
+        queryWrapper.ge(TemplateExecuteLog::getExecuteAt, queryStart);
+        queryWrapper.le(TemplateExecuteLog::getExecuteAt, queryEnd);
+        
+        Long recentExecutionCount = templateExecuteLogMapper.selectCount(queryWrapper);
+        int connectionCount = recentExecutionCount != null ? recentExecutionCount.intValue() : 0; // 使用执行次数作为连接数的参考指标
+        
+        // 成功率低于预期可能表示资源瓶颈
+        Map<String, Object> metrics = (Map<String, Object>) statistics.get("performanceMetrics");
+        if (metrics != null && metrics.containsKey("avgSuccessRate")) {
+            double avgSuccessRate = (double) metrics.get("avgSuccessRate");
+            
+            // 成功率低于70%可能表示资源瓶颈
+//            if (avgSuccessRate < 70) {
+//                warnings.add(createWarning(
+//                    "接口链路存在性能瓶颈",
+//                    "HIGH",
+//                    "平均成功率仅为 " + String.format("%.2f", avgSuccessRate) + "%，可能存在接口链路调用问题",
+//                    "核查接口响应耗时、并发承载及异常报错日志"
+//                ));
+//            }
         }
         
-        if (memoryUsage > 85) {
-            warnings.add(createWarning(
-                "内存使用率过高",
-                "HIGH",
-                "内存使用率达到 " + memoryUsage + "%",
-                "建议检查内存泄漏或增加内存"
-            ));
-        }
+        // 使用SystemLoadLevel枚举获取负载等级
+        SystemLoadLevel loadLevel = SystemLoadLevel.fromCount(connectionCount);
         
-        if (connectionCount > 800) {
+        if (loadLevel.needsWarning()) {
             warnings.add(createWarning(
-                "连接数接近上限",
-                "MEDIUM",
-                "当前连接数 " + connectionCount + "，接近上限",
-                "建议优化连接池配置"
+                "系统负载预警",
+                loadLevel.getWarningLevel(),
+                "最近24小时执行次数达到 " + connectionCount + " 次，" + loadLevel.getDescription(),
+                loadLevel.getSuggestion()
             ));
         }
     }
@@ -4268,21 +4403,57 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     /**
      * 检测频繁错误预警
      */
-    private void detectFrequentErrorWarnings(List<Report> reports, List<Map<String, Object>> warnings) {
-        // 模拟错误码分析
+    private void detectFrequentErrorWarnings(List<Report> reports, List<Map<String, Object>> warnings,
+                                             LocalDateTime startTime, LocalDateTime endTime) {
+        // 从数据库获取真实的错误码统计
+        LambdaQueryWrapper<TemplateExecuteLog> queryWrapper = new LambdaQueryWrapper<>();
+        
+        // 使用传入的时间范围，如果未传入则使用默认值（最近7天）
+        LocalDateTime queryStart = startTime != null ? startTime : LocalDateTime.now().minusDays(7);
+        LocalDateTime queryEnd = endTime != null ? endTime : LocalDateTime.now();
+        
+        queryWrapper.eq(TemplateExecuteLog::getIsDeleted, 0);
+        queryWrapper.ge(TemplateExecuteLog::getExecuteAt, queryStart);
+        queryWrapper.le(TemplateExecuteLog::getExecuteAt, queryEnd);
+        queryWrapper.isNotNull(TemplateExecuteLog::getStatusCode);
+        queryWrapper.ne(TemplateExecuteLog::getStatusCode, 200); // 排除成功状态码
+        
+        List<TemplateExecuteLog> logs = templateExecuteLogMapper.selectList(queryWrapper);
+        
+        // 统计错误码出现次数
         Map<String, Integer> errorCodeCounts = new HashMap<>();
-        errorCodeCounts.put("500", 45);
-        errorCodeCounts.put("404", 23);
-        errorCodeCounts.put("403", 12);
-        errorCodeCounts.put("502", 8);
+        for (TemplateExecuteLog log : logs) {
+            if (log.getStatusCode() != null) {
+                String code = log.getStatusCode().toString();
+                errorCodeCounts.put(code, errorCodeCounts.getOrDefault(code, 0) + 1);
+            }
+        }
         
         for (Map.Entry<String, Integer> entry : errorCodeCounts.entrySet()) {
             if (entry.getValue() > 20) {
+                String errorCode = entry.getKey();
+                int count = entry.getValue();
+                
+                // 使用HttpErrorCode枚举获取详细信息
+                String shortMessage = "未知错误";
+                String suggestion = "建议检查相关接口实现";
+                
+                try {
+                    int code = Integer.parseInt(errorCode);
+                    HttpErrorCode httpErrorCode = HttpErrorCode.fromCode(code);
+                    if (httpErrorCode != null) {
+                        shortMessage = httpErrorCode.getShortMessage();
+                        suggestion = httpErrorCode.getSuggestion();
+                    }
+                } catch (NumberFormatException e) {
+                    // 非数字错误码，使用默认信息
+                }
+                
                 warnings.add(createWarning(
                     "高频错误码",
                     "MEDIUM",
-                    "错误码 " + entry.getKey() + " 出现 " + entry.getValue() + " 次",
-                    "建议检查相关接口实现"
+                    "错误码 " + errorCode + " (" + shortMessage + ") 出现 " + count + " 次",
+                    suggestion
                 ));
             }
         }
@@ -4291,19 +4462,40 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     /**
      * 检测断言失败预警
      */
-    private void detectAssertionFailureWarnings(List<Report> reports, List<Map<String, Object>> warnings) {
-        // 模拟断言失败分析
-        int totalAssertions = 1500;
-        int failedAssertions = 320;
-        double failureRate = (double) failedAssertions / totalAssertions * 100;
+    private void detectAssertionFailureWarnings(List<Report> reports, List<Map<String, Object>> warnings,
+                                               LocalDateTime startTime, LocalDateTime endTime) {
+        // 从数据库获取真实的执行结果统计
+        LambdaQueryWrapper<TemplateExecuteLog> queryWrapper = new LambdaQueryWrapper<>();
         
-        if (failureRate > 15) {
-            warnings.add(createWarning(
-                "数据断言大面积失败",
-                "HIGH",
-                "断言失败率达到 " + String.format("%.2f", failureRate) + "%",
-                "建议检查数据质量和断言规则"
-            ));
+        // 使用传入的时间范围，如果未传入则使用默认值（最近7天）
+        LocalDateTime queryStart = startTime != null ? startTime : LocalDateTime.now().minusDays(7);
+        LocalDateTime queryEnd = endTime != null ? endTime : LocalDateTime.now();
+        
+        queryWrapper.eq(TemplateExecuteLog::getIsDeleted, 0);
+        queryWrapper.ge(TemplateExecuteLog::getExecuteAt, queryStart);
+        queryWrapper.le(TemplateExecuteLog::getExecuteAt, queryEnd);
+        
+        List<TemplateExecuteLog> logs = templateExecuteLogMapper.selectList(queryWrapper);
+        
+        if (!logs.isEmpty()) {
+            int totalCount = logs.size();
+            int successCount = (int) logs.stream()
+                .filter(log -> log.getSuccess() != null && log.getSuccess() == 1)
+                .count();
+            int failedCount = totalCount - successCount;
+            double failureRate = (double) failedCount / totalCount * 100;
+            
+            // 使用FailureRateLevel枚举获取失败率等级
+            FailureRateLevel rateLevel = FailureRateLevel.fromRate(failureRate);
+            
+            if (rateLevel.needsWarning()) {
+                warnings.add(createWarning(
+                    "数据断言大面积失败",
+                    rateLevel.getWarningLevel(),
+                    "断言失败率达到 " + String.format("%.2f", failureRate) + "%，" + rateLevel.getDescription(),
+                    rateLevel.getSuggestion()
+                ));
+            }
         }
     }
     

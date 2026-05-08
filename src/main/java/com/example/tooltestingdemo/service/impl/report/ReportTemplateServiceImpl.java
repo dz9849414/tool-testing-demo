@@ -51,6 +51,11 @@ public class ReportTemplateServiceImpl extends ServiceImpl<ReportTemplateMapper,
             return false;
         }
         
+        // 检查是否是系统模板，系统模板不允许修改
+        if (template.getIsSystemTemplate() != null && template.getIsSystemTemplate()) {
+            throw new IllegalArgumentException("系统预设模板不允许修改");
+        }
+        
         BeanUtils.copyProperties(templateDTO, template);
         template.setUpdateTime(LocalDateTime.now());
         
@@ -62,6 +67,11 @@ public class ReportTemplateServiceImpl extends ServiceImpl<ReportTemplateMapper,
         ReportTemplate template = reportTemplateMapper.selectById(id);
         if (template == null) {
             return false;
+        }
+        
+        // 检查是否是系统模板，系统模板不允许删除
+        if (template.getIsSystemTemplate() != null && template.getIsSystemTemplate()) {
+            throw new IllegalArgumentException("系统预设模板不允许删除");
         }
         
         // 软删除

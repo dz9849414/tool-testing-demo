@@ -117,4 +117,10 @@ public class TemplateExecuteLog {
      */
     @TableField(value = "execute_user_name")
     private String executeUserName;
+
+    /**
+     * 是否删除：0-否 1-是
+     */
+    @TableField(value = "is_deleted")
+    private Integer isDeleted;
 }
