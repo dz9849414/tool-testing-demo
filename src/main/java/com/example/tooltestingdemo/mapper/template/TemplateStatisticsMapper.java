@@ -440,6 +440,7 @@ public interface TemplateStatisticsMapper {
             "AND success = 0 " +
             "AND execute_result IS NOT NULL " +
             "AND JSON_EXTRACT(execute_result, '$.message') IS NOT NULL " +
+            "AND (JSON_EXTRACT(execute_result, '$.statusCode') IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(execute_result, '$.statusCode')) != '200') " +
             "GROUP BY error_code, failure_reason " +
             "ORDER BY failure_count DESC " +
             "LIMIT 5")

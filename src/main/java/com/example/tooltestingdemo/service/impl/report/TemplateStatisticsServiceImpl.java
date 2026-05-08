@@ -8,6 +8,7 @@ import com.example.tooltestingdemo.dto.report.ReportDTO;
 import com.example.tooltestingdemo.dto.report.ReportTemplateDTO;
 import com.example.tooltestingdemo.dto.report.StatisticsReportDTO;
 import com.example.tooltestingdemo.entity.template.TemplateJobLog;
+import com.example.tooltestingdemo.enums.HttpErrorCode;
 import com.example.tooltestingdemo.mapper.template.TemplateStatisticsMapper;
 import com.example.tooltestingdemo.service.report.ITemplateStatisticsService;
 import com.example.tooltestingdemo.service.report.IReportTemplateService;
@@ -736,6 +737,70 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
         }
     }
 
+    /**
+     * 根据failure_reason和error_code构建组合的失败原因
+     * 如果failure_reason不为空且不为空字符串，则在后面加入逗号和根据error_code获取的错误描述
+     * 如果枚举类中没有对应的错误码，则直接拼接状态码本身
+     */
+    private String buildCombinedFailureReason(String failureReason, String errorCode) {
+        // 如果failure_reason为空或空字符串
+        if (failureReason == null || failureReason.trim().isEmpty()) {
+            // 先尝试从枚举类获取描述
+            String errorDescription = getErrorCodeDescription(errorCode);
+            if (errorDescription != null && !errorDescription.isEmpty()) {
+                return errorDescription;
+            }
+            // 如果枚举类中没有，且error_code有效，则返回状态码
+            if (isValidErrorCode(errorCode)) {
+                return errorCode.trim();
+            }
+            return null;
+        }
+        
+        // 获取error_code对应的错误描述
+        String errorDescription = getErrorCodeDescription(errorCode);
+        
+        // 如果能从枚举类获取到描述，且不包含在failureReason中，则拼接描述
+        if (errorDescription != null && !errorDescription.isEmpty() && !failureReason.contains(errorDescription)) {
+            return failureReason + "," + errorDescription;
+        }
+        
+        // 如果枚举类中没有，但error_code有效，则拼接状态码
+        if (isValidErrorCode(errorCode) && !failureReason.contains(errorCode.trim())) {
+            return failureReason + "," + errorCode.trim();
+        }
+        
+        return failureReason;
+    }
+    
+    /**
+     * 判断error_code是否有效（不为空即可，"0"也有效，因为枚举类中定义了NETWORK_ERROR(0)）
+     */
+    private boolean isValidErrorCode(String errorCode) {
+        return errorCode != null && !errorCode.trim().isEmpty();
+    }
+    
+    /**
+     * 根据error_code从HttpErrorCode枚举类获取错误描述
+     */
+    private String getErrorCodeDescription(String errorCode) {
+        if (!isValidErrorCode(errorCode)) {
+            return null;
+        }
+        
+        try {
+            int code = Integer.parseInt(errorCode.trim());
+            HttpErrorCode httpErrorCode = HttpErrorCode.fromCode(code);
+            if (httpErrorCode != null) {
+                return httpErrorCode.getShortMessage();
+            }
+        } catch (NumberFormatException e) {
+            // 如果errorCode不是数字，忽略
+        }
+        
+        return null;
+    }
+    
     /**
      * 计算成功率
      */
@@ -1486,10 +1551,14 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
             List<Map<String, Object>> result = new ArrayList<>();
             for (Map<String, Object> reason : failureReasons) {
                 String failureReason = safeGetString(reason, "failure_reason");
+                String errorCode = safeGetString(reason, "error_code");
                 BigDecimal failureCount = safeGetBigDecimal(reason, "failure_count");
                 
+                // 根据error_code从枚举类获取错误描述并拼接
+                String combinedReason = buildCombinedFailureReason(failureReason, errorCode);
+                
                 Map<String, Object> item = new HashMap<>();
-                item.put("name", failureReason);
+                item.put("name", combinedReason);
                 item.put("value", failureCount != null ? failureCount.longValue() : 0);
                 
                 result.add(item);
