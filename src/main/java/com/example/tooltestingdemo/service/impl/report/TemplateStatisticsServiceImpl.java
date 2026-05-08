@@ -945,7 +945,10 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
                     weeklyStats = templateStatisticsMapper.getUnifiedWeeklyExecutionStats(startTime, endTime);
                     break;
                 case "JOB_LOG":
-                    weeklyStats = templateStatisticsMapper.getWeeklyExecutionStats(startTime, endTime);
+                    weeklyStats = templateStatisticsMapper.getBatchWeeklyExecutionStats(startTime, endTime);
+                    break;
+                case "JOB_BATCH":
+                    weeklyStats = templateStatisticsMapper.getBatchWeeklyExecutionStats(startTime, endTime);
                     break;
                 case "EXECUTE_LOG":
                 default:

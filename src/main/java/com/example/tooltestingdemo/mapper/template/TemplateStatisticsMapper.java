@@ -296,6 +296,21 @@ public interface TemplateStatisticsMapper {
                                                      @Param("endTime") LocalDateTime endTime);
 
     /**
+     * 获取周一到周日执行量统计（JOB_BATCH数据源）
+     */
+    @Select("SELECT " +
+            "DAYNAME(create_time) as day_name, " +
+            "DAYOFWEEK(create_time) as day_of_week, " +
+            "COUNT(*) as execution_count " +
+            "FROM pdm_tool_template_job_batch " +
+            "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
+            "AND status = 'DONE' " +
+            "GROUP BY DAYNAME(create_time), DAYOFWEEK(create_time) " +
+            "ORDER BY DAYOFWEEK(create_time)")
+    List<Map<String, Object>> getBatchWeeklyExecutionStats(@Param("startTime") LocalDateTime startTime,
+                                                          @Param("endTime") LocalDateTime endTime);
+
+    /**
      * 获取周一到周日执行量统计（UNIFIED数据源）
      */
     @Select("SELECT " +
