@@ -37,6 +37,19 @@ public interface IReportService extends IService<Report> {
      * 获取报告详情
      */
     ReportDTO getReportDetail(Long id);
+    
+    /**
+     * 获取报告关联的测试结果（带分页和过滤）
+     * 
+     * @param reportId 报告ID
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @param testType 测试类型（可选）
+     * @param timeRange 时间范围（可选）
+     * @param templateId 模板ID（可选）
+     * @return 分页的测试结果
+     */
+    PageResult<TestResultTableDTO> getReportTestResults(Long reportId, Integer pageNum, Integer pageSize, String testType, String timeRange, Long templateId);
 
      void generatePdfReport(Report report, File exportFile, String pageRange);
 

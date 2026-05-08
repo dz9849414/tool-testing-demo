@@ -155,6 +155,24 @@ public class ReportController {
         }
     }
 
+    @GetMapping("/{id}/test-results")
+    @Operation(summary = "获取报告关联的测试结果")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:view')")
+    public Result<PageResult<TestResultTableDTO>> getReportTestResults(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String testType,
+            @RequestParam(required = false) String timeRange,
+            @RequestParam(required = false) Long templateId) {
+        try {
+            PageResult<TestResultTableDTO> testResults = reportService.getReportTestResults(id, pageNum, pageSize, testType, timeRange, templateId);
+            return Result.success(testResults);
+        } catch (Exception e) {
+            return Result.error("获取报告测试结果失败：" + e.getMessage());
+        }
+    }
+
     @PostMapping("/auto-generate")
     @Operation(summary = "自动生成报告")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:auto-generate')")

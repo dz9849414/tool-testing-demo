@@ -54,4 +54,7 @@ public class TestResultTableDTO {
     
     /** 数据源 */
     private String dataSource;
+    
+    /** 模板ID */
+    private Long templateId;
 }

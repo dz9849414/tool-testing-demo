@@ -8,9 +8,11 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.common.PageResult;
 import com.example.tooltestingdemo.dto.report.*;
 import com.example.tooltestingdemo.entity.report.Report;
+import com.example.tooltestingdemo.entity.protocol.ProtocolTestRecord;
 import com.example.tooltestingdemo.entity.template.TemplateExecuteLog;
 import com.example.tooltestingdemo.entity.template.TemplateJobLog;
 import com.example.tooltestingdemo.enums.ReportTypeEnum;
+import com.example.tooltestingdemo.mapper.protocol.ProtocolTestRecordMapper;
 import com.example.tooltestingdemo.mapper.report.ReportMapper;
 import com.example.tooltestingdemo.mapper.template.TemplateExecuteLogMapper;
 import com.example.tooltestingdemo.mapper.template.TemplateJobLogMapper;
@@ -54,6 +56,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     private final ReportMapper reportMapper;
     private final TemplateJobLogMapper templateJobLogMapper;
     private final TemplateExecuteLogMapper templateExecuteLogMapper;
+    private final ProtocolTestRecordMapper protocolTestRecordMapper;
     private final ITemplateStatisticsService templateStatisticsService;
     private final IReportTemplateService reportTemplateService;
 
@@ -128,6 +131,51 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         }
         
         return convertToDTO(report);
+    }
+    
+    @Override
+    public PageResult<TestResultTableDTO> getReportTestResults(Long reportId, Integer pageNum, Integer pageSize, String testType, String timeRange, Long templateId) {
+        Report report = reportMapper.selectById(reportId);
+        if (report == null || report.getIsDeleted() == 1) {
+            return new PageResult<>(pageNum, pageSize, 0L, new ArrayList<>());
+        }
+        
+        // 根据 testType 选择不同的数据表查询
+        List<TestResultTableDTO> allResults;
+        if ("PROTOCOL_TEST".equals(testType)) {
+            // 查询 pdm_tool_template_job_log
+            allResults = getTestResultsFromJobLog(timeRange, templateId);
+        } else {
+            // 查询 pdm_tool_template_execute_log（原逻辑）
+            allResults = getTestResultsByReport(report, timeRange);
+        }
+        
+        // 应用模板ID过滤
+        List<TestResultTableDTO> filteredResults = allResults.stream()
+                .filter(result -> {
+                    // 模板ID过滤
+                    if (templateId != null) {
+                        if (!templateId.equals(result.getTemplateId())) {
+                            return false;
+                        }
+                    }
+                    return true;
+                })
+                .collect(Collectors.toList());
+        
+        // 分页处理
+        int total = filteredResults.size();
+        int start = (pageNum - 1) * pageSize;
+        int end = Math.min(start + pageSize, total);
+        
+        List<TestResultTableDTO> pageData;
+        if (start >= total) {
+            pageData = new ArrayList<>();
+        } else {
+            pageData = filteredResults.subList(start, end);
+        }
+        
+        return new PageResult<>(pageNum, pageSize, (long) total, pageData);
     }
 
     @Override
@@ -4299,84 +4347,172 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         dto.setName(ReportTypeEnum.translateReportType(dto.getName()));
         dto.setDescription(ReportTypeEnum.translateReportType(dto.getDescription()));
         
-        // 获取报告关联的测试结果
-        List<TestResultTableDTO> testResults = getTestResultsByReport(report);
-        dto.setTestResults(testResults);
-        
         return dto;
     }
     
     /**
-     * 根据报告获取关联的测试结果
+     * 从 pdm_tool_protocol_test_record 表获取测试结果
      */
-    private List<TestResultTableDTO> getTestResultsByReport(Report report) {
+    private List<TestResultTableDTO> getTestResultsFromJobLog(String timeRange, Long templateId) {
         List<TestResultTableDTO> results = new ArrayList<>();
         
         try {
-            // 从content字段提取时间范围
-            String content = report.getContent();
-            if (content != null && !content.trim().isEmpty()) {
-                String startDate = null;
-                String endDate = null;
+            LambdaQueryWrapper<ProtocolTestRecord> queryWrapper = new LambdaQueryWrapper<>();
+            
+            // 计算时间范围
+            LocalDateTime timeStart = null;
+            LocalDateTime timeEnd = LocalDateTime.now();
+            if (timeRange != null && !timeRange.trim().isEmpty()) {
+                switch (timeRange.toUpperCase()) {
+                    case "TODAY":
+                        timeStart = LocalDate.now().atStartOfDay();
+                        break;
+                    case "7DAYS":
+                        timeStart = LocalDateTime.now().minusDays(7);
+                        break;
+                    case "30DAYS":
+                        timeStart = LocalDateTime.now().minusDays(30);
+                        break;
+                }
+            }
+            
+            if (timeStart != null) {
+                queryWrapper.between(ProtocolTestRecord::getCreateTime, timeStart, timeEnd);
+            }
+            
+            if (templateId != null) {
+                queryWrapper.eq(ProtocolTestRecord::getProtocolId, templateId);
+            }
+            
+            queryWrapper.orderByDesc(ProtocolTestRecord::getCreateTime);
+
+            List<ProtocolTestRecord> records = protocolTestRecordMapper.selectList(queryWrapper);
+            
+            for (ProtocolTestRecord record : records) {
+                Map<String, Object> logMap = new HashMap<>();
+                logMap.put("id", record.getId());
+                logMap.put("executeTime", record.getCreateTime());
+                logMap.put("durationMs", record.getResponseTime() != null ? record.getResponseTime().longValue() : 0L);
+                logMap.put("status", "SUCCESS".equals(record.getResultStatus()) ? "成功" : "失败");
+                logMap.put("statusCode", record.getResponseCode() != null ? Integer.parseInt(record.getResponseCode()) : null);
+                logMap.put("protocolType", translateTestType(record.getTestType()));
+                logMap.put("dataSource", "pdm_tool_protocol_test_record");
+                logMap.put("errorMsg", record.getErrorMessage());
+                logMap.put("templateId", record.getProtocolId());
+                results.add(convertToTestResultTableDTO(logMap));
+            }
+        } catch (Exception e) {
+            log.warn("从protocol_test_record获取测试结果失败", e);
+        }
+        
+        return results;
+    }
+    
+    /**
+     * 转换测试类型为中文描述
+     */
+    private String translateTestType(String testType) {
+        if (testType == null) {
+            return "未知";
+        }
+        try {
+            ProtocolTestRecord.TestType type = ProtocolTestRecord.TestType.valueOf(testType);
+            return type.getDescription();
+        } catch (IllegalArgumentException e) {
+            return testType;
+        }
+    }
+    
+    /**
+     * 根据报告获取关联的测试结果
+     * @param report 报告对象
+     * @param timeRange 时间范围参数（可选）：TODAY/7DAYS/30DAYS
+     */
+    private List<TestResultTableDTO> getTestResultsByReport(Report report, String timeRange) {
+        List<TestResultTableDTO> results = new ArrayList<>();
+        
+        try {
+            LambdaQueryWrapper<TemplateExecuteLog> queryWrapper = new LambdaQueryWrapper<>();
+            
+            // 如果传入了timeRange参数，使用该参数
+            if (timeRange != null && !timeRange.trim().isEmpty()) {
+                LocalDateTime timeStart = null;
+                LocalDateTime timeEnd = LocalDateTime.now();
                 
-                if (content.startsWith("[")) {
-                    // content是JSON数组格式：[{"data": {...}, "type": "...", ...}, ...]
-                    JSONArray contentArray = JSON.parseArray(content);
-                    for (int i = 0; i < contentArray.size(); i++) {
-                        JSONObject item = contentArray.getJSONObject(i);
-                        if (item != null && item.containsKey("data")) {
-                            JSONObject dataJson = item.getJSONObject("data");
-                            if (dataJson != null) {
-                                // 提取时间范围
-                                if (startDate == null && dataJson.containsKey("startDate")) {
-                                    startDate = dataJson.getString("startDate");
-                                }
-                                if (endDate == null && dataJson.containsKey("endDate")) {
-                                    endDate = dataJson.getString("endDate");
-                                }
-                                
-                                // 如果已经获取到时间范围，提前退出循环
-                                if (startDate != null && endDate != null) {
-                                    break;
+                switch (timeRange.toUpperCase()) {
+                    case "TODAY":
+                        timeStart = LocalDate.now().atStartOfDay();
+                        break;
+                    case "7DAYS":
+                        timeStart = LocalDateTime.now().minusDays(7);
+                        break;
+                    case "30DAYS":
+                        timeStart = LocalDateTime.now().minusDays(30);
+                        break;
+                }
+                
+                if (timeStart != null) {
+                    queryWrapper.between(TemplateExecuteLog::getExecuteAt, timeStart, timeEnd);
+                }
+            } else {
+                // 未传入timeRange，从content字段提取时间范围
+                String content = report.getContent();
+                if (content != null && !content.trim().isEmpty()) {
+                    String startDate = null;
+                    String endDate = null;
+                    
+                    if (content.startsWith("[")) {
+                        JSONArray contentArray = JSON.parseArray(content);
+                        for (int i = 0; i < contentArray.size(); i++) {
+                            JSONObject item = contentArray.getJSONObject(i);
+                            if (item != null && item.containsKey("data")) {
+                                JSONObject dataJson = item.getJSONObject("data");
+                                if (dataJson != null) {
+                                    if (startDate == null && dataJson.containsKey("startDate")) {
+                                        startDate = dataJson.getString("startDate");
+                                    }
+                                    if (endDate == null && dataJson.containsKey("endDate")) {
+                                        endDate = dataJson.getString("endDate");
+                                    }
+                                    if (startDate != null && endDate != null) {
+                                        break;
+                                    }
                                 }
                             }
                         }
+                    } else if (content.startsWith("{")) {
+                        JSONObject contentJson = JSON.parseObject(content);
+                        if (contentJson.containsKey("startDate")) {
+                            startDate = contentJson.getString("startDate");
+                        }
+                        if (contentJson.containsKey("endDate")) {
+                            endDate = contentJson.getString("endDate");
+                        }
                     }
-                } else if (content.startsWith("{")) {
-                    // content是JSON对象格式
-                    JSONObject contentJson = JSON.parseObject(content);
-                    if (contentJson.containsKey("startDate")) {
-                        startDate = contentJson.getString("startDate");
-                    }
-                    if (contentJson.containsKey("endDate")) {
-                        endDate = contentJson.getString("endDate");
+                    
+                    if (startDate != null && endDate != null) {
+                        queryWrapper.between(TemplateExecuteLog::getExecuteAt, startDate, endDate + " 23:59:59");
                     }
                 }
-                
-                // 如果获取到时间范围，查询该区间的测试结果
-                if (startDate != null && endDate != null) {
-                    LambdaQueryWrapper<TemplateExecuteLog> queryWrapper = new LambdaQueryWrapper<>();
-                    
-                    // 添加时间范围条件
-                    queryWrapper.between(TemplateExecuteLog::getExecuteAt, startDate, endDate + " 23:59:59");
-                    queryWrapper.orderByDesc(TemplateExecuteLog::getExecuteAt);
-                    queryWrapper.last("LIMIT 20"); // 最多返回20条测试结果
-                    
-                    List<TemplateExecuteLog> executeLogs = templateExecuteLogMapper.selectList(queryWrapper);
-                    
-                    for (TemplateExecuteLog log : executeLogs) {
-                        Map<String, Object> logMap = new HashMap<>();
-                        logMap.put("id", log.getId());
-                        logMap.put("executeTime", log.getExecuteAt());
-                        logMap.put("durationMs", log.getDurationMs());
-                        logMap.put("status", log.getSuccess() != null && log.getSuccess() == 1 ? "成功" : "失败");
-                        logMap.put("statusCode", log.getStatusCode());
-                        logMap.put("protocolType", log.getTemplateName());
-                        logMap.put("dataSource", "pdm_tool_template_execute_log");
-                        logMap.put("errorMsg", log.getErrorMsg());
-                        results.add(convertToTestResultTableDTO(logMap));
-                    }
-                }
+            }
+            
+            queryWrapper.orderByDesc(TemplateExecuteLog::getExecuteAt);
+            queryWrapper.last("LIMIT 100"); // 最多返回100条测试结果
+            
+            List<TemplateExecuteLog> executeLogs = templateExecuteLogMapper.selectList(queryWrapper);
+            
+            for (TemplateExecuteLog log : executeLogs) {
+                Map<String, Object> logMap = new HashMap<>();
+                logMap.put("id", log.getId());
+                logMap.put("executeTime", log.getExecuteAt());
+                logMap.put("durationMs", log.getDurationMs());
+                logMap.put("status", log.getSuccess() != null && log.getSuccess() == 1 ? "成功" : "失败");
+                logMap.put("statusCode", log.getStatusCode());
+                logMap.put("protocolType", log.getTemplateName());
+                logMap.put("dataSource", "pdm_tool_template_execute_log");
+                logMap.put("errorMsg", log.getErrorMsg());
+                logMap.put("templateId", log.getTemplateId());
+                results.add(convertToTestResultTableDTO(logMap));
             }
         } catch (Exception e) {
             log.warn("获取报告关联测试结果失败 - reportId: {}", report.getId(), e);
@@ -4572,6 +4708,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         String protocolType = (String) jobLog.get("protocolType");
         String dataSource = (String) jobLog.get("dataSource");
         String errorMsg = (String) jobLog.get("errorMsg");
+        Long templateId = (Long) jobLog.get("templateId");
         
         result.setId(logId != null ? "log_" + logId : null);
         result.setExecuteTime(executeTime);
@@ -4581,6 +4718,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         result.setProtocolType(protocolType);
         result.setDataSource(dataSource);
         result.setErrorMessage(errorMsg);
+        result.setTemplateId(templateId);
         
         return result;
     }
