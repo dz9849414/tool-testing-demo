@@ -2,8 +2,14 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateJobLogMapper">
 
+    <sql id="JobLogColumns">
+        id, execute_at, job_id, template_id, xxl_job_log_id, execute_result,
+        success, duration_ms, error_msg, create_time, is_deleted
+    </sql>
+
     <select id="selectRecentByJobId" resultType="com.example.tooltestingdemo.entity.template.TemplateJobLog">
-        SELECT * FROM pdm_tool_template_job_log
+        SELECT <include refid="JobLogColumns"/>
+        FROM pdm_tool_template_job_log
         WHERE job_id = #{jobId}
         AND (is_deleted = 0 OR is_deleted IS NULL)
         ORDER BY execute_at DESC
@@ -11,7 +17,9 @@
     </select>
 
     <select id="selectLastLogsByJobIds" resultType="com.example.tooltestingdemo.entity.template.TemplateJobLog">
-        SELECT t.*
+        SELECT
+            t.id, t.execute_at, t.job_id, t.template_id, t.xxl_job_log_id, t.execute_result,
+            t.success, t.duration_ms, t.error_msg, t.create_time, t.is_deleted
         FROM pdm_tool_template_job_log t
         INNER JOIN (
             SELECT job_id, MAX(id) AS max_id

@@ -15,8 +15,7 @@
   "code": 200,
   "message": "操作成功",
   "data": {},
-  "timestamp": 1710000000000,
-  "traceId": "trace-id"
+  "timestamp": 1710000000000
 }
 ```
 

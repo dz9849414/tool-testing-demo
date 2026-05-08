@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS `pdm_tool_interface_template` (
     `ext_field2` VARCHAR(500) COMMENT '扩展字段2',
     `ext_field3` VARCHAR(500) COMMENT '扩展字段3',
     `ext_field4` TEXT COMMENT '扩展字段4',
-    `ext_field5` JSON COMMENT '扩展字段5',
+    `ext_field5` varchar(2000) COMMENT '扩展字段5',
     `ext_num1` BIGINT COMMENT '扩展数字字段1',
     `ext_num2` BIGINT COMMENT '扩展数字字段2',
     `create_id` BIGINT COMMENT '创建人',
@@ -549,7 +549,6 @@ CREATE TABLE IF NOT EXISTS `pdm_tool_template_job_log` (
     `success` TINYINT DEFAULT 0 COMMENT '是否成功',
     `duration_ms` BIGINT COMMENT '耗时(ms)',
     `error_msg` TEXT COMMENT '错误信息',
-    `trace_id` VARCHAR(64) COMMENT '链路ID',
     `execute_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '执行时间',
     `create_id` BIGINT COMMENT '创建人',
     `create_name`  VARCHAR(200) COMMENT '创建人名称',
@@ -562,7 +561,6 @@ CREATE TABLE IF NOT EXISTS `pdm_tool_template_job_log` (
     `deleted_time` DATETIME COMMENT '删除时间',
     INDEX `idx_job_id` (`job_id`),
     INDEX `idx_template_id` (`template_id`),
-    INDEX `idx_trace_id` (`trace_id`),
     INDEX `idx_execute_at` (`execute_at`),
     INDEX `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板任务日志表';
@@ -580,7 +578,6 @@ CREATE TABLE IF NOT EXISTS `pdm_tool_template_execute_log` (
     `duration_ms` BIGINT COMMENT '耗时(ms)',
     `execute_result` TEXT COMMENT '执行结果',
     `error_msg` TEXT COMMENT '错误信息',
-    `trace_id` VARCHAR(64) COMMENT '链路ID',
     `execute_user_id` BIGINT COMMENT '执行用户ID',
     `execute_user_name` VARCHAR(100) COMMENT '执行人姓名',
     `execute_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '执行时间',
@@ -598,7 +595,6 @@ CREATE TABLE IF NOT EXISTS `pdm_tool_template_execute_log` (
     INDEX `idx_environment_id` (`environment_id`),
     INDEX `idx_execute_type` (`execute_type`),
     INDEX `idx_success` (`success`),
-    INDEX `idx_trace_id` (`trace_id`),
     INDEX `idx_execute_at` (`execute_at`),
     INDEX `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板执行日志表';

@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * 接口模板主表 Mapper 接口
- * 
+ *
  * 文件位置：src/main/java/com/example/tooltestingdemo/mapper/template/InterfaceTemplateMapper.java
  */
 @Mapper
@@ -20,27 +20,28 @@ public interface InterfaceTemplateMapper extends BaseMapper<InterfaceTemplate> {
 
     /**
      * 分页查询模板列表（包含文件夹名称）
-     * 
+     *
      * 文件位置：src/main/resources/mapper/template/InterfaceTemplateMapper.xml
      */
-    IPage<InterfaceTemplate> selectTemplatePage(Page<InterfaceTemplate> page, 
+    IPage<InterfaceTemplate> selectTemplatePage(Page<InterfaceTemplate> page,
                                                  @Param("folderId") Long folderId,
                                                  @Param("keyword") String keyword,
                                                  @Param("protocolId") Long protocolId,
                                                  @Param("protocolType") String protocolType,
                                                  @Param("status") Integer status,
-                                                 @Param("extNum1") Long extNum1);
+                                                 @Param("extNum1") Long extNum1,
+                                                 @Param("pdmSystemType") String pdmSystemType);
 
     /**
      * 查询模板的所有版本
-     * 
+     *
      * 文件位置：src/main/resources/mapper/template/InterfaceTemplateMapper.xml
      */
     List<InterfaceTemplate> selectVersionsByRefId(@Param("refTemplateId") Long refTemplateId);
 
     /**
      * 根据ID查询模板详情（包含所有关联信息）
-     * 
+     *
      * 文件位置：src/main/resources/mapper/template/InterfaceTemplateMapper.xml
      */
     InterfaceTemplate selectTemplateDetailById(@Param("id") Long id);
@@ -54,7 +55,7 @@ public interface InterfaceTemplateMapper extends BaseMapper<InterfaceTemplate> {
      */
     /**
      * 根据名称和方法查找模板（用于导入时检查重复）
-     * 
+     *
      * 对应XML: InterfaceTemplateMapper.xml
      */
     InterfaceTemplate selectByNameAndMethod(@Param("name") String name, @Param("method") String method);

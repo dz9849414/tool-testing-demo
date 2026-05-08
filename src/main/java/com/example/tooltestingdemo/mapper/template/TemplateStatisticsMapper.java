@@ -15,6 +15,9 @@ import java.util.Map;
 @Mapper
 public interface TemplateStatisticsMapper {
 
+    String JOB_LOG_COLUMNS = "id, execute_at, job_id, template_id, xxl_job_log_id, execute_result, " +
+            "success, duration_ms, error_msg, create_time, is_deleted";
+
     // ====================== 模板统计相关方法 ======================
 
     /**
@@ -169,7 +172,9 @@ public interface TemplateStatisticsMapper {
      * 根据任务ID列表获取每个任务的最新日志记录
      */
     @Select("<script>" +
-            "SELECT t1.* FROM pdm_tool_template_job_log t1 " +
+            "SELECT t1.id, t1.execute_at, t1.job_id, t1.template_id, t1.xxl_job_log_id, t1.execute_result, " +
+            "t1.success, t1.duration_ms, t1.error_msg, t1.create_time, t1.is_deleted " +
+            "FROM pdm_tool_template_job_log t1 " +
             "INNER JOIN (" +
             "    SELECT job_id, MAX(create_time) as max_create_time " +
             "    FROM pdm_tool_template_job_log " +
@@ -186,7 +191,7 @@ public interface TemplateStatisticsMapper {
     /**
      * 根据任务ID获取最近的日志记录
      */
-    @Select("SELECT * FROM pdm_tool_template_job_log " +
+    @Select("SELECT " + JOB_LOG_COLUMNS + " FROM pdm_tool_template_job_log " +
             "WHERE job_id = #{jobId} " +
             "ORDER BY create_time DESC " +
             "LIMIT #{limit}")
@@ -450,8 +455,8 @@ public interface TemplateStatisticsMapper {
     /**
      * 获取失败时间线数据
      */
-    List<Map<String, Object>> getFailureTimelineData(@Param("templateId") Long templateId, 
-                                                     @Param("startTime") LocalDateTime startTime, 
+    List<Map<String, Object>> getFailureTimelineData(@Param("templateId") Long templateId,
+                                                     @Param("startTime") LocalDateTime startTime,
                                                      @Param("endTime") LocalDateTime endTime);
 
     /**

@@ -136,7 +136,6 @@ CREATE TABLE `pdm_tool_sys_user_organization` (
 DROP TABLE IF EXISTS `pdm_tool_sys_operation_log`;
 CREATE TABLE `pdm_tool_sys_operation_log` (
     `id` VARCHAR(50) NOT NULL COMMENT '日志ID',
-    `trace_id` VARCHAR(64) COMMENT '追踪ID，用于链路追踪和日志还原追踪',
     `user_id` VARCHAR(50) COMMENT '操作用户ID',
     `username` VARCHAR(64) COMMENT '操作用户名',
     `role_id` VARCHAR(50) COMMENT '角色ID',

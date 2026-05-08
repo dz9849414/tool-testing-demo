@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.dto.InterfaceTemplateDTO;
+import com.example.tooltestingdemo.dto.TemplateParamConfigDTO;
 import com.example.tooltestingdemo.entity.template.InterfaceTemplate;
 import com.example.tooltestingdemo.entity.template.TemplateFile;
 import com.example.tooltestingdemo.service.template.InterfaceTemplateService;
@@ -61,13 +62,14 @@ public class InterfaceTemplateController {
             @RequestParam(defaultValue = "10") Long size,
             @RequestParam(required = false) Long folderId,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String pdmSystemType,
             @RequestParam(required = false) Long protocolId,
             @RequestParam(required = false) String protocolType,
             @RequestParam(required = false) Integer status,
             @RequestParam(required = false) Long extNum1) {
 
         Page<InterfaceTemplate> page = new Page<>(current, size);
-        IPage<InterfaceTemplateVO> result = templateService.pageTemplates(page, folderId, keyword, protocolId, protocolType, status, extNum1);
+        IPage<InterfaceTemplateVO> result = templateService.pageTemplates(page, folderId, keyword, protocolId, protocolType, status, extNum1,pdmSystemType);
         return Result.success(result);
     }
 
@@ -87,6 +89,34 @@ public class InterfaceTemplateController {
             return Result.success(vo);
         }
         return Result.error("模板不存在");
+    }
+
+    /**
+     * 获取模板参数配置页数据。
+     *
+     * 接口地址：GET /api/template/{id}/param-config
+     */
+    @GetMapping("/{id}/param-config")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search')")
+    public Result<TemplateParamConfigDTO> getParamConfig(@PathVariable Long id) {
+        TemplateParamConfigDTO dto = templateService.getParamConfig(id);
+        if (dto != null) {
+            return Result.success(dto);
+        }
+        return Result.error("模板不存在");
+    }
+
+    /**
+     * 保存模板参数配置页数据。
+     *
+     * 接口地址：PUT /api/template/{id}/param-config
+     */
+    @PutMapping("/{id}/param-config")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:edit')")
+    public Result<TemplateParamConfigDTO> updateParamConfig(@PathVariable Long id,
+                                                            @RequestBody TemplateParamConfigDTO dto) {
+        TemplateParamConfigDTO result = templateService.updateParamConfig(id, dto);
+        return Result.success("参数配置保存成功", result);
     }
 
     /**
