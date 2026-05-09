@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.dto.InterfaceTemplateDTO;
 import com.example.tooltestingdemo.dto.TemplateParamConfigDTO;
+import com.example.tooltestingdemo.dto.TemplatePageQueryDTO;
 import com.example.tooltestingdemo.entity.template.InterfaceTemplate;
 import com.example.tooltestingdemo.entity.template.TemplateFile;
 import com.example.tooltestingdemo.service.template.InterfaceTemplateService;
@@ -51,7 +52,7 @@ public class InterfaceTemplateController {
      * @param keyword 关键词
      * @param protocolId 协议ID
      * @param protocolType 协议类型
-     * @param status 状态
+     * @param statuses 状态，支持多个
      * @param extNum1 扩展数字字段1
      * @return 分页结果VO
      */
@@ -68,12 +69,40 @@ public class InterfaceTemplateController {
             @RequestParam(required = false) String pdmSystemType,
             @RequestParam(required = false) Long protocolId,
             @RequestParam(required = false) String protocolType,
-            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false, name = "status") List<Integer> statuses,
             @RequestParam(required = false) Long extNum1) {
 
         Page<InterfaceTemplate> page = new Page<>(current, size);
         IPage<InterfaceTemplateVO> result = templateService.pageTemplates(
-            page, folderId, keyword, name, extField2, extField3, protocolId, protocolType, status, extNum1, pdmSystemType);
+            page, folderId, keyword, name, extField2, extField3, protocolId, protocolType, statuses, extNum1, pdmSystemType);
+        return Result.success(result);
+    }
+
+    /**
+     * 分页查询模板列表（POST 请求体版本）。
+     *
+     * 接口地址：POST /api/template/page
+     */
+    @PostMapping("/page")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search')")
+    public Result<IPage<InterfaceTemplateVO>> pageTemplatesByPost(@RequestBody(required = false) TemplatePageQueryDTO query) {
+        TemplatePageQueryDTO condition = query == null ? new TemplatePageQueryDTO() : query;
+        Long current = condition.getCurrent() == null ? 1L : condition.getCurrent();
+        Long size = condition.getSize() == null ? 10L : condition.getSize();
+        Page<InterfaceTemplate> page = new Page<>(current, size);
+        IPage<InterfaceTemplateVO> result = templateService.pageTemplates(
+            page,
+            condition.getFolderId(),
+            condition.getKeyword(),
+            condition.getName(),
+            condition.getExtField2(),
+            condition.getExtField3(),
+            condition.getProtocolId(),
+            condition.getProtocolType(),
+            condition.getStatus(),
+            condition.getExtNum1(),
+            condition.getPdmSystemType()
+        );
         return Result.success(result);
     }
 
@@ -398,6 +427,7 @@ public class InterfaceTemplateController {
      * @param file 文件
      * @param fileCategory 文件类别（ATTACHMENT/REQUEST/RESPONSE）
      * @param description 文件描述
+     * @param remark 文件备注
      * @return 上传的文件信息
      */
     @PostMapping("/{id}/files")
@@ -405,9 +435,11 @@ public class InterfaceTemplateController {
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file,
             @RequestParam(required = false, defaultValue = "ATTACHMENT") String fileCategory,
-            @RequestParam(required = false) String description) {
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) String remark) {
 
-        TemplateFile templateFile = fileService.uploadFile(id, file, fileCategory, description);
+        TemplateFile templateFile = fileService.uploadFile(id, file, fileCategory,
+                remark != null && !remark.isEmpty() ? remark : description);
         return Result.success("上传成功", templateFile);
     }
 

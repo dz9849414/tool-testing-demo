@@ -241,6 +241,7 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
     @Transactional(rollbackFor = Exception.class)
     public TemplateJob createJob(TemplateJob job) {
         job.setStatus(Optional.ofNullable(job.getStatus()).orElse(TemplateEnums.JobStatus.ENABLED.getCode()));
+        normalizeCronExpression(job);
         job.setIsDeleted(0);
         if (job.getCreateId() == null) {
             job.setCreateId(getCurrentUserIdOrDefault());
@@ -250,9 +251,7 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
         saveJobItems(job);
 
         TemplateJob detail = getJobDetail(job.getId());
-        if (job.getStatus() != null && job.getStatus() == TemplateEnums.JobStatus.ENABLED.getCode()) {
-            jobScheduler.scheduleJob(job.getId(), job.getCronExpression(), () -> this.executeJobForSchedule(job.getId(), job.getJobName()));
-        }
+        rescheduleJobIfEnabled(detail);
 
         log.info(LOG_CREATE_JOB_SUCCESS, job.getId(), job.getJobName(),
             job.getItems() == null ? 0 : job.getItems().size());
@@ -267,20 +266,27 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
         }
 
         TemplateJob detail = getJobDetail(job.getId());
-        if (job.isUpdateStatus()) {
-            job.setStatus(Optional.ofNullable(job.getStatus()).orElse(TemplateEnums.JobStatus.ENABLED.getCode()));
-        } else {
-            jobItemMapper.deleteByJobId(job.getId());
-            saveJobItems(job);
-        }
-        jobScheduler.cancelJob(job.getId());
-        updateById(job);
-        if (detail.getStatus() != null && detail.getStatus() == TemplateEnums.JobStatus.ENABLED.getCode()) {
-            jobScheduler.scheduleJob(job.getId(), detail.getCronExpression(), () -> this.executeJobForSchedule(job.getId(), detail.getJobName()));
+        if (detail == null) {
+            throw new TemplateValidationException(TemplateValidationException.ErrorType.NOT_FOUND, MSG_JOB_NOT_FOUND);
         }
 
+        if (job.isUpdateStatus()) {
+            TemplateJob statusUpdate = new TemplateJob();
+            statusUpdate.setId(job.getId());
+            statusUpdate.setStatus(Optional.ofNullable(job.getStatus()).orElse(TemplateEnums.JobStatus.ENABLED.getCode()));
+            updateById(statusUpdate);
+        } else {
+            normalizeCronExpression(job);
+            jobItemMapper.deleteByJobId(job.getId());
+            saveJobItems(job);
+            updateById(job);
+        }
+
+        TemplateJob updated = getJobDetail(job.getId());
+        jobScheduler.cancelJob(job.getId());
+        rescheduleJobIfEnabled(updated);
         log.info(LOG_UPDATE_JOB_SUCCESS, job.getId());
-        return detail;
+        return updated;
     }
 
     @Override
@@ -879,6 +885,48 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
             job.setItems(jobItemMapper.selectByJobId(id));
         }
         return job;
+    }
+
+    private void normalizeCronExpression(TemplateJob job) {
+        if (job == null) {
+            return;
+        }
+
+        String cronExpression = job.getCronExpression();
+        if (StringUtils.hasText(cronExpression)) {
+            job.setCronExpression(cronExpression.trim());
+        }
+
+        if (!Integer.valueOf(TemplateEnums.JobStatus.ENABLED.getCode()).equals(job.getStatus())) {
+            return;
+        }
+
+        String jobName = StringUtils.hasText(job.getJobName()) ? job.getJobName() : String.valueOf(job.getId());
+        if (!StringUtils.hasText(job.getCronExpression())) {
+            throw new TemplateValidationException(
+                TemplateValidationException.ErrorType.REQUIRED_FIELD_EMPTY,
+                String.format(MSG_JOB_CRON_REQUIRED_TEMPLATE, jobName)
+            );
+        }
+
+        if (!CronExpression.isValidExpression(job.getCronExpression())) {
+            throw new TemplateValidationException(
+                TemplateValidationException.ErrorType.INVALID_FORMAT,
+                String.format(MSG_JOB_CRON_INVALID_TEMPLATE, jobName)
+            );
+        }
+    }
+
+    private void rescheduleJobIfEnabled(TemplateJob job) {
+        if (job == null || !Integer.valueOf(TemplateEnums.JobStatus.ENABLED.getCode()).equals(job.getStatus())) {
+            return;
+        }
+        normalizeCronExpression(job);
+        jobScheduler.scheduleJob(
+            job.getId(),
+            job.getCronExpression(),
+            () -> this.executeJobForSchedule(job.getId(), job.getJobName())
+        );
     }
 
     @Override

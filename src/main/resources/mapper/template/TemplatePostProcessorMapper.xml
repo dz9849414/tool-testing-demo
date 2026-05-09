@@ -47,7 +47,8 @@
         <foreach collection="list" item="item" separator=",">
             (
                 #{item.templateId}, #{item.processorName}, #{item.processorType}, #{item.extractType}, #{item.extractExpression},
-                #{item.extractMatchNo}, #{item.targetVariable}, #{item.variableScope}, #{item.defaultValue}, #{item.config},
+                #{item.extractMatchNo}, #{item.targetVariable}, #{item.variableScope}, #{item.defaultValue},
+                COALESCE(NULLIF(TRIM(#{item.config}), ''), '{}'),
                 #{item.scriptContent}, #{item.description}, #{item.isEnabled}, #{item.sortOrder}
             )
         </foreach>

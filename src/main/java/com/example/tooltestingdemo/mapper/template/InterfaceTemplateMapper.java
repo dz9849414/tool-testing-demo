@@ -31,7 +31,7 @@ public interface InterfaceTemplateMapper extends BaseMapper<InterfaceTemplate> {
                                                  @Param("extField3") String extField3,
                                                  @Param("protocolId") Long protocolId,
                                                  @Param("protocolType") String protocolType,
-                                                 @Param("status") Integer status,
+                                                 @Param("statuses") List<Integer> statuses,
                                                  @Param("extNum1") Long extNum1,
                                                  @Param("pdmSystemType") String pdmSystemType);
 

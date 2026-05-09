@@ -107,7 +107,6 @@
                 OR ext_field1 LIKE CONCAT('%', #{keyword}, '%')
                 OR ext_field2 LIKE CONCAT('%', #{keyword}, '%')
                 OR ext_field3 LIKE CONCAT('%', #{keyword}, '%')
-                OR status LIKE CONCAT('%', #{keyword}, '%')
                 OR create_name LIKE CONCAT('%', #{keyword}, '%')
                 )
 
@@ -118,8 +117,11 @@
         <if test="protocolType != null and protocolType != ''">
             AND protocol_type = #{protocolType}
         </if>
-        <if test="status != null">
-            AND status = #{status}
+        <if test="statuses != null and statuses.size() > 0">
+            AND status IN
+            <foreach collection="statuses" item="status" open="(" separator="," close=")">
+                #{status}
+            </foreach>
         </if>
         <if test="extNum1 != null">
             AND ext_num1 = #{extNum1}

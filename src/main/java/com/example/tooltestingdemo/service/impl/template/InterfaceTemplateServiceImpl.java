@@ -158,11 +158,10 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     @Override
     public IPage<InterfaceTemplateVO> pageTemplates(Page<InterfaceTemplate> page, Long folderId,
                                                     String keyword, String name, String extField2, String extField3,
-                                                    Long protocolId, String protocolType, Integer status,
+                                                    Long protocolId, String protocolType, List<Integer> statuses,
                                                     Long extNum1, String pdmSystemType) {
-        pdmSystemType = StrUtil.isEmpty(pdmSystemType) ? "0" : pdmSystemType;
         IPage<InterfaceTemplate> entityPage = baseMapper.selectTemplatePage(
-            page, folderId, keyword, name, extField2, extField3, protocolId, protocolType, status, extNum1, pdmSystemType);
+            page, folderId, keyword, name, extField2, extField3, protocolId, protocolType, statuses, extNum1, pdmSystemType);
 
         Page<InterfaceTemplateVO> voPage = new Page<>(entityPage.getCurrent(), entityPage.getSize(), entityPage.getTotal());
         voPage.setPages(entityPage.getPages());

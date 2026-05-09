@@ -70,7 +70,7 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
      * @param keyword 关键词
      * @param protocolId 协议ID
      * @param protocolType 协议类型
-     * @param status 状态
+     * @param statuses 状态列表
      * @param extNum1 扩展数字字段1
      * @return 分页结果VO
      */
@@ -82,7 +82,7 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
                                               String extField3,
                                               Long protocolId,
                                               String protocolType,
-                                              Integer status,
+                                              List<Integer> statuses,
                                               Long extNum1,
                                               String pdmSystemType);
 

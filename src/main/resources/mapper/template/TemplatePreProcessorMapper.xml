@@ -41,7 +41,8 @@
         ) VALUES
         <foreach collection="list" item="item" separator=",">
             (
-                #{item.templateId}, #{item.processorName}, #{item.processorType}, #{item.config}, #{item.scriptContent},
+                #{item.templateId}, #{item.processorName}, #{item.processorType},
+                COALESCE(NULLIF(TRIM(#{item.config}), ''), '{}'), #{item.scriptContent},
                 #{item.targetVariable}, #{item.variableScope}, #{item.description}, #{item.isEnabled}, #{item.sortOrder}
             )
         </foreach>

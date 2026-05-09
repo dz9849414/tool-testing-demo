@@ -6,6 +6,7 @@ import com.example.tooltestingdemo.exception.TemplateValidationException;
 import com.example.tooltestingdemo.vo.*;
 import org.springframework.beans.BeanUtils;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import java.util.Collections;
 import java.util.List;
@@ -132,7 +133,11 @@ public class TemplateConverter {
     // ==================== TemplatePreProcessor ====================
 
     public static TemplatePreProcessor toEntity(TemplatePreProcessorDTO dto) {
-        return convert(dto, TemplatePreProcessor.class);
+        TemplatePreProcessor entity = convert(dto, TemplatePreProcessor.class);
+        if (entity != null) {
+            entity.setConfig(normalizeJsonConfig(entity.getConfig()));
+        }
+        return entity;
     }
 
     public static TemplatePreProcessorVO toVO(TemplatePreProcessor entity) {
@@ -150,7 +155,11 @@ public class TemplateConverter {
     // ==================== TemplatePostProcessor ====================
 
     public static TemplatePostProcessor toEntity(TemplatePostProcessorDTO dto) {
-        return convert(dto, TemplatePostProcessor.class);
+        TemplatePostProcessor entity = convert(dto, TemplatePostProcessor.class);
+        if (entity != null) {
+            entity.setConfig(normalizeJsonConfig(entity.getConfig()));
+        }
+        return entity;
     }
 
     public static TemplatePostProcessorVO toVO(TemplatePostProcessor entity) {
@@ -252,5 +261,9 @@ public class TemplateConverter {
         if (size < 1024 * 1024) return String.format("%.2f KB", size / 1024.0);
         if (size < 1024 * 1024 * 1024) return String.format("%.2f MB", size / (1024.0 * 1024));
         return String.format("%.2f GB", size / (1024.0 * 1024 * 1024));
+    }
+
+    private static String normalizeJsonConfig(String config) {
+        return StringUtils.hasText(config) ? config.trim() : "{}";
     }
 }
