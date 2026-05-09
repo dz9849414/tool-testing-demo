@@ -82,7 +82,8 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
                 .setStatus(defaultInt(dto.getStatus(), 0))
                 .setFormatConfig(dto.getFormatConfig())
                 .setAdditionalParams(dto.getAdditionalParams())
-                .setDescription(dto.getDescription());
+                .setDescription(dto.getDescription())
+                .setTcpUdp(dto.getTcpUdp());
 
         entity.setUrlConfig(toJsonOrNull(dto.getUrlConfigList()));
         entity.setAuthConfig(toJsonOrNull(dto.getAuthConfigList()));
@@ -147,6 +148,7 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         updateEntity.setStatus(resolveStatus(dto.getStatus(), existing.getStatus()));
         updateEntity.setUrlConfig(dto.getUrlConfigList() == null ? existing.getUrlConfig() : toJsonOrNull(dto.getUrlConfigList()));
         updateEntity.setAuthConfig(dto.getAuthConfigList() == null ? existing.getAuthConfig() : toJsonOrNull(dto.getAuthConfigList()));
+        updateEntity.setTcpUdp(dto.getTcpUdp() == null ? existing.getTcpUdp() : dto.getTcpUdp());
 
         if (!this.updateById(updateEntity)) {
             log.warn("服务-编辑协议配置失败, configId={}, reason=update_failed", dto.getId());
@@ -562,6 +564,7 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         dto.setAdditionalParams(blankToNull(row.getAdditionalParams()));
         dto.setStatus(parseStatusOrNull(row.getStatusText()));
         dto.setDescription(blankToNull(row.getDescription()));
+        dto.setTcpUdp(blankToNull(row.getTcpUdp()));
         return dto;
     }
 
@@ -821,6 +824,7 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         private String additionalParams;
         private String statusText;
         private String description;
+        private String tcpUdp;
     }
 
     private record RowFailure(RowImportData row, String reason) {

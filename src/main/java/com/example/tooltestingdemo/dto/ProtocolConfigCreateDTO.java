@@ -73,6 +73,9 @@ public class ProtocolConfigCreateDTO {
     @Schema(description = "协议参数配置说明（纯文本）", example = "用于生产环境 ERP 订单同步")
     private String description;
 
+    @Schema(description = "TCP/UDP配置数据")
+    private String tcpUdp;
+
     @Data
     @Schema(name = "UrlConfigItemDTO", description = "单条 URL 配置")
     public static class UrlConfigItemDTO {

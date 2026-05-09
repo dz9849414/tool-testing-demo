@@ -1,6 +1,7 @@
 package com.example.tooltestingdemo.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -57,4 +58,7 @@ public class ProtocolConfigModifyDTO {
 
     @Size(max = 500, message = "描述长度不能超过500")
     private String description;
+
+    @Schema(description = "TCP/UDP配置数据")
+    private String tcpUdp;
 }
