@@ -3461,6 +3461,62 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         return readableContent.toString();
     }
 
+    /**
+     * 构建报告内容（用于报告详情接口，过滤图表数据）
+     */
+    private String buildReportContentWithoutChart(Report report) {
+        StringBuilder readableContent = new StringBuilder();
+
+        // 1. 报告基本信息（全部中文，一行一句话）
+        readableContent.append("=== 报告基本信息 ===\n");
+        readableContent.append("报告名称：").append(report.getName() != null ? report.getName() : "未命名").append("\n");
+        readableContent.append("报告描述：").append(report.getDescription() != null ? report.getDescription() : "无描述").append("\n");
+        readableContent.append("报告类型：").append(getReadableReportType(report.getReportType())).append("\n");
+        readableContent.append("报告状态：").append(getReadableReportStatus(report.getStatus())).append("\n");
+        readableContent.append("生成方式：").append(getReadableGenerateType(report.getGenerateType())).append("\n");
+        readableContent.append("创建时间：").append(report.getCreateTime() != null ?
+                report.getCreateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "未知").append("\n");
+        readableContent.append("导出次数：").append(report.getExportCount() != null ? report.getExportCount() : 0).append("\n");
+        readableContent.append("\n");
+
+        // 2. 报告内容（JSON解析为易读格式，过滤图表数据）
+        String content = report.getContent();
+        if (content != null && !content.trim().isEmpty()) {
+            readableContent.append("=== 报告统计内容 ===\n");
+            try {
+                // 尝试解析JSON内容
+                Object jsonContent = parseJsonContent(content);
+                String formattedContent = formatJsonToReadableWithoutChart(jsonContent);
+                // 将内容按句子分行，一行一句话
+                readableContent.append(formatContentToSentences(formattedContent));
+            } catch (Exception e) {
+                // 如果JSON解析失败，显示原始内容
+                readableContent.append("原始JSON内容：\n");
+                readableContent.append(content);
+            }
+        } else {
+            readableContent.append("=== 报告统计内容 ===\n");
+            readableContent.append("报告内容为空\n");
+        }
+
+        return readableContent.toString();
+    }
+
+    /**
+     * 将JSON格式化为易读的文本（过滤图表数据）
+     */
+    private String formatJsonToReadableWithoutChart(Object jsonContent) {
+        StringBuilder result = new StringBuilder();
+
+        if (jsonContent instanceof JSONObject) {
+            formatJsonObjectWithoutChart((JSONObject) jsonContent, result, 0);
+        } else if (jsonContent instanceof JSONArray) {
+            formatJsonArrayWithoutChart((JSONArray) jsonContent, result, 0);
+        }
+
+        return result.toString();
+    }
+
     // ===================== 核心：JSON 字段名 自动 转 中文 =====================
     private void appendFlatJson(com.alibaba.fastjson2.JSONObject json, StringBuilder sb, String prefix) {
         for (String key : json.keySet()) {
@@ -3762,7 +3818,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     }
 
     /**
-     * 格式化JSON对象（FastJSON）
+     * 格式化JSON对象（FastJSON）- 保留图表数据（用于导出）
      */
     private void formatJsonObject(JSONObject jsonObject, StringBuilder result, int indent) {
         String indentStr = "  ".repeat(indent);
@@ -3779,6 +3835,75 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 formatJsonArray((JSONArray) value, result, indent + 1);
             } else {
                 result.append(indentStr).append(readableKey).append(": ").append(formatValue(value)).append("\n");
+            }
+        }
+    }
+
+    /**
+     * 格式化JSON对象（FastJSON）- 过滤图表数据（用于报告详情）
+     */
+    private void formatJsonObjectWithoutChart(JSONObject jsonObject, StringBuilder result, int indent) {
+        String indentStr = "  ".repeat(indent);
+
+        for (String key : jsonObject.keySet()) {
+            Object value = jsonObject.get(key);
+            String readableKey = getReadableKey(key);
+
+            if (value instanceof JSONObject) {
+                JSONObject obj = (JSONObject) value;
+                
+                // 检查当前对象是否是图表类型
+                boolean isChart = "chart".equals(obj.getString("type"));
+                
+                // 检查 data 字段内部是否是图表类型
+                if (!isChart && "data".equals(key.toLowerCase())) {
+                    JSONObject dataObj = (JSONObject) value;
+                    isChart = "chart".equals(dataObj.getString("type"));
+                }
+                
+                if (isChart) {
+                    // 获取标题（可能在当前对象或data对象中）
+                    String title = obj.getString("title");
+                    if (title == null || title.isEmpty()) {
+                        JSONObject dataObj = obj.getJSONObject("data");
+                        if (dataObj != null) {
+                            title = dataObj.getString("title");
+                        }
+                    }
+                    if (title != null && !title.isEmpty()) {
+                        result.append(indentStr).append(readableKey).append("：").append(title).append("（图表）\n");
+                    }
+                    continue;
+                }
+                
+                result.append(indentStr).append(readableKey).append(":\n");
+                formatJsonObjectWithoutChart(obj, result, indent + 1);
+            } else if (value instanceof JSONArray) {
+                result.append(indentStr).append(readableKey).append(":\n");
+                formatJsonArrayWithoutChart((JSONArray) value, result, indent + 1);
+            } else {
+                result.append(indentStr).append(readableKey).append(": ").append(formatValue(value)).append("\n");
+            }
+        }
+    }
+
+    /**
+     * 格式化JSON数组（FastJSON）- 过滤图表数据（用于报告详情）
+     */
+    private void formatJsonArrayWithoutChart(JSONArray jsonArray, StringBuilder result, int indent) {
+        String indentStr = "  ".repeat(indent);
+
+        for (int i = 0; i < jsonArray.size(); i++) {
+            Object value = jsonArray.get(i);
+
+            if (value instanceof JSONObject) {
+                result.append(indentStr).append("[").append(i + 1).append("]\n");
+                formatJsonObjectWithoutChart((JSONObject) value, result, indent + 1);
+            } else if (value instanceof JSONArray) {
+                result.append(indentStr).append("[").append(i + 1).append("]\n");
+                formatJsonArrayWithoutChart((JSONArray) value, result, indent + 1);
+            } else {
+                result.append(indentStr).append("[").append(i + 1).append("] ").append(formatValue(value)).append("\n");
             }
         }
     }
@@ -3805,7 +3930,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     }
     
     /**
-     * 获取可读的键名
+     * 获取可读的键名（中文翻译）
      */
     private String getReadableKey(String key) {
         switch (key.toLowerCase()) {
@@ -3825,6 +3950,25 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             case "failurerate": return "失败率(%)";
             case "timeslot": return "时间区间";
             case "hourgroup": return "小时分组";
+            // 新增字段翻译
+            case "data": return "数据";
+            case "enddate": return "结束日期";
+            case "startdate": return "开始日期";
+            case "totalcount": return "总次数";
+            case "successcount": return "成功次数";
+            case "name": return "名称";
+            case "value": return "数值";
+            case "percentage": return "百分比";
+            case "color": return "颜色";
+            case "type": return "类型";
+            case "title": return "标题";
+            case "charttype": return "图表类型";
+            case "datasource": return "数据源";
+            case "datasourcename": return "数据源名称";
+            case "summary": return "摘要";
+            case "ratedata": return "比率数据";
+            case "generatetime": return "生成时间";
+            case "suggestions": return "改进建议";
             default: return key;
         }
     }
@@ -4530,8 +4674,8 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         ReportDTO dto = new ReportDTO();
         BeanUtils.copyProperties(report, dto);
         
-        // 将原始JSON内容格式化为可读文本，与PDF导出保持一致
-        String formattedContent = buildReportContent(report, "");
+        // 将原始JSON内容格式化为可读文本（过滤图表数据，用于报告详情接口）
+        String formattedContent = buildReportContentWithoutChart(report);
         dto.setContent(formattedContent);
         
         // 翻译name和description字段中的英文报告类型为中文
