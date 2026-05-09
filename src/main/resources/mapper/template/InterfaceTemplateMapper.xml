@@ -69,14 +69,37 @@
         create_time, update_time, deleted_time
     </sql>
 
+    <!-- 分页列表使用轻量字段，详情接口再加载请求体、认证配置和扩展JSON等大字段 -->
+    <sql id="Page_Column_List">
+        id, folder_id, name, description, protocol_id, protocol_type, method, base_url, path, full_url,
+        auth_type, content_type, charset, body_type, body_raw_type,
+        connect_timeout, read_timeout, retry_count, retry_interval, version, version_remark,
+        is_latest, ref_template_id, create_id, create_name, team_id, visibility, tags,
+        pdm_system_type, pdm_module, business_scene, status, use_count, last_use_time,
+        ext_field1, ext_field2, ext_field3, ext_field4, ext_num1, ext_num2,
+        create_time, update_time, deleted_time
+    </sql>
+
     <!-- 分页查询模板列表 -->
     <select id="selectTemplatePage" resultMap="BaseResultMap">
         SELECT
             <include refid="Base_Column_List"/>
         FROM pdm_tool_interface_template
         WHERE     (is_deleted = 0 OR is_deleted IS NULL)
+        <if test="folderId != null">
+            AND folder_id = #{folderId}
+        </if>
         <if test="pdmSystemType != null and pdmSystemType !='' ">
             AND pdm_system_type = #{pdmSystemType}
+        </if>
+        <if test="name != null and name != ''">
+            AND name LIKE CONCAT('%', #{name}, '%')
+        </if>
+        <if test="extField2 != null and extField2 != ''">
+            AND ext_field2 = #{extField2}
+        </if>
+        <if test="extField3 != null and extField3 != ''">
+            AND ext_field3 = #{extField3}
         </if>
         <if test="keyword != null and keyword != ''">
             AND (name LIKE CONCAT('%', #{keyword}, '%')

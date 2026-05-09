@@ -2,6 +2,8 @@ package com.example.tooltestingdemo.service.protocol;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.example.tooltestingdemo.dto.ProtocolConnectivityResultDTO;
+import com.example.tooltestingdemo.dto.ProtocolConnectivityTestDTO;
 import com.example.tooltestingdemo.dto.ProtocolTestTransferDTO;
 import com.example.tooltestingdemo.dto.ProtocolTestRecordQueryDTO;
 import com.example.tooltestingdemo.entity.protocol.ProtocolTestRecord;
@@ -34,6 +36,11 @@ public interface IProtocolTestRecordService extends IService<ProtocolTestRecord>
      * @return 保存后的测试记录
      */
     ProtocolTestRecord testTransfer(ProtocolTestTransferDTO dto);
+
+    /**
+     * 网络诊断：根据协议配置或直接目标执行 ping/telnet。
+     */
+    ProtocolConnectivityResultDTO testConnectivity(ProtocolConnectivityTestDTO dto);
 
     /**
      * 协议测试记录分页查询。

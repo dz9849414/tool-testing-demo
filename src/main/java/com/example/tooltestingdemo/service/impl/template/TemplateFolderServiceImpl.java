@@ -1,7 +1,10 @@
 package com.example.tooltestingdemo.service.impl.template;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.tooltestingdemo.dto.TemplateFolderTreeQueryDTO;
 import com.example.tooltestingdemo.entity.template.InterfaceTemplate;
 import com.example.tooltestingdemo.entity.template.TemplateFolder;
 import com.example.tooltestingdemo.enums.TemplateEnums;
@@ -18,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 模板分类/文件夹 Service 实现类
@@ -38,6 +42,39 @@ public class TemplateFolderServiceImpl extends ServiceImpl<TemplateFolderMapper,
                 .orderByAsc(TemplateFolder::getSortOrder)
                 .list();
         return buildFolderTree(allFolders, rootId);
+    }
+
+    @Override
+    public IPage<TemplateFolderVO> pageFolderTree(TemplateFolderTreeQueryDTO query) {
+        TemplateFolderTreeQueryDTO safeQuery = query == null ? new TemplateFolderTreeQueryDTO() : query;
+        Long rootId = Optional.ofNullable(safeQuery.getParentId()).orElse(0L);
+        Page<TemplateFolder> page = safeQuery.toPage();
+
+        List<TemplateFolder> allFolders = lambdaQuery()
+                .eq(TemplateFolder::getIsDeleted, 0)
+                .orderByAsc(TemplateFolder::getSortOrder)
+                .list();
+        List<TemplateFolder> rootFolders = allFolders.stream()
+                .filter(f -> rootId.equals(f.getParentId()))
+                .collect(Collectors.toList());
+
+        long current = page.getCurrent();
+        long size = page.getSize();
+        int fromIndex = (int) Math.min((current - 1) * size, rootFolders.size());
+        int toIndex = (int) Math.min(fromIndex + size, rootFolders.size());
+        List<TemplateFolderVO> records = rootFolders.subList(fromIndex, toIndex).stream()
+                .map(f -> {
+                    TemplateFolderVO vo = TemplateConverter.toVO(f);
+                    List<TemplateFolderVO> children = buildFolderTree(allFolders, f.getId());
+                    vo.setChildren(children);
+                    vo.setChildrenCount(children.size());
+                    return vo;
+                })
+                .collect(Collectors.toList());
+
+        Page<TemplateFolderVO> voPage = new Page<>(current, size, rootFolders.size());
+        voPage.setRecords(records);
+        return voPage;
     }
 
     private List<TemplateFolderVO> buildFolderTree(List<TemplateFolder> allFolders, Long parentId) {
