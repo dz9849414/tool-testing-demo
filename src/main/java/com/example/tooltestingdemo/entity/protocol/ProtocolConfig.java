@@ -108,4 +108,9 @@ public class ProtocolConfig extends BaseEntity {
      * 协议参数配置描述（文本说明）
      */
     private String description;
+
+    /**
+     * TCP/UDP配置数据
+     */
+    private String tcpUdp;
 }

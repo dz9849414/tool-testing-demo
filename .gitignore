@@ -19,6 +19,7 @@ gradle-app.setting
 ### IntelliJ IDEA ###
 .idea/
 .cursor/
+.aiassistant/
 *.iws
 *.iml
 *.ipr
