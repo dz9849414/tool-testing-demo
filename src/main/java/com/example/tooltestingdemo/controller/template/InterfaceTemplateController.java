@@ -62,6 +62,9 @@ public class InterfaceTemplateController {
             @RequestParam(defaultValue = "10") Long size,
             @RequestParam(required = false) Long folderId,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String extField2,
+            @RequestParam(required = false) String extField3,
             @RequestParam(required = false) String pdmSystemType,
             @RequestParam(required = false) Long protocolId,
             @RequestParam(required = false) String protocolType,
@@ -69,7 +72,8 @@ public class InterfaceTemplateController {
             @RequestParam(required = false) Long extNum1) {
 
         Page<InterfaceTemplate> page = new Page<>(current, size);
-        IPage<InterfaceTemplateVO> result = templateService.pageTemplates(page, folderId, keyword, protocolId, protocolType, status, extNum1,pdmSystemType);
+        IPage<InterfaceTemplateVO> result = templateService.pageTemplates(
+            page, folderId, keyword, name, extField2, extField3, protocolId, protocolType, status, extNum1, pdmSystemType);
         return Result.success(result);
     }
 

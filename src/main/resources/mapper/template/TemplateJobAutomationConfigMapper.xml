@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.tooltestingdemo.mapper.template.TemplateJobAutomationConfigMapper">
+
+    <sql id="AutomationConfigColumns">
+        job_id, concurrent_config, script_config, log_config, report_config, create_time, update_time
+    </sql>
+
+    <update id="ensureTable">
+        CREATE TABLE IF NOT EXISTS `pdm_tool_template_job_automation_config` (
+            `job_id` BIGINT NOT NULL PRIMARY KEY COMMENT '任务ID',
+            `concurrent_config` TEXT COMMENT '并发接口配置JSON',
+            `script_config` TEXT COMMENT '自动化脚本配置JSON',
+            `log_config` TEXT COMMENT '自动化日志记录配置JSON',
+            `report_config` TEXT COMMENT '接口传输报告配置JSON',
+            `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板任务自动化配置表'
+    </update>
+
+    <select id="selectByJobId" resultType="com.example.tooltestingdemo.entity.template.TemplateJobAutomationConfig">
+        SELECT <include refid="AutomationConfigColumns"/>
+        FROM pdm_tool_template_job_automation_config
+        WHERE job_id = #{jobId}
+    </select>
+
+    <insert id="upsert" parameterType="com.example.tooltestingdemo.entity.template.TemplateJobAutomationConfig">
+        INSERT INTO pdm_tool_template_job_automation_config (
+            job_id,
+            concurrent_config,
+            script_config,
+            log_config,
+            report_config,
+            create_time,
+            update_time
+        ) VALUES (
+            #{jobId},
+            #{concurrentConfig},
+            #{scriptConfig},
+            #{logConfig},
+            #{reportConfig},
+            NOW(),
+            NOW()
+        )
+        ON DUPLICATE KEY UPDATE
+            concurrent_config = VALUES(concurrent_config),
+            script_config = VALUES(script_config),
+            log_config = VALUES(log_config),
+            report_config = VALUES(report_config),
+            update_time = NOW()
+    </insert>
+
+</mapper>

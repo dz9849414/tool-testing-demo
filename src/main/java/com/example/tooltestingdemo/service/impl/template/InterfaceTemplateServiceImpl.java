@@ -157,11 +157,12 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
 
     @Override
     public IPage<InterfaceTemplateVO> pageTemplates(Page<InterfaceTemplate> page, Long folderId,
-                                                    String keyword, Long protocolId, String protocolType, Integer status,
+                                                    String keyword, String name, String extField2, String extField3,
+                                                    Long protocolId, String protocolType, Integer status,
                                                     Long extNum1, String pdmSystemType) {
         pdmSystemType = StrUtil.isEmpty(pdmSystemType) ? "0" : pdmSystemType;
         IPage<InterfaceTemplate> entityPage = baseMapper.selectTemplatePage(
-            page, folderId, keyword, protocolId, protocolType, status, extNum1, pdmSystemType);
+            page, folderId, keyword, name, extField2, extField3, protocolId, protocolType, status, extNum1, pdmSystemType);
 
         Page<InterfaceTemplateVO> voPage = new Page<>(entityPage.getCurrent(), entityPage.getSize(), entityPage.getTotal());
         voPage.setPages(entityPage.getPages());
@@ -506,8 +507,8 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         vo.setPreProcessors(TemplateConverter.toPreProcessorVOList(preProcessorMapper.selectByTemplateId(tid)));
         vo.setPostProcessors(TemplateConverter.toPostProcessorVOList(postProcessorMapper.selectByTemplateId(tid)));
         vo.setVariables(TemplateConverter.toVariableVOList(variableMapper.selectByTemplateId(tid)));
-        vo.setEnvironments(TemplateConverter.toEnvironmentVOList(environmentMapper.selectByTemplateId(tid)));
-        vo.setHistories(TemplateConverter.toHistoryVOList(historyMapper.selectByTemplateId(tid)));
+//        vo.setEnvironments(TemplateConverter.toEnvironmentVOList(environmentMapper.selectByTemplateId(tid)));
+//        vo.setHistories(TemplateConverter.toHistoryVOList(historyMapper.selectByTemplateId(tid)));
 
         List<TemplateFile> files = fileMapper.selectByTemplateId(tid);
         vo.setFiles(TemplateConverter.toFileVOList(files));
