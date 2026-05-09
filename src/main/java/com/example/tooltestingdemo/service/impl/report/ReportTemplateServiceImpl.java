@@ -179,7 +179,7 @@ public class ReportTemplateServiceImpl extends ServiceImpl<ReportTemplateMapper,
         template.setChapterStructure(templateXml.getChapterStructure().isEmpty() ? new JSONObject().toJSONString() : templateXml.getChapterStructure());
         template.setContent(templateXml.getContent());
         template.setStyleConfig(templateXml.getStyleConfig());
-        template.setIsSystemTemplate(templateXml.getIsSystemTemplate() != null ? templateXml.getIsSystemTemplate() : false);
+        template.setIsSystemTemplate(false);
         template.setIsPublic(templateXml.getIsPublic() != null ? templateXml.getIsPublic() : true);
         template.setRelatedBusinessType(templateXml.getRelatedBusinessType());
         template.setSortOrder(templateXml.getSortOrder() != null ? templateXml.getSortOrder() : 0);
