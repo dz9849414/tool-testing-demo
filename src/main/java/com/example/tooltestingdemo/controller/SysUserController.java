@@ -70,15 +70,20 @@ public class SysUserController {
     }
 
     /**
-     * 获取所有用户列表
+     * 获取所有用户列表（支持多条件模糊搜索）
      */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:user:api')")
     public Result<Page<SysUserVO>> getAllUsers(
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String phone,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) String beginTime,
+            @RequestParam(required = false) String endTime) {
         Page<SysUser> pageParam = new Page<>(page, size);
-        Page<SysUser> users = userService.findAll(pageParam);
+        Page<SysUser> users = userService.searchUsers(pageParam, username, phone, status, beginTime, endTime);
         
         // 转换为VO
         Page<SysUserVO> voPage = new Page<>(users.getCurrent(), users.getSize(), users.getTotal());
