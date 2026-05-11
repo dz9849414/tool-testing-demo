@@ -5,11 +5,13 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.tooltestingdemo.common.ErrorStatus;
 import com.example.tooltestingdemo.dto.*;
 import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.entity.protocol.ProtocolFileImportExport;
 import com.example.tooltestingdemo.entity.protocol.ProtocolType;
 import com.example.tooltestingdemo.enums.ProtocolTypeImportStrategy;
+import com.example.tooltestingdemo.exception.BusinessException;
 import com.example.tooltestingdemo.mapper.SysUserMapper;
 import com.example.tooltestingdemo.mapper.protocol.ProtocolTypeMapper;
 import com.example.tooltestingdemo.service.SecurityService;
@@ -388,6 +390,9 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     @Transactional(rollbackFor = Exception.class)
     public void deleteProtocolType(Long id) {
         ProtocolType existing = getExistingProtocolType(id);
+        if ("通用".equals(existing.getSystemType())) {
+            throw new BusinessException(ErrorStatus.INTERNAL_SERVER_ERROR, "系统初始化通用协议类型不允许删除");
+        }
         RelationStats relationStats = getRelationStats(id);
         if (relationStats.hasRelatedData()) {
             String message = buildDeleteBlockedMessage(relationStats.relatedProjectCount(), relationStats.relatedTemplateCount());
