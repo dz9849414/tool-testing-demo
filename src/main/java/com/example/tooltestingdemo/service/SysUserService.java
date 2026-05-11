@@ -124,6 +124,11 @@ public interface SysUserService {
      * 分页搜索用户
      */
     Page<SysUser> searchUsers(Page<SysUser> page, String keyword);
+    
+    /**
+     * 分页搜索用户（多条件）
+     */
+    Page<SysUser> searchUsers(Page<SysUser> page, String username, String phone, Integer status, String beginTime, String endTime);
 
     /**
      * 根据用户名获取权限列表

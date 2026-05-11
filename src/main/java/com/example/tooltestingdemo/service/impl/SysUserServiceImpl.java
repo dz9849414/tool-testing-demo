@@ -214,8 +214,14 @@ public class SysUserServiceImpl implements SysUserService {
             
             // 如果密码不为空，则更新密码并编码
             if (user.getPassword() != null && !user.getPassword().isEmpty()) {
-                org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder passwordEncoder = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
-                existingUser.setPassword(passwordEncoder.encode(user.getPassword()));
+                // 检查密码是否已经是BCrypt加密格式（以$2a$开头）
+                if (user.getPassword().startsWith("$2a$") || user.getPassword().startsWith("$2b$") || user.getPassword().startsWith("$2y$")) {
+                    // 已经是BCrypt加密格式，直接使用
+                    existingUser.setPassword(user.getPassword());
+                } else {
+                    // 不是加密格式，进行加密
+                    existingUser.setPassword(passwordEncoder.encode(user.getPassword()));
+                }
             }
             
             userMapper.updateById(existingUser);
@@ -600,6 +606,77 @@ public class SysUserServiceImpl implements SysUserService {
         return filteredPage;
     }
     
+    @Override
+    public Page<SysUser> searchUsers(Page<SysUser> page, String username, String phone, Integer status, String beginTime, String endTime) {
+        // 获取当前登录用户
+        org.springframework.security.core.Authentication authentication = 
+            org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+        
+        // 获取当前用户信息
+        com.example.tooltestingdemo.entity.SysUser currentUser = userMapper.selectByUsername(currentUsername);
+        if (currentUser == null) {
+            Page<SysUser> emptyPage = new Page<>(page.getCurrent(), page.getSize(), 0);
+            emptyPage.setRecords(new java.util.ArrayList<>());
+            return emptyPage;
+        }
+        
+        // 获取当前用户的角色列表
+        List<String> currentRoles = userMapper.selectRolesByUserId(currentUser.getId());
+        
+        // 构建查询条件
+        QueryWrapper<SysUser> queryWrapper = new QueryWrapper<>();
+        
+        // 用户名模糊搜索
+        if (username != null && !username.isEmpty()) {
+            queryWrapper.like("username", username);
+        }
+        
+        // 手机号模糊搜索
+        if (phone != null && !phone.isEmpty()) {
+            queryWrapper.like("phone", phone);
+        }
+        
+        // 状态筛选
+        if (status != null) {
+            queryWrapper.eq("status", status);
+        }
+        
+        // 创建时间范围筛选
+        if (beginTime != null && !beginTime.isEmpty()) {
+            queryWrapper.ge("create_time", beginTime + " 00:00:00");
+        }
+        if (endTime != null && !endTime.isEmpty()) {
+            queryWrapper.le("create_time", endTime + " 23:59:59");
+        }
+        
+        // 执行分页查询
+        Page<SysUser> userPage = userMapper.selectPage(page, queryWrapper);
+        
+        // 根据角色权限过滤搜索结果
+        List<SysUser> filteredUsers = new java.util.ArrayList<>();
+        for (SysUser user : userPage.getRecords()) {
+            // 总是可以查看自己
+            if (user.getId().equals(currentUser.getId())) {
+                filteredUsers.add(user);
+                continue;
+            }
+            
+            // 获取用户的角色列表
+            List<String> userRoles = userMapper.selectRolesByUserId(user.getId());
+            
+            // 检查当前用户是否有权限查看该用户
+            if (canViewUser(currentRoles, userRoles)) {
+                filteredUsers.add(user);
+            }
+        }
+        
+        // 创建新的分页结果
+        Page<SysUser> filteredPage = new Page<>(page.getCurrent(), page.getSize(), userPage.getTotal());
+        filteredPage.setRecords(filteredUsers);
+        return filteredPage;
+    }
+
     /**
      * 检查当前用户是否有权限查看目标用户
      */

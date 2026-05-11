@@ -52,6 +52,9 @@ import java.util.*;
 public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper, ProtocolConfig> implements IProtocolConfigService {
 
     private static final DateTimeFormatter FILE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private static final String[] EXPORT_PROTOCOL_CONFIG_FULL_HEADERS = {"配置名称", "协议类型ID", "协议类型名称", "URL配置(JSON)", "认证配置(JSON)", "连接超时(ms)",
+            "读取超时(ms)", "重试次数", "重试间隔(ms)", "重试触发条件(1，2，3)", "数据格式", "格式校验配置", "额外参数", "状态", "描述"};
+    private static final int[] EXPORT_PROTOCOL_CONFIG_FULL_WIDTHS = {24, 14, 20, 48, 48, 16, 16, 12, 14, 24, 16, 24, 24, 10, 30};
     private static final String IMPORT_TEMPLATE_FILE_NAME = "协议配置导入模板.xlsx";
     private static final String IMPORT_TEMPLATE_PATH = "templates/协议配置导入模板.xlsx";
     private static final String FAILURE_REPORT_FILE_PREFIX = "协议配置导入失败原因_";
@@ -286,27 +289,135 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
     @Override
     public void exportProtocolConfigs(ProtocolConfigQueryDTO dto, HttpServletResponse response) throws IOException {
         ProtocolConfigQueryDTO query = dto == null ? new ProtocolConfigQueryDTO() : dto;
-        log.info("服务-导出协议配置开始, protocolId={}, configName={}, status={}",
-                query.getProtocolId(), query.getConfigName(), query.getStatus());
+        Integer partialFlag = resolvePartialExportFlag(query.getFlag());
+        log.info("服务-导出协议配置开始, protocolId={}, configName={}, status={}, flag={}, partialExportFlag={}",
+                query.getProtocolId(), query.getConfigName(), query.getStatus(), query.getFlag(), partialFlag);
         List<ProtocolConfig> configs = this.list(buildQueryWrapper(query));
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             XSSFSheet sheet = workbook.createSheet("协议配置");
             XSSFCellStyle headerStyle = createHeaderStyle(workbook);
             XSSFCellStyle dataStyle = createDataStyle(workbook);
 
-            String[] headers = {"配置名称", "协议类型ID", "协议类型名称", "URL配置(JSON)", "认证配置(JSON)", "连接超时(ms)",
-                    "读取超时(ms)", "重试次数", "重试间隔(ms)", "重试触发条件(1，2，3)", "数据格式", "格式校验配置", "额外参数", "状态", "描述"};
-            int[] widths = {24, 14, 20, 48, 48, 16, 16, 12, 14, 24, 16, 24, 24, 10, 30};
-            writeHeaderRow(sheet, headerStyle, headers, widths);
-            writeExportRows(sheet, dataStyle, configs);
+            if (partialFlag == null) {
+                writeHeaderRow(sheet, headerStyle, EXPORT_PROTOCOL_CONFIG_FULL_HEADERS, EXPORT_PROTOCOL_CONFIG_FULL_WIDTHS);
+                writeExportRows(sheet, dataStyle, configs);
+            } else {
+                writePartialExportHeaderAndRows(sheet, headerStyle, dataStyle, configs, partialFlag);
+            }
 
             workbook.write(outputStream);
             byte[] bytes = outputStream.toByteArray();
             writeExcelResponse(response, EXPORT_FILE_NAME + ".xlsx", bytes);
 
             saveExportRecordForProtocolConfig(configs, bytes.length);
-            log.info("服务-导出协议配置完成, exportCount={}, fileSize={}", configs.size(), bytes.length);
+            log.info("服务-导出协议配置完成, exportCount={}, fileSize={}, partialExportFlag={}",
+                    configs.size(), bytes.length, partialFlag);
         }
+    }
+
+    /**
+     * {@code null} 表示全量导出（flag 为 null、0 或非 1–6）；否则为按档位的部分字段导出。
+     */
+    private static Integer resolvePartialExportFlag(Integer flag) {
+        if (flag == null || flag == 0) {
+            return null;
+        }
+        if (flag >= 1 && flag <= 6) {
+            return flag;
+        }
+        return null;
+    }
+
+    private void writePartialExportHeaderAndRows(XSSFSheet sheet,
+                                                 XSSFCellStyle headerStyle,
+                                                 XSSFCellStyle dataStyle,
+                                                 List<ProtocolConfig> configs,
+                                                 int flag) {
+        String[] headers;
+        int[] widths;
+        switch (flag) {
+            case 1 -> {
+                headers = new String[]{"配置名称", "协议类型名称", "认证配置(JSON)", "创建时间"};
+                widths = new int[]{24, 20, 48, 22};
+            }
+            case 2 -> {
+                headers = new String[]{"配置名称", "数据格式", "创建时间"};
+                widths = new int[]{24, 16, 22};
+            }
+            case 3 -> {
+                headers = new String[]{"配置名称", "端口", "创建时间"};
+                widths = new int[]{24, 48, 22};
+            }
+            case 4 -> {
+                headers = new String[]{"配置名称", "重试次数", "重试间隔(ms)", "创建时间"};
+                widths = new int[]{24, 12, 16, 22};
+            }
+            case 5 -> {
+                headers = new String[]{"配置名称", "连接超时(ms)", "读取超时(ms)", "创建时间"};
+                widths = new int[]{24, 16, 16, 22};
+            }
+            case 6 -> {
+                headers = new String[]{"配置名称", "URL配置(JSON)", "创建时间"};
+                widths = new int[]{24, 48, 22};
+            }
+            default -> throw new IllegalStateException("unexpected partial export flag: " + flag);
+        }
+        writeHeaderRow(sheet, headerStyle, headers, widths);
+        writePartialExportRows(sheet, dataStyle, configs, flag);
+    }
+
+    private void writePartialExportRows(XSSFSheet sheet, XSSFCellStyle dataStyle, List<ProtocolConfig> configs, int flag) {
+        int rowIndex = 1;
+        for (ProtocolConfig config : configs) {
+            XSSFRow row = sheet.createRow(rowIndex++);
+            switch (flag) {
+                case 1 -> {
+                    setCellValue(row, 0, config.getConfigName(), dataStyle);
+                    setCellValue(row, 1, config.getProtocolName(), dataStyle);
+                    setCellValue(row, 2, defaultString(config.getAuthConfig(), ""), dataStyle);
+                    setCellValue(row, 3, formatExportCreateTime(config), dataStyle);
+                }
+                case 2 -> {
+                    setCellValue(row, 0, config.getConfigName(), dataStyle);
+                    setCellValue(row, 1, config.getDataFormat(), dataStyle);
+                    setCellValue(row, 2, formatExportCreateTime(config), dataStyle);
+                }
+                case 3 -> {
+                    setCellValue(row, 0, config.getConfigName(), dataStyle);
+                    setCellValue(row, 1, exportPortCell(config), dataStyle);
+                    setCellValue(row, 2, formatExportCreateTime(config), dataStyle);
+                }
+                case 4 -> {
+                    setCellValue(row, 0, config.getConfigName(), dataStyle);
+                    setCellValue(row, 1, config.getRetryCount() == null ? "" : String.valueOf(config.getRetryCount()), dataStyle);
+                    setCellValue(row, 2, config.getRetryInterval() == null ? "" : String.valueOf(config.getRetryInterval()), dataStyle);
+                    setCellValue(row, 3, formatExportCreateTime(config), dataStyle);
+                }
+                case 5 -> {
+                    setCellValue(row, 0, config.getConfigName(), dataStyle);
+                    setCellValue(row, 1, config.getTimeoutConnect() == null ? "" : String.valueOf(config.getTimeoutConnect()), dataStyle);
+                    setCellValue(row, 2, config.getTimeoutRead() == null ? "" : String.valueOf(config.getTimeoutRead()), dataStyle);
+                    setCellValue(row, 3, formatExportCreateTime(config), dataStyle);
+                }
+                case 6 -> {
+                    setCellValue(row, 0, config.getConfigName(), dataStyle);
+                    setCellValue(row, 1, defaultString(config.getUrlConfig(), ""), dataStyle);
+                    setCellValue(row, 2, formatExportCreateTime(config), dataStyle);
+                }
+                default -> throw new IllegalStateException("unexpected partial export flag: " + flag);
+            }
+        }
+    }
+
+    private static String formatExportCreateTime(ProtocolConfig config) {
+        return LocalDateUtil.formatDateTime(config.getCreateTime());
+    }
+
+    private static String exportPortCell(ProtocolConfig config) {
+        if (StringUtils.isNotBlank(config.getTcpUdp())) {
+            return config.getTcpUdp().trim();
+        }
+        return defaultString(config.getUrlConfig(), "");
     }
 
     /**
@@ -463,6 +574,7 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         vo.setCreateTime(entity.getCreateTime());
         vo.setUpdateId(entity.getUpdateId());
         vo.setUpdateTime(entity.getUpdateTime());
+        vo.setTcpUdp(entity.getTcpUdp());
 
         List<ProtocolConfigCreateDTO.UrlConfigItemDTO> urlConfigList = parseList(
                 entity.getUrlConfig(),
