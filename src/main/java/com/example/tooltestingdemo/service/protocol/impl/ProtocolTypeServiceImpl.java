@@ -31,6 +31,7 @@ import org.apache.poi.xssf.usermodel.*;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -773,6 +774,9 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     private LambdaQueryWrapper<ProtocolType> buildQueryWrapper(ProtocolTypeQueryDTO protocolType) {
         LambdaQueryWrapper<ProtocolType> lambdaQuery = new LambdaQueryWrapper<>();
         if (protocolType != null) {
+            if (CollectionUtils.isEmpty(protocolType.getIds())) {
+                lambdaQuery.in(ProtocolType::getId, protocolType.getIds());
+            }
             if (StringUtils.isNotBlank(protocolType.getProtocolCode())) {
                 lambdaQuery.like(ProtocolType::getProtocolCode, protocolType.getProtocolCode());
             }
