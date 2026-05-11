@@ -1216,7 +1216,7 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
     /**
      * 执行模板任务核心逻辑（遍历所有子项）
      */
-    public Map<String, Object> doExecuteJob(Long jobId, String jobName, String executeType) {
+    private Map<String, Object> doExecuteJob(Long jobId, String jobName, String executeType) {
         ReentrantLock lock = JOB_LOCKS.computeIfAbsent(jobId, id -> new ReentrantLock());
         boolean locked = lock.tryLock();
 

@@ -48,14 +48,6 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
     }
 
     /**
-     * 供定时任务调用的执行方法
-     */
-    public Map<String, Object> executeTemplateForJob(Long jobId, String jobName, Long templateId,
-                                                      Long environmentId, Map<String, Object> variables) {
-        return executeTemplateForJob(jobId, jobName, templateId, environmentId, variables, "JOB");
-    }
-
-    /**
      * 供任务调用的执行方法，可显式区分手动触发和定时调度
      */
     @Override
