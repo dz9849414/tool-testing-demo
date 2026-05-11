@@ -391,7 +391,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     public void deleteProtocolType(Long id) {
         ProtocolType existing = getExistingProtocolType(id);
         if ("通用".equals(existing.getSystemType())) {
-            throw new BusinessException(ErrorStatus.FORBIDDEN, "系统初始化通用协议类型不允许删除");
+            throw new BusinessException(ErrorStatus.INTERNAL_SERVER_ERROR, "系统初始化通用协议类型不允许删除");
         }
         RelationStats relationStats = getRelationStats(id);
         if (relationStats.hasRelatedData()) {
