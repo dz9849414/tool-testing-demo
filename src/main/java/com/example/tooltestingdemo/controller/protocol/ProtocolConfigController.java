@@ -100,7 +100,15 @@ public class ProtocolConfigController {
      */
     @GetMapping("/export")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:param:importExport')")
-    @Operation(summary = "导出协议配置", description = "按查询条件导出全部协议配置，导出字段与导入字段一致")
+    @Operation(summary = "导出协议配置",
+            description = "按查询条件导出协议配置。flag 为 null 或 0：全量导出（列与导入模板一致）。"
+                    + "flag=1：配置名称、协议类型名称、认证配置(JSON)、创建时间；"
+                    + "flag=2：配置名称、数据格式、创建时间；"
+                    + "flag=3：配置名称、端口（tcpUdp 优先，否则 urlConfig JSON）、创建时间；"
+                    + "flag=4：配置名称、重试次数、重试间隔(ms)、创建时间；"
+                    + "flag=5：配置名称、连接超时(ms)、读取超时(ms)、创建时间；"
+                    + "flag=6：配置名称、URL配置(JSON)、创建时间。"
+                    + "其他 flag 值按全量导出。")
     public void exportProtocolConfigs(@ModelAttribute ProtocolConfigQueryDTO dto, HttpServletResponse response) throws IOException {
         protocolConfigService.exportProtocolConfigs(dto, response);
     }

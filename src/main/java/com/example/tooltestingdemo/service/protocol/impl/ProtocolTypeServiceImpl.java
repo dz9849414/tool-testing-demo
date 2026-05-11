@@ -774,7 +774,7 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     private LambdaQueryWrapper<ProtocolType> buildQueryWrapper(ProtocolTypeQueryDTO protocolType) {
         LambdaQueryWrapper<ProtocolType> lambdaQuery = new LambdaQueryWrapper<>();
         if (protocolType != null) {
-            if (CollectionUtils.isEmpty(protocolType.getIds())) {
+            if (!CollectionUtils.isEmpty(protocolType.getIds())) {
                 lambdaQuery.in(ProtocolType::getId, protocolType.getIds());
             }
             if (StringUtils.isNotBlank(protocolType.getProtocolCode())) {
