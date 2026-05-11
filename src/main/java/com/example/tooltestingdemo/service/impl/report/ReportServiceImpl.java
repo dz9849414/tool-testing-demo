@@ -38,6 +38,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -4254,29 +4255,49 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 try {
                     String contentStr = report.getContent().trim();
                     
-                    // 查找包含summary的对象
-                    JSONObject summaryObj = findSummaryObject(contentStr);
-                    
-                    if (summaryObj == null) {
-                        continue;
-                    }
+                    // 解析为JSON数组（报告内容是数组格式）
+                    JSONArray sections = JSON.parseArray(contentStr);
                     
                     Map<String, Object> reportAnalysis = new HashMap<>();
-                    
                     reportAnalysis.put("reportId", report.getId());
                     reportAnalysis.put("reportName", report.getName());
                     reportAnalysis.put("reportType", report.getReportType());
                     
-                    // 分析成功率数据
-                    JSONObject summary = summaryObj.getJSONObject("summary");
-                    reportAnalysis.put("successRate", summary.getDouble("successRate"));
-                    reportAnalysis.put("failureRate", summary.getDouble("failureRate"));
-                    reportAnalysis.put("totalCount", summary.getInteger("totalCount"));
-                    
-                    // 分析时间范围
-                    if (summaryObj.containsKey("startDate") && summaryObj.containsKey("endDate")) {
-                        reportAnalysis.put("startDate", summaryObj.getString("startDate"));
-                        reportAnalysis.put("endDate", summaryObj.getString("endDate"));
+                    // 遍历sections查找数据
+                    for (int i = 0; i < sections.size(); i++) {
+                        JSONObject section = sections.getJSONObject(i);
+                        String dataSource = section.getString("dataSource");
+                        
+                        // 从OVERVIEW提取概览数据
+                        if ("OVERVIEW".equalsIgnoreCase(dataSource) && section.containsKey("data")) {
+                            JSONObject data = section.getJSONObject("data");
+                            if (data.containsKey("successRate")) {
+                                reportAnalysis.put("successRate", data.getDouble("successRate"));
+                            }
+                            if (data.containsKey("failureRate")) {
+                                reportAnalysis.put("failureRate", data.getDouble("failureRate"));
+                            } else if (data.containsKey("failureCount") && data.containsKey("totalCount")) {
+                                // 计算失败率
+                                double failureRate = (double) data.getInteger("failureCount") / data.getInteger("totalCount") * 100;
+                                reportAnalysis.put("failureRate", Math.round(failureRate * 100.0) / 100.0);
+                            }
+                            if (data.containsKey("totalCount")) {
+                                reportAnalysis.put("totalCount", data.getInteger("totalCount"));
+                            }
+                            if (data.containsKey("startDate")) {
+                                reportAnalysis.put("startDate", data.getString("startDate"));
+                            }
+                            if (data.containsKey("endDate")) {
+                                reportAnalysis.put("endDate", data.getString("endDate"));
+                            }
+                        }
+                        
+                        // 如果是 FAILURE_REASONS 类型报告，从FAILURE_REASONS数据源提取故障原因数据
+                        if ("FAILURE_REASONS".equalsIgnoreCase(report.getReportType()) && 
+                            "FAILURE_REASONS".equalsIgnoreCase(dataSource) && 
+                            section.containsKey("data")) {
+                            reportAnalysis.put("failureReasons", section.getJSONArray("data"));
+                        }
                     }
                     
                     analysis.add(reportAnalysis);
@@ -4360,16 +4381,22 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         }
         
         if (!successRates.isEmpty()) {
-            metrics.put("avgSuccessRate", successRates.stream().mapToDouble(Double::doubleValue).average().orElse(0));
-            metrics.put("minSuccessRate", successRates.stream().mapToDouble(Double::doubleValue).min().orElse(0));
-            metrics.put("maxSuccessRate", successRates.stream().mapToDouble(Double::doubleValue).max().orElse(0));
-            metrics.put("successRateStdDev", calculateStandardDeviation(successRates));
+            List<Double> validSuccessRates = successRates.stream().filter(Objects::nonNull).collect(Collectors.toList());
+            if (!validSuccessRates.isEmpty()) {
+                metrics.put("avgSuccessRate", validSuccessRates.stream().mapToDouble(Double::doubleValue).average().orElse(0));
+                metrics.put("minSuccessRate", validSuccessRates.stream().mapToDouble(Double::doubleValue).min().orElse(0));
+                metrics.put("maxSuccessRate", validSuccessRates.stream().mapToDouble(Double::doubleValue).max().orElse(0));
+                metrics.put("successRateStdDev", calculateStandardDeviation(validSuccessRates));
+            }
         }
         
         if (!failureRates.isEmpty()) {
-            metrics.put("avgFailureRate", failureRates.stream().mapToDouble(Double::doubleValue).average().orElse(0));
-            metrics.put("minFailureRate", failureRates.stream().mapToDouble(Double::doubleValue).min().orElse(0));
-            metrics.put("maxFailureRate", failureRates.stream().mapToDouble(Double::doubleValue).max().orElse(0));
+            List<Double> validFailureRates = failureRates.stream().filter(Objects::nonNull).collect(Collectors.toList());
+            if (!validFailureRates.isEmpty()) {
+                metrics.put("avgFailureRate", validFailureRates.stream().mapToDouble(Double::doubleValue).average().orElse(0));
+                metrics.put("minFailureRate", validFailureRates.stream().mapToDouble(Double::doubleValue).min().orElse(0));
+                metrics.put("maxFailureRate", validFailureRates.stream().mapToDouble(Double::doubleValue).max().orElse(0));
+            }
         }
         
         return metrics;

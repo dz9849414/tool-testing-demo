@@ -380,6 +380,31 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
         }
     }
 
+    /**
+     * 解析日期字符串为 LocalDate（支持纯日期和带时间的格式）
+     */
+    private LocalDate parseLocalDate(String dateStr) {
+        if (dateStr == null || dateStr.trim().isEmpty()) {
+            return LocalDate.now();
+        }
+        
+        // 尝试多种格式解析
+        String trimmed = dateStr.trim();
+        
+        // 移除时间部分（如果存在）
+        if (trimmed.contains(" ")) {
+            trimmed = trimmed.substring(0, trimmed.indexOf(" "));
+        } else if (trimmed.contains("T")) {
+            trimmed = trimmed.substring(0, trimmed.indexOf("T"));
+        }
+        
+        try {
+            return LocalDate.parse(trimmed);
+        } catch (Exception e) {
+            return LocalDate.now();
+        }
+    }
+
     private String getDefaultStartDate(String timeRange) {
         LocalDate today = LocalDate.now();
         switch (timeRange) {
@@ -1628,8 +1653,9 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
                 throw new IllegalArgumentException("开始日期和结束日期不能为空");
             }
             
-            LocalDate start = LocalDate.parse(startDate);
-            LocalDate end = LocalDate.parse(endDate);
+            // 解析日期（支持纯日期和带时间的格式）
+            LocalDate start = parseLocalDate(startDate);
+            LocalDate end = parseLocalDate(endDate);
             
             if (start.isAfter(end)) {
                 throw new IllegalArgumentException("开始日期不能晚于结束日期");
@@ -1683,8 +1709,9 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
                 throw new IllegalArgumentException("开始日期和结束日期不能为空");
             }
             
-            LocalDate start = LocalDate.parse(startDate);
-            LocalDate end = LocalDate.parse(endDate);
+            // 解析日期（支持纯日期和带时间的格式）
+            LocalDate start = parseLocalDate(startDate);
+            LocalDate end = parseLocalDate(endDate);
             
             if (start.isAfter(end)) {
                 throw new IllegalArgumentException("开始日期不能晚于结束日期");

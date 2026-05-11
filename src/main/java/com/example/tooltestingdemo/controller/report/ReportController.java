@@ -362,6 +362,10 @@ public class ReportController {
             @RequestParam(required = false) String endTime,
             @RequestParam(required = false) String reportType) {
         try {
+            // 处理空字符串参数
+            if (reportType == null || reportType.trim().isEmpty()) {
+                return Result.error("报告类型不能为空");
+            }
             Object statistics = reportService.getReportStatistics(startTime, endTime, reportType);
             return Result.success(statistics);
         } catch (Exception e) {
