@@ -463,6 +463,7 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         vo.setCreateTime(entity.getCreateTime());
         vo.setUpdateId(entity.getUpdateId());
         vo.setUpdateTime(entity.getUpdateTime());
+        vo.setTcpUdp(entity.getTcpUdp());
 
         List<ProtocolConfigCreateDTO.UrlConfigItemDTO> urlConfigList = parseList(
                 entity.getUrlConfig(),

@@ -7,6 +7,7 @@ import lombok.EqualsAndHashCode;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 协议类型查询 DTO
@@ -15,6 +16,9 @@ import java.time.LocalDateTime;
 @Data
 @Schema(description = "协议类型分页查询参数")
 public class ProtocolTypeQueryDTO extends PageQuery {
+
+    @Schema(description = "勾选导出查询条件", example = "[1,2,3]")
+    private List<Long> ids;
 
     @Schema(description = "协议编码（模糊查询）", example = "HTTP")
     private String protocolCode;
