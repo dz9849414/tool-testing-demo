@@ -176,12 +176,12 @@ public class ReportController {
     @PostMapping("/auto-generate")
     @Operation(summary = "自动生成报告")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:auto-generate')")
-    public Result<Long> autoGenerateReport(
-            @RequestParam String reportType,
-            @RequestParam String dataSourceIds,
-            @RequestParam(required = false) Long templateId) {
+    public Result<Long> autoGenerateReport(@RequestBody AutoGenerateReportRequest request) {
         try {
-            // 参数校验
+            String reportType = request.getReportType();
+            String dataSourceIds = request.getDataSourceIds();
+            Long templateId = request.getTemplateId();
+            
             if (reportType == null || reportType.trim().isEmpty()) {
                 return Result.error("报告类型不能为空");
             }
@@ -196,7 +196,6 @@ public class ReportController {
                 processedDataSourceIds = "[" + processedDataSourceIds + "]";
             }
             
-            // 验证JSON格式
             try {
                 com.alibaba.fastjson2.JSON.parse(processedDataSourceIds);
             } catch (Exception e) {
