@@ -509,7 +509,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 return successRateReport != null && successRateReport.getContent() != null && !successRateReport.getContent().isEmpty() ? 
                     successRateReport.getContent().get(0) : buildEmptyChartData(startDate, endDate, "SUCCESS_RATE");
             case "RESPONSE_TIME":
-                Object responseData = templateStatisticsService.getHourlyResponseTimeReportSimple(startDate, endDate, normalizedDataSource);
+                Object responseData = templateStatisticsService.getHourlyResponseTimeReportSimple(startDate, endDate, normalizedDataSource, true);
                 if (responseData != null && responseData instanceof List && !((List<?>) responseData).isEmpty()) {
                     return responseData;
                 }
@@ -879,7 +879,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                     return templateStatisticsService.getHourlyResponseTimeReportSimple(
                         startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
                         endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 
-                        "UNIFIED");
+                        "UNIFIED", true);
                 case "FAILURE_REASONS":
                 case "3":
                     return templateStatisticsService.getTopFailureReasonsReportSimple(

@@ -71,9 +71,10 @@ public interface ITemplateStatisticsService {
      * @param startDate 开始日期
      * @param endDate 结束日期
      * @param dataSource 数据源：JOB_LOG（定时任务）/UNIFIED（手动+定时）/BATCH（批量任务）
+     * @param success 是否成功：true-成功，false-失败，null-全部
      * @return 每2小时平均响应时间报告（简化格式：List<Map<String, Object>>）
      */
-    List<Map<String, Object>> getHourlyResponseTimeReportSimple(String startDate, String endDate, String dataSource);
+    List<Map<String, Object>> getHourlyResponseTimeReportSimple(String startDate, String endDate, String dataSource, Boolean success);
 
     /**
      * 获取周一到周日执行量统计报告

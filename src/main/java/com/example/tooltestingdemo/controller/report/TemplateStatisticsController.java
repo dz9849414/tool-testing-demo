@@ -131,7 +131,8 @@ public class TemplateStatisticsController {
     public Result<Object> getHourlyResponseTimeReportSimple(
             @RequestParam String startDate,
             @RequestParam String endDate,
-            @RequestParam(defaultValue = "EXECUTE_LOG") String dataSource) {
+            @RequestParam(defaultValue = "EXECUTE_LOG") String dataSource,
+            @RequestParam(required = false) Boolean success) {
         try {
             // 参数校验
             if (dataSource != null && !dataSource.trim().isEmpty()) {
@@ -142,7 +143,7 @@ public class TemplateStatisticsController {
             }
 
             List<Map<String, Object>> data = templateStatisticsService.getHourlyResponseTimeReportSimple(
-                startDate, endDate, dataSource);
+                startDate, endDate, dataSource, success);
             return Result.success("每2小时平均响应时间报告获取成功", data);
         } catch (Exception e) {
             return Result.error("获取每2小时平均响应时间报告失败：" + e.getMessage());
@@ -155,7 +156,8 @@ public class TemplateStatisticsController {
     public Result<Object> getHourlyResponseTimeReport(
             @RequestParam String startDate,
             @RequestParam String endDate,
-            @RequestParam(defaultValue = "JOB_LOG") String dataSource) {
+            @RequestParam(defaultValue = "JOB_LOG") String dataSource,
+            @RequestParam(required = false) Boolean success) {
         try {
             // 参数校验
             if (dataSource != null && !dataSource.trim().isEmpty()) {
@@ -166,7 +168,7 @@ public class TemplateStatisticsController {
             }
 
             List<Map<String, Object>> data = templateStatisticsService.getHourlyResponseTimeReportSimple(
-                startDate, endDate, dataSource);
+                startDate, endDate, dataSource, success);
             return Result.success("每2小时平均响应时间报告获取成功", data);
         } catch (Exception e) {
             return Result.error("获取每2小时平均响应时间报告失败：" + e.getMessage());

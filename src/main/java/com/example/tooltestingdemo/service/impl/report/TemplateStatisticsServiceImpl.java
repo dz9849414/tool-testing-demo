@@ -817,7 +817,7 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     // ====================== 每2小时响应时间统计方法 ======================
 
     @Override
-    public List<Map<String, Object>> getHourlyResponseTimeReportSimple(String startDate, String endDate, String dataSource) {
+    public List<Map<String, Object>> getHourlyResponseTimeReportSimple(String startDate, String endDate, String dataSource, Boolean success) {
         try {
             // 参数验证
             if (startDate == null || endDate == null) {
@@ -838,20 +838,14 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
             List<Map<String, Object>> hourlyStats;
             switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
                 case "BATCH":
-                    hourlyStats = templateStatisticsMapper.getBatchHourlyResponseTimeStats(startTime, endTime);
+                    hourlyStats = templateStatisticsMapper.getBatchHourlyResponseTimeStats(startTime, endTime, success);
                     break;
                 case "UNIFIED":
-                    // UNIFIED = JOB_LOG（手动+定时） + BATCH（批次）
-                    hourlyStats = templateStatisticsMapper.getHourlyResponseTimeStats(startTime, endTime);
-//                    List<Map<String, Object>> batchStats = templateStatisticsMapper.getBatchHourlyResponseTimeStats(startTime, endTime);
-                    // 合并两个数据源
-//                    hourlyStats = new ArrayList<>();
-//                    hourlyStats.addAll(jobLogStats);
-//                    hourlyStats.addAll(batchStats);
+                    hourlyStats = templateStatisticsMapper.getUnifiedHourlyResponseTimeStats(startTime, endTime, success);
                     break;
                 case "JOB_LOG":
                 default:
-                    hourlyStats = templateStatisticsMapper.getHourlyResponseTimeStatsToManual(startTime, endTime);
+                    hourlyStats = templateStatisticsMapper.getHourlyResponseTimeStatsToJob(startTime, endTime, success);
                     break;
             }
             
@@ -897,10 +891,10 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
             List<Map<String, Object>> hourlyStats;
             switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
                 case "BATCH":
-                    hourlyStats = templateStatisticsMapper.getBatchHourlyResponseTimeStats(startTime, endTime);
+                    hourlyStats = templateStatisticsMapper.getBatchHourlyResponseTimeStats(startTime, endTime,null);
                     break;
                 case "UNIFIED":
-                    hourlyStats = templateStatisticsMapper.getUnifiedHourlyResponseTimeStats(startTime, endTime);
+                    hourlyStats = templateStatisticsMapper.getUnifiedHourlyResponseTimeStats(startTime, endTime,null);
                     break;
                 case "JOB_LOG":
                 default:
@@ -1014,17 +1008,17 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
             List<Map<String, Object>> weeklyStats;
             switch (dataSource != null ? dataSource.toUpperCase() : "EXECUTE_LOG") {
                 case "UNIFIED":
-                    weeklyStats = templateStatisticsMapper.getUnifiedWeeklyExecutionStats(startTime, endTime);
+                    weeklyStats = templateStatisticsMapper.getExecutionWeeklyExecutionStatsToUnified(startTime, endTime);
                     break;
                 case "JOB_LOG":
-                    weeklyStats = templateStatisticsMapper.getBatchWeeklyExecutionStats(startTime, endTime);
+                    weeklyStats = templateStatisticsMapper.getExecutionWeeklyExecutionStatsToJob(startTime, endTime);
                     break;
                 case "JOB_BATCH":
-                    weeklyStats = templateStatisticsMapper.getBatchWeeklyExecutionStats(startTime, endTime);
+                    weeklyStats = templateStatisticsMapper.getExecutionWeeklyExecutionStatsToJob(startTime, endTime);
                     break;
                 case "EXECUTE_LOG":
                 default:
-                    weeklyStats = templateStatisticsMapper.getUnifiedWeeklyExecutionStats(startTime, endTime);
+                    weeklyStats = templateStatisticsMapper.getExecutionWeeklyExecutionStatsToUnified(startTime, endTime);
                     break;
             }
             
@@ -1066,23 +1060,35 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
         
         int totalExecutions = 0;
         
-        // 填充实际统计数据
+        // 填充实际统计数据 - 合并同一天的execution_count
         for (Map<String, Object> stat : weeklyStats) {
             String dayName = safeGetString(stat, "day_name");
             BigDecimal executionCount = safeGetBigDecimal(stat, "execution_count");
             
             if (dayName != null && weekDays.containsKey(dayName)) {
                 Map<String, Object> dayData = (Map<String, Object>) weekDays.get(dayName);
-                dayData.put("executionCount", executionCount != null ? executionCount.longValue() : 0);
                 
-                // 对于UNIFIED数据源，添加执行类型信息
+                // 累加execution_count而不是覆盖
+                long currentCount = dayData.containsKey("executionCount") ? ((Number) dayData.get("executionCount")).longValue() : 0;
+                long newCount = executionCount != null ? executionCount.longValue() : 0;
+                dayData.put("executionCount", currentCount + newCount);
+                
+                // 对于UNIFIED数据源，添加执行类型详情列表
                 if ("UNIFIED".equalsIgnoreCase(dataSource)) {
                     String executeType = safeGetString(stat, "execute_type");
-                    dayData.put("executeType", executeType);
-                    dayData.put("executeTypeName", "MANUAL".equals(executeType) ? "手动执行" : "定时任务");
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> typeDetails = (List<Map<String, Object>>) dayData.getOrDefault("typeDetails", new ArrayList<>());
+                    
+                    Map<String, Object> typeDetail = new HashMap<>();
+                    typeDetail.put("executeType", executeType);
+                    typeDetail.put("executeTypeName", "MANUAL".equals(executeType) ? "手动执行" : "定时任务");
+                    typeDetail.put("executionCount", newCount);
+                    typeDetails.add(typeDetail);
+                    
+                    dayData.put("typeDetails", typeDetails);
                 }
                 
-                totalExecutions += executionCount != null ? executionCount.longValue() : 0;
+                totalExecutions += newCount;
             }
         }
         
@@ -1717,8 +1723,8 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
                 break;
             case "RESPONSE_TIME":
                 // 调用现有的响应时间接口
-                List<Map<String, Object>> responseTimeData1 = getHourlyResponseTimeReportSimple(group1StartDate, group1EndDate, dataSource);
-                List<Map<String, Object>> responseTimeData2 = getHourlyResponseTimeReportSimple(group2StartDate, group2EndDate, dataSource);
+                List<Map<String, Object>> responseTimeData1 = getHourlyResponseTimeReportSimple(group1StartDate, group1EndDate, dataSource, true);
+                List<Map<String, Object>> responseTimeData2 = getHourlyResponseTimeReportSimple(group2StartDate, group2EndDate, dataSource, true);
                 result.setData1(responseTimeData1);
                 result.setData2(responseTimeData2);
                 result.setSummary1(calculateResponseTimeSummary(responseTimeData1));
@@ -1922,7 +1928,7 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
             List<Map<String, Object>> weeklyStats;
             switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
                 case "UNIFIED":
-                    weeklyStats = templateStatisticsMapper.getUnifiedWeeklyExecutionStats(startTime, endTime);
+                    weeklyStats = templateStatisticsMapper.getExecutionWeeklyExecutionStatsToUnified(startTime, endTime);
                     break;
                 case "JOB_LOG":
                 default:
