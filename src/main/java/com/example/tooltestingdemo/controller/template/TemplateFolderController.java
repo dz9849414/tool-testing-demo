@@ -1,15 +1,15 @@
 package com.example.tooltestingdemo.controller.template;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.example.tooltestingdemo.common.Result;
+import com.example.tooltestingdemo.dto.TemplateFolderTreeQueryDTO;
 import com.example.tooltestingdemo.entity.template.TemplateFolder;
 import com.example.tooltestingdemo.service.template.TemplateFolderService;
 import com.example.tooltestingdemo.vo.TemplateFolderVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
-
-import java.util.List;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * 模板分类/文件夹 Controller
@@ -29,13 +29,13 @@ public class TemplateFolderController {
      * 
      * 接口地址：GET /api/template/folder/tree
      * 
-     * @param parentId 父文件夹ID，不传则查询根目录
+     * @param query 查询参数，parentId 不传则查询根目录，current/size 控制根层级分页
      * @return 文件夹VO列表
      */
     @GetMapping("/tree")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search')")
-    public Result<List<TemplateFolderVO>> getFolderTree(@RequestParam(required = false) Long parentId) {
-        List<TemplateFolderVO> folders = folderService.getFolderTree(parentId);
+    public Result<IPage<TemplateFolderVO>> getFolderTree(TemplateFolderTreeQueryDTO query) {
+        IPage<TemplateFolderVO> folders = folderService.pageFolderTree(query);
         return Result.success(folders);
     }
 

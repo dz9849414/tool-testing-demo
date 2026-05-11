@@ -36,6 +36,12 @@
         ORDER BY sort_order ASC
     </select>
 
+    <!-- 根据模板ID物理删除变量，供参数配置页整表重建使用 -->
+    <delete id="physicalDeleteByTemplateId">
+        DELETE FROM pdm_tool_template_variable
+        WHERE template_id = #{templateId}
+    </delete>
+
     <!-- 批量插入变量 -->
     <insert id="batchInsert">
         INSERT INTO pdm_tool_template_variable (

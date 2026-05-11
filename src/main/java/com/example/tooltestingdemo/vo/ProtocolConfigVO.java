@@ -53,4 +53,6 @@ public class ProtocolConfigVO {
     private Long updateId;
     @Schema(description = "更新时间")
     private LocalDateTime updateTime;
+    @Schema(description = "TCP/UDP配置数据")
+    private String tcpUdp;
 }

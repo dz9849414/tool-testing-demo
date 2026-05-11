@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.ProtocolConfigCreateDTO;
+import com.example.tooltestingdemo.dto.ProtocolConnectivityResultDTO;
+import com.example.tooltestingdemo.dto.ProtocolConnectivityTestDTO;
 import com.example.tooltestingdemo.dto.ProtocolTestRecordQueryDTO;
 import com.example.tooltestingdemo.dto.ProtocolTestTransferDTO;
 import com.example.tooltestingdemo.entity.protocol.ProtocolConfig;
@@ -12,6 +14,8 @@ import com.example.tooltestingdemo.entity.protocol.ProtocolTestRecord;
 import com.example.tooltestingdemo.mapper.protocol.ProtocolTestRecordMapper;
 import com.example.tooltestingdemo.service.protocol.IProtocolConfigService;
 import com.example.tooltestingdemo.service.protocol.IProtocolTestRecordService;
+import com.example.tooltestingdemo.service.template.InterfaceTemplateService;
+import com.example.tooltestingdemo.vo.InterfaceTemplateVO;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
@@ -40,6 +44,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.URLEncoder;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -69,13 +76,14 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
     private static final String EXPORT_FILE_NAME = "协议测试记录导出";
 
     private final IProtocolConfigService protocolConfigService;
+    private final InterfaceTemplateService templateService;
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
 
     @Override
     public ProtocolTestRecord testConnect(Long configId) {
         log.info("连通性测试开始: configId={}", configId);
-        ProtocolConfig config = getRequiredConfig(configId);
+        ProtocolConfig config = getRequiredProtocolConfig(configId);
         String url = resolvePrimaryUrl(config);
         int connectTimeoutMs = config.getTimeoutConnect() == null ? 5000 : config.getTimeoutConnect();
         int readTimeoutMs = config.getTimeoutRead() == null ? 30000 : config.getTimeoutRead();
@@ -87,7 +95,7 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
         requestMeta.put("timeoutRead", readTimeoutMs);
 
         ProtocolTestRecord record = executeAndSave(config, ProtocolTestRecord.TestType.CONNECT.name(), ProtocolTestRecord.TestScenario.NETWORK.name(),
-                url, HttpMethod.GET, null, requestMeta, connectTimeoutMs, readTimeoutMs);
+            url, HttpMethod.GET, null, requestMeta, connectTimeoutMs, readTimeoutMs);
         log.info("连通性测试结束: configId={}, recordId={}, resultStatus={}", configId, record.getId(), record.getResultStatus());
         return record;
     }
@@ -97,12 +105,12 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
         if (dto == null || dto.getConfigId() == null) {
             throw new IllegalArgumentException("协议配置ID不能为空");
         }
-        ProtocolConfig config = getRequiredConfig(dto.getConfigId());
+        ProtocolConfig config = getRequiredProtocolConfig(dto.getConfigId());
         String baseUrl = resolvePrimaryUrl(config);
         String fullUrl = buildTransferUrl(baseUrl, dto.getPath(), dto.getQueryParams());
         HttpMethod httpMethod = resolveHttpMethod(dto.getMethod());
         log.info("协议转发测试开始: configId={}, method={}, path={}",
-                dto.getConfigId(), httpMethod.name(), Objects.toString(dto.getPath(), ""));
+            dto.getConfigId(), httpMethod.name(), Objects.toString(dto.getPath(), ""));
         int connectTimeoutMs = config.getTimeoutConnect() == null ? 5000 : config.getTimeoutConnect();
         int readTimeoutMs = config.getTimeoutRead() == null ? 30000 : config.getTimeoutRead();
 
@@ -126,18 +134,55 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
         requestMeta.put("timeoutRead", readTimeoutMs);
 
         ProtocolTestRecord record = executeAndSave(config, ProtocolTestRecord.TestType.TRANSFER.name(), ProtocolTestRecord.TestScenario.PROTOCOL.name(),
-                fullUrl, httpMethod, entity, requestMeta, connectTimeoutMs, readTimeoutMs);
+            fullUrl, httpMethod, entity, requestMeta, connectTimeoutMs, readTimeoutMs);
         log.info("协议转发测试结束: configId={}, recordId={}, resultStatus={}, responseCode={}",
-                dto.getConfigId(), record.getId(), record.getResultStatus(), record.getResponseCode());
+            dto.getConfigId(), record.getId(), record.getResultStatus(), record.getResponseCode());
         return record;
+    }
+
+    @Override
+    public ProtocolConnectivityResultDTO testConnectivity(ProtocolConnectivityTestDTO dto) {
+        if (dto == null) {
+            throw new IllegalArgumentException("诊断参数不能为空");
+        }
+        ConnectivityTarget target = resolveConnectivityTarget(dto);
+        log.info("协议网络诊断开始: templateId={}, configId={}, protocolType={}, host={}, port={}, ping={}, telnet={}",
+            target.templateId, target.configId, target.protocolType, target.host, target.port, dto.getPing(), dto.getTelnet());
+
+        ProtocolConnectivityResultDTO result = new ProtocolConnectivityResultDTO();
+        result.setTemplateId(target.templateId);
+        result.setConfigId(target.configId);
+        result.setProtocolType(target.protocolType);
+        result.setTargetUrl(target.targetUrl);
+        result.setHost(target.host);
+        result.setPort(target.port);
+        result.setTimeoutMs(target.timeoutMs);
+
+        if (!Boolean.FALSE.equals(dto.getPing())) {
+            result.setPing(doPing(target.host, target.timeoutMs));
+        } else {
+            result.setPing(skipped("已跳过ping"));
+        }
+
+        if (!Boolean.FALSE.equals(dto.getTelnet())) {
+            result.setTelnet(doTelnet(target));
+        } else {
+            result.setTelnet(skipped("已跳过telnet"));
+        }
+
+        log.info("协议网络诊断结束: templateId={}, configId={}, host={}, port={}, pingSuccess={}, telnetSuccess={}",
+            target.templateId, target.configId, target.host, target.port,
+            result.getPing() == null ? null : result.getPing().getSuccess(),
+            result.getTelnet() == null ? null : result.getTelnet().getSuccess());
+        return result;
     }
 
     @Override
     public IPage<ProtocolTestRecord> getProtocolTestRecordList(ProtocolTestRecordQueryDTO dto) {
         ProtocolTestRecordQueryDTO query = dto == null ? new ProtocolTestRecordQueryDTO() : dto;
         log.info("分页查询协议测试记录: protocolId={}, configId={}, testType={}, testScenario={}, resultStatus={}, createTimeStart={}, createTimeEnd={}, current={}, size={}",
-                query.getProtocolId(), query.getConfigId(), query.getTestType(), query.getTestScenario(), query.getResultStatus(),
-                query.getCreateTimeStart(), query.getCreateTimeEnd(), query.getCurrent(), query.getSize());
+            query.getProtocolId(), query.getConfigId(), query.getTestType(), query.getTestScenario(), query.getResultStatus(),
+            query.getCreateTimeStart(), query.getCreateTimeEnd(), query.getCurrent(), query.getSize());
         IPage<ProtocolTestRecord> page = this.page(query.toPage(), buildQueryWrapper(query));
         log.info("分页查询协议测试记录完成: total={}, currentSize={}", page.getTotal(), page.getRecords().size());
         return page;
@@ -147,8 +192,8 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
     public void exportProtocolTestRecords(ProtocolTestRecordQueryDTO dto, HttpServletResponse response) throws IOException {
         ProtocolTestRecordQueryDTO query = dto == null ? new ProtocolTestRecordQueryDTO() : dto;
         log.info("导出协议测试记录开始: protocolId={}, configId={}, testType={}, testScenario={}, resultStatus={}, createTime范围=[{}, {}]",
-                query.getProtocolId(), query.getConfigId(), query.getTestType(), query.getTestScenario(), query.getResultStatus(),
-                query.getCreateTimeStart(), query.getCreateTimeEnd());
+            query.getProtocolId(), query.getConfigId(), query.getTestType(), query.getTestScenario(), query.getResultStatus(),
+            query.getCreateTimeStart(), query.getCreateTimeEnd());
         List<ProtocolTestRecord> records = this.list(buildQueryWrapper(query));
         log.info("导出协议测试记录待写入行数: {}", records.size());
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
@@ -214,13 +259,13 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
         try {
             URI uri = new URI(rawUrl);
             URI rebuilt = new URI(
-                    uri.getScheme(),
-                    uri.getUserInfo(),
-                    uri.getHost(),
-                    item.getPort(),
-                    uri.getPath(),
-                    uri.getQuery(),
-                    uri.getFragment()
+                uri.getScheme(),
+                uri.getUserInfo(),
+                uri.getHost(),
+                item.getPort(),
+                uri.getPath(),
+                uri.getQuery(),
+                uri.getFragment()
             );
             return rebuilt.toString();
         } catch (URISyntaxException e) {
@@ -250,7 +295,7 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
         record.setTestData(toJson(requestMeta));
         long start = System.currentTimeMillis();
         log.info("协议测试HTTP调用开始: configId={}, protocolId={}, testType={}, testScenario={}, method={}, url={}",
-                config.getId(), config.getProtocolId(), testType, testScenario, method.name(), url);
+            config.getId(), config.getProtocolId(), testType, testScenario, method.name(), url);
         try {
             RestTemplate template = buildRestTemplateWithTimeouts(connectTimeoutMs, readTimeoutMs);
             ResponseEntity<String> response = template.exchange(url, method, requestEntity, String.class);
@@ -258,8 +303,8 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
             record.setResponseTime((int) elapsed);
             record.setResponseCode(String.valueOf(response.getStatusCode().value()));
             record.setResultStatus(response.getStatusCode().is2xxSuccessful()
-                    ? ProtocolTestRecord.ResultStatus.SUCCESS.name()
-                    : ProtocolTestRecord.ResultStatus.FAILED.name());
+                ? ProtocolTestRecord.ResultStatus.SUCCESS.name()
+                : ProtocolTestRecord.ResultStatus.FAILED.name());
             record.setErrorMessage(response.getStatusCode().is2xxSuccessful() ? null : truncate("HTTP状态非2xx"));
             record.setComparisonResult(buildResponseSummary(response.getBody(), response.getStatusCode().value()));
             if (response.getStatusCode().is2xxSuccessful()) {
@@ -275,7 +320,7 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
             record.setErrorMessage(truncate(ex.getStatusText()));
             record.setComparisonResult(buildResponseSummary(ex.getResponseBodyAsString(), ex.getStatusCode().value()));
             log.warn("协议测试HTTP客户端异常(仍落库): configId={}, url={}, httpStatus={}, responseTimeMs={}, message={}",
-                    config.getId(), url, ex.getStatusCode().value(), elapsed, truncate(ex.getMessage()));
+                config.getId(), url, ex.getStatusCode().value(), elapsed, truncate(ex.getMessage()));
         } catch (Exception ex) {
             long elapsed = System.currentTimeMillis() - start;
             record.setResponseTime((int) elapsed);
@@ -283,14 +328,14 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
             record.setResultStatus(ProtocolTestRecord.ResultStatus.FAILED.name());
             record.setErrorMessage(truncate(ex.getMessage()));
             log.error("协议测试HTTP调用失败: configId={}, method={}, url={}, responseTimeMs={}",
-                    config.getId(), method.name(), url, elapsed, ex);
+                config.getId(), method.name(), url, elapsed, ex);
         }
 
         record.setCreateTime(LocalDateTime.now());
         record.setUpdateTime(LocalDateTime.now());
         save(record);
         log.info("协议测试记录已保存: recordId={}, configId={}, resultStatus={}, responseCode={}, responseTimeMs={}",
-                record.getId(), config.getId(), record.getResultStatus(), record.getResponseCode(), record.getResponseTime());
+            record.getId(), config.getId(), record.getResultStatus(), record.getResponseCode(), record.getResponseTime());
         return record;
     }
 
@@ -363,7 +408,19 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
         }
     }
 
-    private ProtocolConfig getRequiredConfig(Long configId) {
+    private InterfaceTemplateVO getRequiredTemplate(Long templateId) {
+        if (templateId == null) {
+            throw new IllegalArgumentException("模板ID不能为空");
+        }
+        InterfaceTemplateVO templateDetail = templateService.getTemplateDetail(templateId);
+        if (templateDetail == null) {
+            log.warn("接口模板不存在: templateId={}", templateId);
+            throw new IllegalArgumentException("接口模板不存在");
+        }
+        return templateDetail;
+    }
+
+    private ProtocolConfig getRequiredProtocolConfig(Long configId) {
         if (configId == null) {
             throw new IllegalArgumentException("协议配置ID不能为空");
         }
@@ -375,10 +432,278 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
         return config;
     }
 
+
     private String resolvePrimaryUrl(ProtocolConfig config) {
         List<ProtocolConfigCreateDTO.UrlConfigItemDTO> urlConfigList = parseUrlConfigList(config.getUrlConfig());
         ProtocolConfigCreateDTO.UrlConfigItemDTO primaryUrlItem = pickPrimaryUrl(urlConfigList);
         return buildFinalUrl(primaryUrlItem);
+    }
+
+    private ConnectivityTarget resolveConnectivityTarget(ProtocolConnectivityTestDTO dto) {
+        InterfaceTemplateVO template = null;
+        String targetUrl = StringUtils.trimToNull(dto.getUrl());
+        String protocolType = StringUtils.trimToNull(dto.getProtocolType());
+        Integer timeoutMs = dto.getTimeoutMs();
+        Long templateId = dto.getConfigId();
+
+        // 优先使用模板ID
+        if (templateId != null) {
+            template = getRequiredTemplate(templateId);
+            if (StringUtils.isBlank(targetUrl)) {
+                targetUrl = resolveTemplateUrl(template);
+            }
+            if (StringUtils.isBlank(protocolType)) {
+                protocolType = template.getProtocolType();
+            }
+            if (timeoutMs == null && template.getConnectTimeout() != null) {
+                timeoutMs = template.getConnectTimeout();
+            }
+        }
+
+        URI uri = parseTargetUri(targetUrl);
+        if (StringUtils.isBlank(protocolType) && uri != null) {
+            protocolType = uri.getScheme();
+        }
+        protocolType = StringUtils.defaultIfBlank(protocolType, "TCP").trim().toUpperCase();
+        String templateHost = resolveTemplateHost(template, protocolType);
+        Integer templatePort = resolveTemplatePort(template, protocolType);
+        String host = StringUtils.trimToNull(dto.getHost());
+        if (StringUtils.isBlank(host)) {
+            host = templateHost;
+        }
+        if (StringUtils.isBlank(host) && uri != null) {
+            host = uri.getHost();
+        }
+        if (StringUtils.isBlank(host)) {
+            throw new IllegalArgumentException("目标主机不能为空");
+        }
+
+        Integer port = dto.getPort();
+        if (port == null) {
+            port = templatePort;
+        }
+        if (port == null && uri != null && uri.getPort() > 0) {
+            port = uri.getPort();
+        }
+        if (port == null) {
+            port = defaultPort(protocolType);
+        }
+
+        ConnectivityTarget target = new ConnectivityTarget();
+        target.templateId = templateId;
+        target.protocolType = protocolType;
+        target.targetUrl = targetUrl;
+        target.host = host;
+        target.port = port;
+        target.timeoutMs = Math.max(timeoutMs == null ? 5000 : timeoutMs, 1);
+        return target;
+    }
+
+    private String resolveTemplateUrl(InterfaceTemplateVO template) {
+        if (template == null) {
+            return null;
+        }
+        if (StringUtils.isNotBlank(template.getFullUrl())) {
+            return template.getFullUrl().trim();
+        }
+        String baseUrl = StringUtils.trimToNull(template.getBaseUrl());
+        String path = StringUtils.trimToNull(template.getPath());
+        if (baseUrl != null && path != null) {
+            String separator = baseUrl.endsWith("/") || path.startsWith("/") ? "" : "/";
+            return baseUrl + separator + path;
+        }
+        return baseUrl != null ? baseUrl : path;
+    }
+
+    private String resolveTemplateHost(InterfaceTemplateVO template, String protocolType) {
+        if (template == null) {
+            return null;
+        }
+        if (isUdpProtocol(protocolType)) {
+            return getJsonStringOption(template.getExtField5(), "udp-hostname", "udpPortHost", "hostname", "Hostname",
+                "host", "Host", "目标地址");
+        }
+        return getJsonStringOption(template.getExtField5(), "tcp-servername", "serverNameOrIp", "服务器名称或IP",
+            "hostname", "Hostname", "host", "Host", "目标地址");
+    }
+
+    private Integer resolveTemplatePort(InterfaceTemplateVO template, String protocolType) {
+        if (template == null) {
+            return null;
+        }
+        if (isUdpProtocol(protocolType)) {
+            return getJsonIntegerOption(template.getExtField5(), "udp-port", "udpPort", "UDP Port", "port", "Port",
+                "端口号", "目标端口");
+        }
+        return getJsonIntegerOption(template.getExtField5(), "tcp-port", "tcpPort", "TCP Port", "port", "Port",
+            "端口号", "目标端口");
+    }
+
+    private String getJsonStringOption(String json, String... keys) {
+        Object value = getJsonOption(json, keys);
+        return value == null || StringUtils.isBlank(value.toString()) ? null : value.toString().trim();
+    }
+
+    private Integer getJsonIntegerOption(String json, String... keys) {
+        Object value = getJsonOption(json, keys);
+        if (value == null || StringUtils.isBlank(value.toString())) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            return Integer.parseInt(value.toString().trim());
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    private Object getJsonOption(String json, String... keys) {
+        if (StringUtils.isBlank(json) || keys == null || keys.length == 0) {
+            return null;
+        }
+        try {
+            Map<String, Object> data = objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {
+            });
+            for (String key : keys) {
+                if (data.containsKey(key)) {
+                    return data.get(key);
+                }
+            }
+            for (Map.Entry<String, Object> entry : data.entrySet()) {
+                for (String key : keys) {
+                    if (StringUtils.equalsIgnoreCase(entry.getKey(), key)) {
+                        return entry.getValue();
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            log.debug("解析模板网络诊断扩展参数失败: {}", ex.getMessage());
+        }
+        return null;
+    }
+
+    private URI parseTargetUri(String rawUrl) {
+        if (StringUtils.isBlank(rawUrl)) {
+            return null;
+        }
+        String normalized = rawUrl.trim();
+        if (!normalized.contains("://")) {
+            normalized = "tcp://" + normalized;
+        }
+        try {
+            return new URI(normalized);
+        } catch (URISyntaxException ex) {
+            throw new IllegalArgumentException("目标URL格式不正确");
+        }
+    }
+
+    private ProtocolConnectivityResultDTO.CheckResult doPing(String host, int timeoutMs) {
+        long start = System.currentTimeMillis();
+        ProtocolConnectivityResultDTO.CheckResult result = new ProtocolConnectivityResultDTO.CheckResult();
+        result.setExecuted(true);
+        try {
+            boolean reachable = InetAddress.getByName(host).isReachable(timeoutMs);
+            long elapsed = System.currentTimeMillis() - start;
+            result.setSuccess(reachable);
+            result.setResponseTimeMs(elapsed);
+            result.setMessage(reachable ? "ping可达" : "ping不可达或超时");
+        } catch (Exception ex) {
+            long elapsed = System.currentTimeMillis() - start;
+            result.setSuccess(false);
+            result.setResponseTimeMs(elapsed);
+            result.setMessage(truncate(ex.getMessage()));
+        }
+        return result;
+    }
+
+    private ProtocolConnectivityResultDTO.CheckResult doTelnet(ConnectivityTarget target) {
+        if (isUdpProtocol(target.protocolType)) {
+            return skipped("UDP协议无TCP连接语义，已跳过telnet");
+        }
+        if (target.port == null) {
+            return failed("telnet需要目标端口");
+        }
+        long start = System.currentTimeMillis();
+        ProtocolConnectivityResultDTO.CheckResult result = new ProtocolConnectivityResultDTO.CheckResult();
+        result.setExecuted(true);
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(target.host, target.port), target.timeoutMs);
+            long elapsed = System.currentTimeMillis() - start;
+            result.setSuccess(true);
+            result.setResponseTimeMs(elapsed);
+            result.setMessage("telnet连接成功");
+        } catch (Exception ex) {
+            long elapsed = System.currentTimeMillis() - start;
+            result.setSuccess(false);
+            result.setResponseTimeMs(elapsed);
+            result.setMessage(truncate(ex.getMessage()));
+        }
+        return result;
+    }
+
+    private ProtocolConnectivityResultDTO.CheckResult skipped(String message) {
+        ProtocolConnectivityResultDTO.CheckResult result = new ProtocolConnectivityResultDTO.CheckResult();
+        result.setExecuted(false);
+        result.setSuccess(null);
+        result.setResponseTimeMs(0L);
+        result.setMessage(message);
+        return result;
+    }
+
+    private ProtocolConnectivityResultDTO.CheckResult failed(String message) {
+        ProtocolConnectivityResultDTO.CheckResult result = new ProtocolConnectivityResultDTO.CheckResult();
+        result.setExecuted(true);
+        result.setSuccess(false);
+        result.setResponseTimeMs(0L);
+        result.setMessage(message);
+        return result;
+    }
+
+    private boolean isUdpProtocol(String protocolType) {
+        return StringUtils.equalsIgnoreCase(protocolType, "UDP");
+    }
+
+    private Integer defaultPort(String protocolType) {
+        String protocol = StringUtils.defaultString(protocolType).trim().toUpperCase();
+        switch (protocol) {
+            case "HTTP":
+                return 80;
+            case "HTTPS":
+                return 443;
+            case "FTP":
+                return 21;
+            case "SFTP":
+            case "SSH":
+                return 22;
+            case "TELNET":
+                return 23;
+            case "SMTP":
+                return 25;
+            case "POP3":
+                return 110;
+            case "IMAP":
+                return 143;
+            case "MYSQL":
+                return 3306;
+            case "REDIS":
+                return 6379;
+            case "MQTT":
+                return 1883;
+            default:
+                return null;
+        }
+    }
+
+    private static class ConnectivityTarget {
+        private Long configId;
+        private Long templateId;
+        private String protocolType;
+        private String targetUrl;
+        private String host;
+        private Integer port;
+        private Integer timeoutMs;
     }
 
     private String toJson(Object value) {
@@ -459,7 +784,7 @@ public class ProtocolTestRecordServiceImpl extends ServiceImpl<ProtocolTestRecor
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setHeader("Content-Disposition", "attachment; filename="
-                + URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20"));
+            + URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20"));
         try (OutputStream outputStream = response.getOutputStream()) {
             outputStream.write(content);
             outputStream.flush();

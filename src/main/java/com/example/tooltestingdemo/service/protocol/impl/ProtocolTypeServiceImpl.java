@@ -18,6 +18,7 @@ import com.example.tooltestingdemo.service.protocol.IProtocolTypeService;
 import com.example.tooltestingdemo.service.protocol.support.ProtocolTypeImportFailureReportStore;
 import com.example.tooltestingdemo.util.LocalDateUtil;
 import com.example.tooltestingdemo.vo.*;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.Getter;
 import lombok.Setter;
@@ -58,6 +59,8 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     private static final String IMPORT_TEMPLATE_FILE_NAME = "协议类型导入模板.xlsx";
     private static final String IMPORT_TEMPLATE_PATH = "templates/协议类型导入模板.xlsx";
     private static final String FAILURE_REPORT_FILE_PREFIX = "协议类型导入失败原因_";
+    private static final String DEFAULT_SYSTEM_TYPE = "通用";
+    private static final List<String> DEFAULT_PROTOCOL_CATEGORIES = List.of("HTTP", "HTTPS", "TCP", "UDP");
     private final ProtocolTypeMapper protocolTypeMapper;
     private final SysUserMapper sysUserMapper;
     private final ProtocolTypeImportFailureReportStore failureReportStore;
@@ -74,6 +77,33 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
         this.failureReportStore = failureReportStore;
         this.securityService = securityService;
         this.protocolFileImportExportService = protocolFileImportExportService;
+    }
+
+    @PostConstruct
+    public void initializeDefaultProtocolTypes() {
+        int initializedCount = 0;
+        for (String protocolCategory : DEFAULT_PROTOCOL_CATEGORIES) {
+            if (existsByProtocolNameAndCategory(protocolCategory, protocolCategory)) {
+                continue;
+            }
+
+            ProtocolType entity = new ProtocolType();
+            entity.setProtocolCode(protocolCategory);
+            entity.setProtocolName(protocolCategory);
+            entity.setProtocolCategory(protocolCategory);
+            entity.setSystemType(DEFAULT_SYSTEM_TYPE);
+            entity.setStatus(1);
+            entity.setCreateId(1L);
+            entity.setCreateName("system");
+            entity.setCreateTime(LocalDateTime.now());
+            entity.setUpdateId(1L);
+            entity.setUpdateName("system");
+            entity.setUpdateTime(LocalDateTime.now());
+            protocolTypeMapper.insert(entity);
+            initializedCount++;
+        }
+
+        log.info("协议类型默认数据初始化完成: initializedCount={}", initializedCount);
     }
 
     @Override
@@ -837,6 +867,14 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
 
     private String normalizeKey(String value) {
         return StringUtils.deleteWhitespace(StringUtils.trimToEmpty(value)).toUpperCase(Locale.ROOT);
+    }
+
+    private boolean existsByProtocolNameAndCategory(String protocolName, String protocolCategory) {
+        LambdaQueryWrapper<ProtocolType> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ProtocolType::getProtocolName, protocolName)
+                .eq(ProtocolType::getProtocolCategory, protocolCategory);
+        Long count = protocolTypeMapper.selectCount(wrapper);
+        return count != null && count > 0;
     }
 
     private void writeHeaderRow(XSSFSheet sheet, XSSFCellStyle headerStyle, String[] headers, int[] columnWidths) {

@@ -3,6 +3,7 @@ package com.example.tooltestingdemo.service.template;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.example.tooltestingdemo.dto.template.TemplateJobAutomationConfigDTO;
 import com.example.tooltestingdemo.entity.template.TemplateJob;
 import com.example.tooltestingdemo.entity.template.TemplateJobLog;
 import com.example.tooltestingdemo.vo.TemplateJobListVO;
@@ -51,13 +52,6 @@ public interface TemplateJobService extends IService<TemplateJob> {
      * 手动触发执行任务
      */
     Map<String, Object> triggerJob(Long id);
-
-    /**
-     * 批量触发执行任务
-     * @param ids 任务ID数组
-     * @return 结果包含 successIds 与 failIds
-     */
-    Map<String, Object> batchTriggerJobs(Long[] ids);
 
     /**
      * 批量停止任务（停用并取消调度）
@@ -132,4 +126,19 @@ public interface TemplateJobService extends IService<TemplateJob> {
      * 从JSON文件导入任务配置
      */
     Map<String, Object> importJobs(MultipartFile file);
+
+    /**
+     * 获取任务自动化配置
+     */
+    TemplateJobAutomationConfigDTO getAutomationConfig(Long jobId);
+
+    /**
+     * 保存任务自动化配置
+     */
+    TemplateJobAutomationConfigDTO saveAutomationConfig(Long jobId, TemplateJobAutomationConfigDTO config);
+
+    /**
+     * 导出接口传输报告
+     */
+    String exportTransferReport(Long jobId, Integer limit);
 }

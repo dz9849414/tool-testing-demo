@@ -237,9 +237,33 @@ POST /api/template/job/batch/stop
 
 ---
 
-## 7. 异步批量触发
+## 7. 异步执行模型总览
 
-立即返回 `batchId`，后台异步执行。适合任务数量多、不希望接口阻塞的场景。
+页面中的以下按钮，统一建议走“异步批次执行”模型：
+
+| 页面功能 | 推荐接口 |
+|------|------|
+| 单条执行 | `POST /api/template/job/batch/trigger-async`，请求体传 `[jobId]` |
+| 批量执行 | `POST /api/template/job/batch/trigger-async`，请求体传 `[jobId1, jobId2, ...]` |
+| 执行进度显示 | `GET /api/template/job/batch/{batchId}/progress` |
+| 批量暂停 / 单条暂停 | `POST /api/template/job/batch/{batchId}/pause` |
+| 批量恢复 / 单条恢复 | `POST /api/template/job/batch/{batchId}/resume` |
+| 批量取消 / 单条取消 | `POST /api/template/job/batch/{batchId}/cancel` |
+| 批量重试失败项 | `POST /api/template/job/batch/{batchId}/retry-failed` |
+| 单条重试 | 失败后可重新调用 `trigger-async`，请求体 `[jobId]`；或对单任务批次调用 `retry-failed` |
+
+前端关键点：
+
+1. 执行时先拿到 `batchId`
+2. 将 `jobId -> batchId` 暂存在页面状态或本地缓存
+3. 轮询 `/progress`
+4. 暂停、恢复、取消、失败重试都基于 `batchId`
+
+---
+
+## 8. 异步批量触发
+
+立即返回 `batchId`，后台异步执行。适合单条执行和批量执行两种场景。
 
 ```http
 POST /api/template/job/batch/trigger-async
@@ -251,31 +275,32 @@ POST /api/template/job/batch/trigger-async
 [1, 2, 3]
 ```
 
-`Long[]` 任务 ID 数组。
+`Long[]` 任务 ID 数组。  
+如果是单条执行，直接传：
+
+```json
+[6]
+```
 
 ### 幂等说明
 
-- 同一批 `ids`（排序后）如果已有任务在 **PENDING / RUNNING** 状态，会抛出异常：
+- 同一批 `ids`（排序后）如果已有任务在执行中，会抛出异常：
   > `异步批量任务重复提交, 返回已有batchId=xxx`
 
 ### 响应 `data`
 
-`String`：`batchId`
+```json
+"e8c31a0d-ff7f-498d-8f82-0fe6f7b6b234"
+```
 
-### 异步流程
-
-1. 写入 DB 状态为 **PENDING**
-2. 线程池中异步执行，状态变为 **RUNNING**
-3. 逐个同步调用 `triggerJob(id)`
-4. 全部完成后状态变为 **DONE**，结果以 JSON 形式保存
-5. 若整体超过 **5 分钟**，状态变为 **FAILED**，结果为 `执行超时`
+即：`batchId`
 
 ---
 
-## 8. 查询异步批量触发状态
+## 9. 查询异步批量执行进度
 
 ```http
-GET /api/template/job/batch/{batchId}/status
+GET /api/template/job/batch/{batchId}/progress
 ```
 
 ### Path 参数
@@ -288,29 +313,182 @@ GET /api/template/job/batch/{batchId}/status
 
 ```json
 {
-  "status": "DONE",
+  "batchId": "e8c31a0d-ff7f-498d-8f82-0fe6f7b6b234",
+  "sourceBatchId": null,
+  "status": "RUNNING",
+  "totalCount": 3,
+  "completedCount": 1,
+  "successCount": 1,
+  "failCount": 0,
+  "pendingCount": 2,
+  "progressPercent": 33,
+  "nextIndex": 1,
+  "currentJobId": 6,
+  "currentJobName": "CAD获取报文",
+  "jobIds": [7, 6, 3],
+  "successIds": [7],
+  "failIds": [],
   "details": {
-    "successIds": [1, 2],
-    "failIds": [3],
-    "details": {
-      "1": { "success": true, ... },
-      "3": { "success": false, "message": "..." }
+    "7": {
+      "success": true,
+      "message": "全部成功"
     }
+  },
+  "message": "批次执行中",
+  "canPause": true,
+  "canResume": false,
+  "canCancel": true,
+  "canRetryFailed": false
+}
+```
+
+### 字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `batchId` | String | 当前批次 ID |
+| `sourceBatchId` | String/null | 若是失败重试批次，这里是原始批次 ID |
+| `status` | String | 批次状态 |
+| `totalCount` | Integer | 总任务数 |
+| `completedCount` | Integer | 已完成数 |
+| `successCount` | Integer | 成功数 |
+| `failCount` | Integer | 失败数 |
+| `pendingCount` | Integer | 未完成数 |
+| `progressPercent` | Integer | 进度百分比，0-100 |
+| `nextIndex` | Integer | 下一个待执行索引，从 0 开始 |
+| `currentJobId` | Long/null | 当前正在执行的任务 ID |
+| `currentJobName` | String/null | 当前正在执行的任务名称 |
+| `jobIds` | List<Long> | 本批次任务 ID 列表 |
+| `successIds` | List<Long> | 已成功任务 ID 列表 |
+| `failIds` | List<Long> | 已失败任务 ID 列表 |
+| `details` | Map | 每个任务的执行结果明细 |
+| `message` | String | 状态提示语 |
+| `canPause` | Boolean | 前端是否展示“暂停”按钮 |
+| `canResume` | Boolean | 前端是否展示“恢复”按钮 |
+| `canCancel` | Boolean | 前端是否展示“取消”按钮 |
+| `canRetryFailed` | Boolean | 前端是否展示“失败重试”按钮 |
+
+### `status` 枚举值
+
+| 值 | 含义 |
+|------|------|
+| `PENDING` | 已提交，待执行 |
+| `RUNNING` | 执行中 |
+| `PAUSED` | 已暂停 |
+| `CANCELED` | 已取消 |
+| `DONE` | 已完成 |
+| `FAILED` | 执行异常 |
+| `NOT_FOUND` | 批次不存在 |
+
+### 兼容说明
+
+老接口仍可用：
+
+```http
+GET /api/template/job/batch/{batchId}/status
+```
+
+当前已兼容返回与 `/progress` 基本一致的数据结构，前端新接入建议统一使用 `/progress`。
+
+---
+
+## 10. 暂停异步批量执行
+
+```http
+POST /api/template/job/batch/{batchId}/pause
+```
+
+### 说明
+
+- 温和暂停，不会强杀当前已开始执行的任务
+- 当前任务执行完后，批次状态变为 `PAUSED`
+
+### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "暂停请求已提交",
+  "data": {
+    "batchId": "e8c31a0d-ff7f-498d-8f82-0fe6f7b6b234",
+    "status": "RUNNING",
+    "message": "暂停请求已记录，将在当前任务完成后暂停"
   }
 }
 ```
 
-| `status` 值 | 含义 |
-|-------------|------|
-| `PENDING` | 等待执行 |
-| `RUNNING` | 执行中 |
-| `DONE` | 执行完成（`details` 有完整结果） |
-| `FAILED` | 执行失败或超时 |
-| `NOT_FOUND` | batchId 不存在 |
+---
+
+## 11. 取消异步批量执行
+
+```http
+POST /api/template/job/batch/{batchId}/cancel
+```
+
+### 说明
+
+- 如果批次处于 `RUNNING`，则会在当前任务完成后取消
+- 如果批次处于 `PAUSED`，会直接转为 `CANCELED`
 
 ---
 
-## 9. 手动触发执行（单个）
+## 12. 恢复已暂停的异步批量执行
+
+```http
+POST /api/template/job/batch/{batchId}/resume
+```
+
+### 说明
+
+- 仅 `PAUSED` 状态可恢复
+- 会从 `nextIndex` 对应的未执行任务继续往下执行
+
+### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "恢复请求已提交",
+  "data": {
+    "batchId": "e8c31a0d-ff7f-498d-8f82-0fe6f7b6b234",
+    "status": "RUNNING",
+    "message": "批次恢复执行已提交"
+  }
+}
+```
+
+---
+
+## 13. 重试失败的批量执行项
+
+```http
+POST /api/template/job/batch/{batchId}/retry-failed
+```
+
+### 说明
+
+- 仅重试原批次中失败的任务 ID
+- 会生成一个新的 `retryBatchId`
+- 新批次的 `sourceBatchId` 指向原始批次
+
+### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "重试任务已提交",
+  "data": {
+    "batchId": "0d6c4632-5e56-49a4-8446-27e6b7012c85",
+    "sourceBatchId": "e8c31a0d-ff7f-498d-8f82-0fe6f7b6b234",
+    "status": "PENDING",
+    "message": "失败项重试批次已提交"
+  }
+}
+```
+
+---
+
+## 14. 手动触发执行（单个，同步）
 
 ```http
 POST /api/template/job/{id}/trigger
@@ -346,7 +524,7 @@ POST /api/template/job/{id}/trigger
 
 ---
 
-## 10. 分页查询任务执行日志
+## 15. 分页查询任务执行日志
 
 ```http
 GET /api/template/job/logs/page
@@ -395,7 +573,7 @@ GET /api/template/job/logs/page
 
 ---
 
-## 11. 查询任务最近日志
+## 16. 查询任务最近日志
 
 ```http
 GET /api/template/job/{id}/logs
@@ -434,6 +612,61 @@ GET /api/template/job/{id}/logs
 |----|------|
 | `0` | 停用（执行时跳过） |
 | `1` | 启用（正常执行） |
+
+### 批次执行状态 (`batch.status`)
+
+| 值 | 含义 |
+|----|------|
+| `PENDING` | 已提交待执行 |
+| `RUNNING` | 执行中 |
+| `PAUSED` | 已暂停 |
+| `CANCELED` | 已取消 |
+| `DONE` | 已完成 |
+| `FAILED` | 执行异常 |
+
+### 前端接入建议
+
+#### 一、列表页“执行”按钮
+
+1. 调用 `POST /api/template/job/batch/trigger-async`
+2. 请求体传 `[jobId]`
+3. 保存返回的 `batchId`
+4. 立即弹出执行进度窗口，并轮询 `/progress`
+
+#### 二、列表页“执行进度显示”
+
+依赖前端已保存的 `batchId` 查询：
+
+```http
+GET /api/template/job/batch/{batchId}/progress
+```
+
+#### 三、列表页“暂停 / 恢复 / 取消”
+
+统一基于 `batchId` 调用：
+
+- 暂停：`POST /batch/{batchId}/pause`
+- 恢复：`POST /batch/{batchId}/resume`
+- 取消：`POST /batch/{batchId}/cancel`
+
+#### 四、列表页“重试”
+
+有两种方式：
+
+- 简单重试：重新调 `POST /batch/trigger-async`，请求体 `[jobId]`
+- 失败项重试：调 `POST /batch/{batchId}/retry-failed`
+
+#### 五、顶部“批量执行 / 批量暂停 / 批量恢复 / 批量停止”
+
+- 批量执行：`POST /batch/trigger-async`
+- 批量暂停：对当前选中批次的 `batchId` 逐个调用 `/pause`
+- 批量恢复：对当前选中批次的 `batchId` 逐个调用 `/resume`
+- 批量停止：已有接口 `POST /batch/stop`，这是“停用任务配置”，不是“取消当前执行”
+
+这两个动作不要混淆：
+
+- `batch/stop`：修改任务配置状态为停用，后续不会自动调度
+- `batch/{batchId}/cancel`：取消当前这一轮执行，不会改任务配置的启用/停用状态
 
 ### 自动调度保护机制
 

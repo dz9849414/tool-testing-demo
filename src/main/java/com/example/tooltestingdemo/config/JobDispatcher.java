@@ -1,7 +1,6 @@
 package com.example.tooltestingdemo.config;
 
 import com.example.tooltestingdemo.entity.template.TemplateJobItem;
-import com.example.tooltestingdemo.util.TraceIdContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,16 +43,29 @@ public class JobDispatcher {
     public List<Map<String, Object>> dispatch(Long jobId, List<TemplateJobItem> items,
                                               Function<TemplateJobItem, Map<String, Object>> executorFunc
     ) {
-        int retry = Optional.of(itemRetry).orElse(0);
-        long timeout = Optional.of(itemTimeoutMs).orElse(120000L);
+        return dispatch(jobId, items, executorFunc, null, null, null);
+    }
+
+    /**
+     * 并发执行任务（支持任务级并发数、超时与重试配置）
+     */
+    public List<Map<String, Object>> dispatch(Long jobId, List<TemplateJobItem> items,
+                                              Function<TemplateJobItem, Map<String, Object>> executorFunc,
+                                              Integer maxConcurrency,
+                                              Long timeoutMs,
+                                              Integer retryCount
+    ) {
+        int retry = retryCount == null ? Optional.of(itemRetry).orElse(0) : Math.max(retryCount, 0);
+        long timeout = timeoutMs == null ? Optional.of(itemTimeoutMs).orElse(120000L) : Math.max(timeoutMs, 1000L);
+        int permits = maxConcurrency == null ? 0 : Math.max(maxConcurrency, 0);
+        Semaphore semaphore = permits > 0 ? new Semaphore(permits) : null;
         Map<String, String> contextMap = MDC.getCopyOfContextMap();
-        String traceId = TraceIdContext.get();
 
         // 过滤出符合状态的可执行任务 -> 异步调用
         List<CompletableFuture<Map<String, Object>>> futures = items.stream()
                 .filter(item -> Integer.valueOf(1).equals(item.getStatus()))
                 .map(item -> CompletableFuture.supplyAsync(
-                        () -> executeWithMdc(contextMap, () -> executeWithRetry(jobId, item, executorFunc, retry)),
+                        () -> executeWithMdc(contextMap, () -> executeWithLimit(semaphore, jobId, item, executorFunc, retry)),
                         executor
                 )
                 .orTimeout(timeout, TimeUnit.MILLISECONDS)
@@ -62,8 +74,7 @@ public class JobDispatcher {
                     return Map.of(
                             "success", false,
                             "message", e.getMessage(),
-                            "templateId", item.getTemplateId(),
-                            "traceId", traceId
+                            "templateId", item.getTemplateId()
                     );
                 }))
                 .toList();
@@ -71,6 +82,35 @@ public class JobDispatcher {
         return futures.stream()
                 .map(CompletableFuture::join)
                 .toList();
+    }
+
+    private Map<String, Object> executeWithLimit(
+            Semaphore semaphore,
+            Long jobId,
+            TemplateJobItem item,
+            Function<TemplateJobItem, Map<String, Object>> executorFunc,
+            int retry
+    ) {
+        if (semaphore == null) {
+            return executeWithRetry(jobId, item, executorFunc, retry);
+        }
+        boolean acquired = false;
+        try {
+            semaphore.acquire();
+            acquired = true;
+            return executeWithRetry(jobId, item, executorFunc, retry);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Map.of(
+                    "success", false,
+                    "message", "执行被中断",
+                    "templateId", item.getTemplateId()
+            );
+        } finally {
+            if (acquired) {
+                semaphore.release();
+            }
+        }
     }
 
     /**

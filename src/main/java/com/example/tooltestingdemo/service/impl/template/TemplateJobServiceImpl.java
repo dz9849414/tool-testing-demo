@@ -7,7 +7,9 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.config.JobDispatcher;
+import com.example.tooltestingdemo.dto.template.TemplateJobAutomationConfigDTO;
 import com.example.tooltestingdemo.entity.template.TemplateJob;
+import com.example.tooltestingdemo.entity.template.TemplateJobAutomationConfig;
 import com.example.tooltestingdemo.entity.template.TemplateJobLog;
 import com.example.tooltestingdemo.exception.TemplateValidationException;
 import com.example.tooltestingdemo.entity.template.TemplateJobItem;
@@ -20,7 +22,7 @@ import com.example.tooltestingdemo.service.template.TemplateExecuteService;
 import com.example.tooltestingdemo.service.template.InterfaceTemplateService;
 import com.example.tooltestingdemo.service.template.TemplateJobService;
 import com.example.tooltestingdemo.service.template.TemplateEnvironmentService;
-import com.example.tooltestingdemo.util.TraceIdContext;
+import com.example.tooltestingdemo.service.template.TemplateJobAutomationScriptRunner;
 import com.example.tooltestingdemo.vo.TemplateJobListVO;
 import com.example.tooltestingdemo.vo.TemplateJobLogItemVO;
 import com.example.tooltestingdemo.vo.TemplateJobLogVO;
@@ -52,6 +54,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.example.tooltestingdemo.mapper.template.TemplateJobBatchMapper;
+import com.example.tooltestingdemo.mapper.template.TemplateJobAutomationConfigMapper;
 import com.example.tooltestingdemo.entity.template.TemplateJobBatch;
 import com.example.tooltestingdemo.enums.TemplateEnums;
 import com.example.tooltestingdemo.enums.TemplateEnums.ApiResultKeys;
@@ -79,6 +82,7 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
     private final InterfaceTemplateService interfaceTemplateService;
     private final TemplateEnvironmentService templateEnvironmentService;
     private final DynamicJobScheduler jobScheduler;
+    private final TemplateJobAutomationScriptRunner scriptRunner;
 
     private static final ConcurrentHashMap<Long, ReentrantLock> JOB_LOCKS = new ConcurrentHashMap<>();
 
@@ -129,16 +133,15 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
     private static final String MSG_BATCH_CANCELED = "批次已取消";
     private static final String MSG_BATCH_DONE = "批次执行完成";
     private static final String MSG_BATCH_RUNNING = "批次执行中";
+    private static final String EXECUTE_TYPE_MANUAL = "MANUAL";
+    private static final String EXECUTE_TYPE_JOB = "JOB";
     private static final String MSG_JOB_ITEM_LIST_EMPTY = "任务模板列表不能为空";
-    private static final String LOG_JOB_ALREADY_RUNNING = "任务已在执行，跳过本次请求 jobId={}, traceId={}";
+    private static final String LOG_JOB_ALREADY_RUNNING = "任务已在执行，跳过本次请求 jobId={}";
     private static final String MSG_JOB_RUNNING = "任务正在执行";
-    private static final String LOG_START_EXECUTE_JOB = "开始执行任务 jobId={}, jobName={}, traceId={}";
+    private static final String LOG_START_EXECUTE_JOB = "开始执行任务 jobId={}, jobName={}";
     private static final String MSG_JOB_DISABLED = "任务已停用";
     private static final String MSG_JOB_ITEM_NOT_CONFIGURED = "任务未配置任务项";
     private static final String MSG_ALL_SUCCESS = "全部成功";
-    private static final String LOG_DEMO_PAUSE_START = "演示暂停开始 jobId={}, jobName={}, sleepMs={}, traceId={}";
-    private static final String MSG_DEMO_PAUSE_INTERRUPTED = "任务演示暂停被中断";
-    private static final String LOG_DEMO_PAUSE_END = "演示暂停结束 jobId={}, jobName={}, traceId={}";
     private static final String LOG_SCHEDULE_EXECUTE_ERROR = "定时任务执行异常 jobId={}";
     private static final String LOG_SCHEDULE_EXECUTE_FAILED = "定时任务执行失败 jobId={}, 连续失败次数={}/{}";
     private static final String LOG_SCHEDULE_AUTO_DISABLED = "定时任务连续失败{}次，自动停用: jobId={}";
@@ -157,8 +160,10 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
     private static final String MSG_JOB_ITEM_TEMPLATE_ID_REQUIRED_TEMPLATE = "任务[%s]第%d个子项缺少 templateId";
     private static final String MSG_JOB_ITEM_TEMPLATE_NOT_FOUND_TEMPLATE = "任务[%s]第%d个子项引用的模板不存在: %s";
     private static final String MSG_ADMIN_DEFAULT_NAME = "管理员";
+    private static final String AUTOMATION_CONFIG_TABLE = "pdm_tool_template_job_automation_config";
     private final Executor templateJobExecutor;
     private final TemplateJobBatchMapper batchMapper;
+    private final TemplateJobAutomationConfigMapper automationConfigMapper;
 
     @Resource
     private JobDispatcher jobDispatcher;
@@ -223,6 +228,7 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
 
     @PostConstruct
     public void initScheduledJobs() {
+        ensureAutomationConfigTable();
         log.info(LOG_INIT_SCHEDULED_JOBS);
         jobScheduler.cancelAllJobs();
         lambdaQuery().eq(TemplateJob::getStatus, TemplateEnums.JobStatus.ENABLED.getCode()).eq(TemplateJob::getIsDeleted, 0).list()
@@ -234,6 +240,7 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
     @Transactional(rollbackFor = Exception.class)
     public TemplateJob createJob(TemplateJob job) {
         job.setStatus(Optional.ofNullable(job.getStatus()).orElse(TemplateEnums.JobStatus.ENABLED.getCode()));
+        normalizeCronExpression(job);
         job.setIsDeleted(0);
         if (job.getCreateId() == null) {
             job.setCreateId(getCurrentUserIdOrDefault());
@@ -243,9 +250,7 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
         saveJobItems(job);
 
         TemplateJob detail = getJobDetail(job.getId());
-        if (job.getStatus() != null && job.getStatus() == TemplateEnums.JobStatus.ENABLED.getCode()) {
-            jobScheduler.scheduleJob(job.getId(), job.getCronExpression(), () -> this.executeJobForSchedule(job.getId(), job.getJobName()));
-        }
+        rescheduleJobIfEnabled(detail);
 
         log.info(LOG_CREATE_JOB_SUCCESS, job.getId(), job.getJobName(),
             job.getItems() == null ? 0 : job.getItems().size());
@@ -260,20 +265,27 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
         }
 
         TemplateJob detail = getJobDetail(job.getId());
-        if (job.isUpdateStatus()) {
-            job.setStatus(Optional.ofNullable(job.getStatus()).orElse(TemplateEnums.JobStatus.ENABLED.getCode()));
-        } else {
-            jobItemMapper.deleteByJobId(job.getId());
-            saveJobItems(job);
-        }
-        jobScheduler.cancelJob(job.getId());
-        updateById(job);
-        if (detail.getStatus() != null && detail.getStatus() == TemplateEnums.JobStatus.ENABLED.getCode()) {
-            jobScheduler.scheduleJob(job.getId(), detail.getCronExpression(), () -> this.executeJobForSchedule(job.getId(), detail.getJobName()));
+        if (detail == null) {
+            throw new TemplateValidationException(TemplateValidationException.ErrorType.NOT_FOUND, MSG_JOB_NOT_FOUND);
         }
 
+        if (job.isUpdateStatus()) {
+            TemplateJob statusUpdate = new TemplateJob();
+            statusUpdate.setId(job.getId());
+            statusUpdate.setStatus(Optional.ofNullable(job.getStatus()).orElse(TemplateEnums.JobStatus.ENABLED.getCode()));
+            updateById(statusUpdate);
+        } else {
+            normalizeCronExpression(job);
+            jobItemMapper.deleteByJobId(job.getId());
+            saveJobItems(job);
+            updateById(job);
+        }
+
+        TemplateJob updated = getJobDetail(job.getId());
+        jobScheduler.cancelJob(job.getId());
+        rescheduleJobIfEnabled(updated);
         log.info(LOG_UPDATE_JOB_SUCCESS, job.getId());
-        return detail;
+        return updated;
     }
 
     @Override
@@ -296,51 +308,9 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
             throw new TemplateValidationException(TemplateValidationException.ErrorType.OPERATION_NOT_ALLOWED, MSG_JOB_DISABLED_CANNOT_EXECUTE);
         }
 
-        return doExecuteJob(id, job.getJobName());
+        return doExecuteJob(id, job.getJobName(), EXECUTE_TYPE_MANUAL);
     }
 
-    @Override
-    public Map<String, Object> batchTriggerJobs(Long[] ids) {
-        List<Long> success = new ArrayList<>();
-        List<Long> fail = new ArrayList<>();
-        Map<Long, Object> details = new HashMap<>();
-        for (Long id : ids) {
-            try {
-                Map<String, Object> res = triggerJob(id);
-                Boolean ok = (Boolean) res.get(ApiResultKeys.SUCCESS.getKey());
-                if (Boolean.TRUE.equals(ok)) {
-                    success.add(id);
-                } else {
-                    fail.add(id);
-                }
-                details.put(id, res);
-            } catch (Exception e) {
-                log.error(LOG_BATCH_TRIGGER_FAILED, id, e);
-                fail.add(id);
-                details.put(id, e.getMessage());
-            }
-        }
-        Map<String, Object> result = new HashMap<>();
-        result.put("successIds", success);
-        result.put("failIds", fail);
-        result.put("details", details);
-        return result;
-    }
-
-    /* submitBatchTriggerAsync(ids)
-       ├── 生成 batchKey + batchId
-       ├── BATCH_ASYNC_LOCKS.putIfAbsent 幂等锁
-       ├── insert PENDING
-       ├── AtomicBoolean dbUpdated = false
-       ├── runAsync
-       │     ├── updateBatch(RUNNING)
-       │     ├── batchTriggerJobs(ids)  // 可能阻塞很久
-       │     └── updateBatch(DONE)
-       └── orTimeout(5分钟)
-             └── whenComplete
-                   ├── 清理 BATCH_ASYNC_FUTURES / BATCH_ASYNC_LOCKS
-                   ├── 若超时：cancel(true) + updateBatch(FAILED, "执行超时")
-                   └── 若其他异常且未更新：updateBatch(FAILED, 异常信息)*/
     @Override
     public String submitBatchTriggerAsync(Long[] ids) {
         validateBatchIds(ids);
@@ -874,6 +844,48 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
         return job;
     }
 
+    private void normalizeCronExpression(TemplateJob job) {
+        if (job == null) {
+            return;
+        }
+
+        String cronExpression = job.getCronExpression();
+        if (StringUtils.hasText(cronExpression)) {
+            job.setCronExpression(cronExpression.trim());
+        }
+
+        if (!Integer.valueOf(TemplateEnums.JobStatus.ENABLED.getCode()).equals(job.getStatus())) {
+            return;
+        }
+
+        String jobName = StringUtils.hasText(job.getJobName()) ? job.getJobName() : String.valueOf(job.getId());
+        if (!StringUtils.hasText(job.getCronExpression())) {
+            throw new TemplateValidationException(
+                TemplateValidationException.ErrorType.REQUIRED_FIELD_EMPTY,
+                String.format(MSG_JOB_CRON_REQUIRED_TEMPLATE, jobName)
+            );
+        }
+
+        if (!CronExpression.isValidExpression(job.getCronExpression())) {
+            throw new TemplateValidationException(
+                TemplateValidationException.ErrorType.INVALID_FORMAT,
+                String.format(MSG_JOB_CRON_INVALID_TEMPLATE, jobName)
+            );
+        }
+    }
+
+    private void rescheduleJobIfEnabled(TemplateJob job) {
+        if (job == null || !Integer.valueOf(TemplateEnums.JobStatus.ENABLED.getCode()).equals(job.getStatus())) {
+            return;
+        }
+        normalizeCronExpression(job);
+        jobScheduler.scheduleJob(
+            job.getId(),
+            job.getCronExpression(),
+            () -> this.executeJobForSchedule(job.getId(), job.getJobName())
+        );
+    }
+
     @Override
     public String exportJobs(Long[] ids) {
         if (ids == null || ids.length == 0) {
@@ -946,6 +958,244 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
         return result;
     }
 
+    @Override
+    public TemplateJobAutomationConfigDTO getAutomationConfig(Long jobId) {
+        validateJobExists(jobId);
+        ensureAutomationConfigTable();
+        return loadAutomationConfig(jobId);
+    }
+
+    @Override
+    public TemplateJobAutomationConfigDTO saveAutomationConfig(Long jobId, TemplateJobAutomationConfigDTO config) {
+        validateJobExists(jobId);
+        ensureAutomationConfigTable();
+        TemplateJobAutomationConfigDTO normalized = normalizeAutomationConfig(config);
+        TemplateJobAutomationConfig entity = new TemplateJobAutomationConfig();
+        entity.setJobId(jobId);
+        entity.setConcurrentConfig(JSON.toJSONString(normalized.getConcurrent()));
+        entity.setScriptConfig(JSON.toJSONString(normalized.getScript()));
+        entity.setLogConfig(JSON.toJSONString(normalized.getLog()));
+        entity.setReportConfig(JSON.toJSONString(normalized.getReport()));
+        automationConfigMapper.upsert(entity);
+        return normalized;
+    }
+
+    @Override
+    public String exportTransferReport(Long jobId, Integer limit) {
+        TemplateJob job = validateJobExists(jobId);
+        TemplateJobAutomationConfigDTO.ReportConfig reportConfig = loadAutomationConfig(jobId).getReport();
+        int safeLimit = Math.min(Math.max(Optional.ofNullable(limit).orElse(reportConfig.getExportLimit()), 1), 1000);
+        boolean includeRequest = !Boolean.FALSE.equals(reportConfig.getIncludeRequest());
+        boolean includeResponse = !Boolean.FALSE.equals(reportConfig.getIncludeResponse());
+        List<TemplateJobLog> logs = jobLogMapper.selectRecentByJobId(jobId, safeLimit);
+
+        List<String> headers = new ArrayList<>(List.of(
+            "执行时间", "任务ID", "任务名称", "模板ID", "是否成功", "状态码", "耗时(ms)", "消息", "错误信息"
+        ));
+        if (includeRequest) {
+            headers.add("请求");
+        }
+        if (includeResponse) {
+            headers.add("响应");
+        }
+
+        StringBuilder csv = new StringBuilder();
+        appendCsvRow(csv, headers);
+        for (TemplateJobLog itemLog : logs) {
+            List<Map<String, Object>> items = parseExecuteResultItems(itemLog.getExecuteResult());
+            if (items.isEmpty()) {
+                appendReportRow(csv, itemLog, job, null, includeRequest, includeResponse);
+                continue;
+            }
+            for (Map<String, Object> item : items) {
+                appendReportRow(csv, itemLog, job, item, includeRequest, includeResponse);
+            }
+        }
+        return csv.toString();
+    }
+
+    private void ensureAutomationConfigTable() {
+        try {
+            automationConfigMapper.ensureTable();
+        } catch (Exception e) {
+            log.warn("自动化配置表检查失败，请确认已执行迁移脚本: {}", AUTOMATION_CONFIG_TABLE, e);
+        }
+    }
+
+    private TemplateJob validateJobExists(Long jobId) {
+        if (jobId == null) {
+            throw new TemplateValidationException(TemplateValidationException.ErrorType.REQUIRED_FIELD_EMPTY, MSG_JOB_ID_REQUIRED);
+        }
+        TemplateJob job = getById(jobId);
+        if (job == null || Integer.valueOf(1).equals(job.getIsDeleted())) {
+            throw new TemplateValidationException(TemplateValidationException.ErrorType.NOT_FOUND, MSG_JOB_NOT_FOUND);
+        }
+        return job;
+    }
+
+    private TemplateJobAutomationConfigDTO loadAutomationConfig(Long jobId) {
+        TemplateJobAutomationConfigDTO defaults = normalizeAutomationConfig(null);
+        TemplateJobAutomationConfig entity;
+        try {
+            entity = automationConfigMapper.selectByJobId(jobId);
+        } catch (Exception e) {
+            log.warn("读取任务自动化配置失败，使用默认配置 jobId={}", jobId, e);
+            return defaults;
+        }
+        if (entity == null) {
+            return defaults;
+        }
+        TemplateJobAutomationConfigDTO config = new TemplateJobAutomationConfigDTO();
+        config.setConcurrent(parseConfig(entity.getConcurrentConfig(),
+            TemplateJobAutomationConfigDTO.ConcurrentConfig.class, defaults.getConcurrent()));
+        config.setScript(parseConfig(entity.getScriptConfig(),
+            TemplateJobAutomationConfigDTO.ScriptConfig.class, defaults.getScript()));
+        config.setLog(parseConfig(entity.getLogConfig(),
+            TemplateJobAutomationConfigDTO.LogConfig.class, defaults.getLog()));
+        config.setReport(parseConfig(entity.getReportConfig(),
+            TemplateJobAutomationConfigDTO.ReportConfig.class, defaults.getReport()));
+        return normalizeAutomationConfig(config);
+    }
+
+    private <T> T parseConfig(String json, Class<T> clazz, T defaults) {
+        if (!StringUtils.hasText(json)) {
+            return defaults;
+        }
+        try {
+            T parsed = JSON.parseObject(json, clazz);
+            return parsed == null ? defaults : parsed;
+        } catch (Exception e) {
+            return defaults;
+        }
+    }
+
+    private TemplateJobAutomationConfigDTO normalizeAutomationConfig(TemplateJobAutomationConfigDTO config) {
+        TemplateJobAutomationConfigDTO normalized = config == null ? new TemplateJobAutomationConfigDTO() : config;
+        if (normalized.getConcurrent() == null) {
+            normalized.setConcurrent(new TemplateJobAutomationConfigDTO.ConcurrentConfig());
+        }
+        if (normalized.getScript() == null) {
+            normalized.setScript(new TemplateJobAutomationConfigDTO.ScriptConfig());
+        }
+        if (normalized.getLog() == null) {
+            normalized.setLog(new TemplateJobAutomationConfigDTO.LogConfig());
+        }
+        if (normalized.getReport() == null) {
+            normalized.setReport(new TemplateJobAutomationConfigDTO.ReportConfig());
+        }
+        TemplateJobAutomationConfigDTO.ConcurrentConfig concurrent = normalized.getConcurrent();
+        concurrent.setMaxConcurrency(clamp(Optional.ofNullable(concurrent.getMaxConcurrency()).orElse(5), 1, 50));
+        concurrent.setTimeoutMs(Math.min(Math.max(Optional.ofNullable(concurrent.getTimeoutMs()).orElse(120000L), 1000L), 3600000L));
+        concurrent.setRetryCount(clamp(Optional.ofNullable(concurrent.getRetryCount()).orElse(1), 0, 10));
+        TemplateJobAutomationConfigDTO.LogConfig logConfig = normalized.getLog();
+        logConfig.setRetentionDays(clamp(Optional.ofNullable(logConfig.getRetentionDays()).orElse(30), 1, 3650));
+        TemplateJobAutomationConfigDTO.ScriptConfig script = normalized.getScript();
+        script.setTimeoutMs(Math.min(Math.max(Optional.ofNullable(script.getTimeoutMs()).orElse(30000L), 1000L), 300000L));
+        TemplateJobAutomationConfigDTO.ReportConfig report = normalized.getReport();
+        report.setExportLimit(clamp(Optional.ofNullable(report.getExportLimit()).orElse(100), 1, 1000));
+        return normalized;
+    }
+
+    private int clamp(int value, int min, int max) {
+        return Math.min(Math.max(value, min), max);
+    }
+
+    private List<Map<String, Object>> filterLogResults(List<Map<String, Object>> results,
+                                                       TemplateJobAutomationConfigDTO.LogConfig logConfig) {
+        if (results == null) {
+            return Collections.emptyList();
+        }
+        return results.stream().map(result -> {
+            Map<String, Object> filtered = new LinkedHashMap<>(result);
+            if (Boolean.FALSE.equals(logConfig.getRecordRequest())) {
+                filtered.remove("request");
+            }
+            if (Boolean.FALSE.equals(logConfig.getRecordResponse())) {
+                filtered.remove("response");
+            }
+            return filtered;
+        }).toList();
+    }
+
+    private List<Map<String, Object>> summarizeResults(List<Map<String, Object>> results) {
+        if (results == null) {
+            return Collections.emptyList();
+        }
+        return results.stream().map(result -> {
+            Map<String, Object> summary = new LinkedHashMap<>();
+            summary.put(ApiResultKeys.SUCCESS.getKey(), result.get(ApiResultKeys.SUCCESS.getKey()));
+            summary.put(ApiResultKeys.TEMPLATE_ID.getKey(), result.get(ApiResultKeys.TEMPLATE_ID.getKey()));
+            summary.put(ApiResultKeys.MESSAGE.getKey(), result.get(ApiResultKeys.MESSAGE.getKey()));
+            summary.put("statusCode", result.get("statusCode"));
+            summary.put("durationMs", result.get("durationMs"));
+            return summary;
+        }).toList();
+    }
+
+    private Map<String, Object> buildScriptResult(String phase,
+                                                  TemplateJobAutomationScriptRunner.ScriptRunResult scriptResult) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("success", scriptResult != null && scriptResult.isSuccess());
+        result.put("templateId", null);
+        result.put("templateName", "任务自动化脚本");
+        result.put("phase", phase);
+        result.put("message", scriptResult == null ? "脚本未执行" : scriptResult.getMessage());
+        result.put("output", scriptResult == null ? Collections.emptyList() : scriptResult.getOutput());
+        return result;
+    }
+
+    private List<Map<String, Object>> parseExecuteResultItems(String executeResult) {
+        if (!StringUtils.hasText(executeResult)) {
+            return Collections.emptyList();
+        }
+        try {
+            return JSON.parseObject(executeResult, new TypeReference<List<Map<String, Object>>>() {
+            });
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
+    }
+
+    private void appendReportRow(StringBuilder csv,
+                                 TemplateJobLog itemLog,
+                                 TemplateJob job,
+                                 Map<String, Object> item,
+                                 boolean includeRequest,
+                                 boolean includeResponse) {
+        List<String> row = new ArrayList<>();
+        row.add(String.valueOf(Optional.ofNullable(itemLog.getExecuteAt()).orElse(itemLog.getCreateTime())));
+        row.add(String.valueOf(itemLog.getJobId()));
+        row.add(job.getJobName());
+        row.add(String.valueOf(item == null ? itemLog.getTemplateId() : item.get(ApiResultKeys.TEMPLATE_ID.getKey())));
+        Object itemSuccess = item == null ? null : item.get(ApiResultKeys.SUCCESS.getKey());
+        row.add(itemSuccess == null ? (Integer.valueOf(1).equals(itemLog.getSuccess()) ? "成功" : "失败")
+            : (Boolean.TRUE.equals(itemSuccess) ? "成功" : "失败"));
+        row.add(String.valueOf(item == null ? "" : Optional.ofNullable(item.get("statusCode")).orElse("")));
+        row.add(String.valueOf(item == null ? Optional.ofNullable(itemLog.getDurationMs()).orElse(0L)
+            : Optional.ofNullable(item.get("durationMs")).orElse("")));
+        row.add(String.valueOf(item == null ? "" : Optional.ofNullable(item.get(ApiResultKeys.MESSAGE.getKey())).orElse("")));
+        row.add(Optional.ofNullable(itemLog.getErrorMsg()).orElse(""));
+        if (includeRequest) {
+            row.add(item == null || item.get("request") == null ? "" : JSON.toJSONString(item.get("request")));
+        }
+        if (includeResponse) {
+            row.add(item == null || item.get("response") == null ? "" : JSON.toJSONString(item.get("response")));
+        }
+        appendCsvRow(csv, row);
+    }
+
+    private void appendCsvRow(StringBuilder csv, List<String> values) {
+        csv.append(values.stream().map(this::escapeCsv).collect(Collectors.joining(","))).append('\n');
+    }
+
+    private String escapeCsv(String value) {
+        String text = value == null ? "" : value;
+        if (text.contains("\"") || text.contains(",") || text.contains("\n") || text.contains("\r")) {
+            return "\"" + text.replace("\"", "\"\"") + "\"";
+        }
+        return text;
+    }
+
     private void saveJobItems(TemplateJob job) {
         List<TemplateJobItem> items = job.getItems();
      /*   if (items == null || items.isEmpty()) {
@@ -966,30 +1216,23 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
     /**
      * 执行模板任务核心逻辑（遍历所有子项）
      */
-    public Map<String, Object> doExecuteJob(Long jobId, String jobName) {
-        boolean traceCreatedHere = !StringUtils.hasText(TraceIdContext.get());
-        String traceId = TraceIdContext.getOrCreate();
-
+    private Map<String, Object> doExecuteJob(Long jobId, String jobName, String executeType) {
         ReentrantLock lock = JOB_LOCKS.computeIfAbsent(jobId, id -> new ReentrantLock());
         boolean locked = lock.tryLock();
 
         if (!locked) {
-            log.info(LOG_JOB_ALREADY_RUNNING, jobId, traceId);
-            if (traceCreatedHere) {
-                TraceIdContext.clear();
-            }
-            return Map.of("success", false, "message", MSG_JOB_RUNNING, "traceId", traceId);
+            log.info(LOG_JOB_ALREADY_RUNNING, jobId);
+            return Map.of("success", false, "message", MSG_JOB_RUNNING);
         }
         try {
-            log.info(LOG_START_EXECUTE_JOB, jobId, jobName, traceId);
-            randomPauseForDemo(jobId, jobName, traceId);
+            log.info(LOG_START_EXECUTE_JOB, jobId, jobName);
             TemplateJob job = getById(jobId);
             if (job == null || Integer.valueOf(1).equals(job.getIsDeleted())) {
-                return Map.of("success", false, "message", MSG_JOB_NOT_FOUND, "traceId", traceId);
+                return Map.of("success", false, "message", MSG_JOB_NOT_FOUND);
             }
 
             if (Integer.valueOf(0).equals(job.getStatus())) {
-                return Map.of("success", false, "message", MSG_JOB_DISABLED, "traceId", traceId);
+                return Map.of("success", false, "message", MSG_JOB_DISABLED);
             }
 
             List<TemplateJobItem> items = jobItemMapper.selectByJobId(jobId);
@@ -1001,16 +1244,52 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
             }
 
             long startTime = System.currentTimeMillis();
+            TemplateJobAutomationConfigDTO automationConfig = loadAutomationConfig(jobId);
+            TemplateJobAutomationConfigDTO.ConcurrentConfig concurrentConfig = automationConfig.getConcurrent();
+            TemplateJobAutomationConfigDTO.ScriptConfig scriptConfig = automationConfig.getScript();
+            TemplateJobAutomationConfigDTO.LogConfig logConfig = automationConfig.getLog();
+            Map<String, Object> automationVariables = new ConcurrentHashMap<>();
+
+            TemplateJobAutomationScriptRunner.ScriptRunResult beforeScriptResult =
+                scriptRunner.runBefore(jobId, jobName, items, scriptConfig, automationVariables);
+            automationVariables = beforeScriptResult.getVariables() == null
+                ? new ConcurrentHashMap<>()
+                : new ConcurrentHashMap<>(beforeScriptResult.getVariables());
+            if (!beforeScriptResult.isSuccess() && Boolean.TRUE.equals(scriptConfig.getFailOnError())) {
+                String scriptError = "前置脚本执行失败: " + beforeScriptResult.getMessage();
+                TemplateJobLog jobLog = new TemplateJobLog();
+                jobLog.setJobId(jobId);
+                jobLog.setSuccess(0);
+                jobLog.setExecuteResult(JSON.toJSONString(List.of(buildScriptResult("before", beforeScriptResult))));
+                jobLog.setErrorMsg(scriptError);
+                jobLog.setDurationMs(System.currentTimeMillis() - startTime);
+                jobLogMapper.insert(jobLog);
+                return Map.of("success", false, "results", Collections.emptyList(), "message", scriptError);
+            }
 
             // 🔥 并发执行
+            Map<String, Object> finalAutomationVariables = automationVariables;
             List<Map<String, Object>> results = jobDispatcher.dispatch(
                 jobId,
                 items,
-                item -> executeSingleItem(jobId, jobName, item)
+                item -> executeSingleItem(jobId, jobName, item, finalAutomationVariables, executeType),
+                Boolean.TRUE.equals(concurrentConfig.getEnabled()) ? concurrentConfig.getMaxConcurrency() : null,
+                Boolean.TRUE.equals(concurrentConfig.getEnabled()) ? concurrentConfig.getTimeoutMs() : null,
+                Boolean.TRUE.equals(concurrentConfig.getEnabled()) ? concurrentConfig.getRetryCount() : null
             );
+
+            TemplateJobAutomationScriptRunner.ScriptRunResult afterScriptResult =
+                scriptRunner.runAfter(jobId, jobName, items, results, scriptConfig, automationVariables);
+            if (StringUtils.hasText(scriptConfig.getAfterScript()) && Boolean.TRUE.equals(scriptConfig.getEnabled())) {
+                results = new ArrayList<>(results);
+                results.add(buildScriptResult("after", afterScriptResult));
+            }
 
             boolean allSuccess = results.stream()
                 .allMatch(r -> Boolean.TRUE.equals(r.get("success")));
+            if (!afterScriptResult.isSuccess() && Boolean.TRUE.equals(scriptConfig.getFailOnError())) {
+                allSuccess = false;
+            }
 
             String errorMsg = results.stream()
                 .filter(r -> Boolean.FALSE.equals(r.get("success")))
@@ -1022,10 +1301,11 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
             TemplateJobLog jobLog = new TemplateJobLog();
             jobLog.setJobId(jobId);
             jobLog.setSuccess(allSuccess ? 1 : 0);
-            jobLog.setExecuteResult(JSON.toJSONString(results));
+            jobLog.setExecuteResult(Boolean.FALSE.equals(logConfig.getEnabled()) || Boolean.FALSE.equals(logConfig.getRecordDetail())
+                ? JSON.toJSONString(summarizeResults(results))
+                : JSON.toJSONString(filterLogResults(results, logConfig)));
             jobLog.setErrorMsg(errorMsg);
             jobLog.setDurationMs(System.currentTimeMillis() - startTime);
-            jobLog.setTraceId(traceId);
 
             jobLogMapper.insert(jobLog);
 
@@ -1035,33 +1315,14 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
             return Map.of(
                 "success", allSuccess,
                 "results", results,
-                "message", allSuccess ? MSG_ALL_SUCCESS : errorMsg,
-                "traceId", traceId
+                "message", allSuccess ? MSG_ALL_SUCCESS : errorMsg
             );
 
         } finally {
             if (lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
-            if (traceCreatedHere) {
-                TraceIdContext.clear();
-            }
         }
-    }
-
-    private void randomPauseForDemo(Long jobId, String jobName, String traceId) {
-        long sleepMillis = ThreadLocalRandom.current().nextLong(3000, 5001);
-        log.info(LOG_DEMO_PAUSE_START, jobId, jobName, sleepMillis, traceId);
-        try {
-            Thread.sleep(sleepMillis);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new TemplateValidationException(
-                TemplateValidationException.ErrorType.OPERATION_NOT_ALLOWED,
-                MSG_DEMO_PAUSE_INTERRUPTED
-            );
-        }
-        log.info(LOG_DEMO_PAUSE_END, jobId, jobName, traceId);
     }
 
     /**
@@ -1070,7 +1331,7 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
     private void executeJobForSchedule(Long jobId, String jobName) {
         Map<String, Object> result;
         try {
-            result = doExecuteJob(jobId, jobName);
+            result = doExecuteJob(jobId, jobName, EXECUTE_TYPE_JOB);
         } catch (Exception e) {
             log.error(LOG_SCHEDULE_EXECUTE_ERROR, jobId, e);
             result = Map.of("success", false, "message", e.getMessage());
@@ -1096,13 +1357,20 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
 
     private Map<String, Object> executeSingleItem(Long jobId,
                                                   String jobName,
-                                                  TemplateJobItem item) {
+                                                  TemplateJobItem item,
+                                                  Map<String, Object> automationVariables,
+                                                  String executeType) {
 
-        Map<String, Object> variables = null;
+        Map<String, Object> variables = automationVariables == null ? null : new HashMap<>(automationVariables);
 
         if (StringUtils.hasText(item.getVariables())) {
             try {
-                variables = JSON.parseObject(item.getVariables(), Map.class);
+                Map<String, Object> itemVariables = JSON.parseObject(item.getVariables(), Map.class);
+                if (variables == null) {
+                    variables = itemVariables;
+                } else if (itemVariables != null) {
+                    variables.putAll(itemVariables);
+                }
             } catch (Exception e) {
                 log.warn(LOG_PARSE_VARIABLES_FAILED, item.getId());
             }
@@ -1114,14 +1382,14 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
                 jobName,
                 item.getTemplateId(),
                 item.getEnvironmentId(),
-                variables
+                variables,
+                executeType
             );
         } catch (Exception e) {
             return Map.of(
                 "success", false,
                 "message", e.getMessage(),
-                "templateId", item.getTemplateId(),
-                "traceId", TraceIdContext.get()
+                "templateId", item.getTemplateId()
             );
         }
     }

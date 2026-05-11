@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.dto.InterfaceTemplateDTO;
+import com.example.tooltestingdemo.dto.TemplateParamConfigDTO;
 import com.example.tooltestingdemo.entity.template.InterfaceTemplate;
 import com.example.tooltestingdemo.vo.InterfaceTemplateVO;
 
@@ -12,14 +13,14 @@ import java.util.Map;
 
 /**
  * 接口模板 Service 接口
- * 
+ *
  * 文件位置：src/main/java/com/example/tooltestingdemo/service/template/InterfaceTemplateService.java
  */
 public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
 
     /**
      * 创建模板（默认创建为草稿状态）
-     * 
+     *
      * @param dto 模板DTO（包含关联数据）
      * @return 创建后的模板VO（状态为草稿）
      */
@@ -27,7 +28,7 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
 
     /**
      * 更新模板（包含所有关联信息）
-     * 
+     *
      * @param id 模板ID
      * @param dto 模板DTO（包含关联数据）
      * @return 是否成功
@@ -36,35 +37,58 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
 
     /**
      * 获取模板详情（包含所有关联信息）
-     * 
+     *
      * @param id 模板ID
      * @return 模板详情VO
      */
     InterfaceTemplateVO getTemplateDetail(Long id);
 
     /**
+     * 获取模板参数配置页数据。
+     *
+     * @param id 模板ID
+     * @return 参数配置页 DTO
+     */
+    TemplateParamConfigDTO getParamConfig(Long id);
+
+    /**
+     * 保存模板参数配置页数据。
+     *
+     * <p>只更新基础请求字段、Headers、Parameters、FormData、Variables、extField5。</p>
+     *
+     * @param id 模板ID
+     * @param dto 参数配置
+     * @return 保存后的参数配置页 DTO
+     */
+    TemplateParamConfigDTO updateParamConfig(Long id, TemplateParamConfigDTO dto);
+
+    /**
      * 分页查询模板列表
-     * 
+     *
      * @param page 分页参数
      * @param folderId 文件夹ID
      * @param keyword 关键词
      * @param protocolId 协议ID
      * @param protocolType 协议类型
-     * @param status 状态
+     * @param statuses 状态列表
      * @param extNum1 扩展数字字段1
      * @return 分页结果VO
      */
     IPage<InterfaceTemplateVO> pageTemplates(Page<InterfaceTemplate> page,
                                               Long folderId,
                                               String keyword,
+                                              String name,
+                                              String extField2,
+                                              String extField3,
                                               Long protocolId,
                                               String protocolType,
-                                              Integer status,
-                                              Long extNum1);
+                                              List<Integer> statuses,
+                                              Long extNum1,
+                                              String pdmSystemType);
 
     /**
      * 复制模板
-     * 
+     *
      * @param id 原模板ID
      * @param newName 新模板名称
      * @return 新模板VO
@@ -73,7 +97,7 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
 
     /**
      * 发布模板
-     * 
+     *
      * @param id 模板ID
      * @return 是否成功
      */
@@ -81,7 +105,7 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
 
     /**
      * 归档模板
-     * 
+     *
      * @param id 模板ID
      * @return 是否成功
      */
@@ -89,7 +113,7 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
 
     /**
      * 删除模板（逻辑删除）
-     * 
+     *
      * @param id 模板ID
      * @return 是否成功
      */
@@ -97,7 +121,7 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
 
     /**
      * 批量删除模板（逻辑删除）
-     * 
+     *
      * @param ids 模板ID数组
      * @return 删除结果，包含成功和失败的ID列表
      */
@@ -105,7 +129,7 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
 
     /**
      * 移动模板到指定文件夹
-     * 
+     *
      * @param id 模板ID
      * @param folderId 目标文件夹ID
      * @return 是否成功
@@ -115,7 +139,7 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
     /**
      * 保存草稿（不校验必填项，仅保存当前内容）
      * 自动生成或递增版本号（V1.0 -> V1.1 -> V1.2）
-     * 
+     *
      * @param dto 模板DTO
      * @return 保存后的模板VO
      */
@@ -123,7 +147,7 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
 
     /**
      * 保存草稿（更新现有模板）
-     * 
+     *
      * @param id 模板ID
      * @param dto 模板DTO
      * @return 保存后的模板VO
@@ -133,7 +157,7 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
     /**
      * 提交审核（校验必填项，通过后状态变为待审核）
      * 自动生成或递增主版本号（V1.5 -> V2.0）
-     * 
+     *
      * @param id 模板ID
      * @param dto 模板DTO
      * @return 提交后的模板VO
@@ -142,7 +166,7 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
 
     /**
      * 审核通过
-     * 
+     *
      * @param id 模板ID
      * @return 是否成功
      */
@@ -150,7 +174,7 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
 
     /**
      * 审核驳回
-     * 
+     *
      * @param id 模板ID
      * @param reason 驳回原因
      * @return 是否成功

@@ -222,11 +222,11 @@ public class SysOperationLogController {
             XSSFCellStyle headerStyle = buildHeaderStyle(workbook);
             XSSFCellStyle dataStyle = buildDataStyle(workbook);
             String[] headers = {
-                    "日志ID", "追踪ID", "用户ID", "用户名", "角色ID", "模块",
+                    "日志ID", "用户ID", "用户名", "角色ID", "模块",
                     "操作", "方法", "请求URL", "请求参数", "IP地址",
                     "用户代理", "状态", "错误信息", "执行时间(ms)", "创建时间", "方法调用链"
             };
-            int[] columnWidths = {36, 40, 20, 20, 20, 24, 20, 20, 36, 50, 18, 36, 12, 36, 18, 24, 80};
+            int[] columnWidths = {36, 20, 20, 20, 24, 20, 20, 36, 50, 18, 36, 12, 36, 18, 24, 80};
 
             XSSFRow headerRow = sheet.createRow(0);
             for (int i = 0; i < headers.length; i++) {
@@ -240,22 +240,21 @@ public class SysOperationLogController {
             for (SysOperationLog log : logs) {
                 XSSFRow row = sheet.createRow(rowIndex++);
                 setCellValue(row, 0, log.getId(), dataStyle);
-                setCellValue(row, 1, log.getTraceId(), dataStyle);
-                setCellValue(row, 2, log.getUserId(), dataStyle);
-                setCellValue(row, 3, log.getUsername(), dataStyle);
-                setCellValue(row, 4, log.getRoleId(), dataStyle);
-                setCellValue(row, 5, OperationLogNameUtils.getModuleDisplayName(log.getModule()), dataStyle);
-                setCellValue(row, 6, log.getOperation(), dataStyle);
-                setCellValue(row, 7, log.getMethod(), dataStyle);
-                setCellValue(row, 8, log.getRequestUrl(), dataStyle);
-                setCellValue(row, 9, log.getRequestParams(), dataStyle);
-                setCellValue(row, 10, log.getIpAddress(), dataStyle);
-                setCellValue(row, 11, log.getUserAgent(), dataStyle);
-                setCellValue(row, 12, log.getStatus() == 1 ? "SUCCESS" : "FAILED", dataStyle);
-                setCellValue(row, 13, log.getErrorMessage(), dataStyle);
-                setCellValue(row, 14, log.getExecuteTime(), dataStyle);
-                setCellValue(row, 15, log.getCreateTime(), dataStyle);
-                setCellValue(row, 16, log.getMethodJson(), dataStyle);
+                setCellValue(row, 1, log.getUserId(), dataStyle);
+                setCellValue(row, 2, log.getUsername(), dataStyle);
+                setCellValue(row, 3, log.getRoleId(), dataStyle);
+                setCellValue(row, 4, OperationLogNameUtils.getModuleDisplayName(log.getModule()), dataStyle);
+                setCellValue(row, 5, log.getOperation(), dataStyle);
+                setCellValue(row, 6, log.getMethod(), dataStyle);
+                setCellValue(row, 7, log.getRequestUrl(), dataStyle);
+                setCellValue(row, 8, log.getRequestParams(), dataStyle);
+                setCellValue(row, 9, log.getIpAddress(), dataStyle);
+                setCellValue(row, 10, log.getUserAgent(), dataStyle);
+                setCellValue(row, 11, log.getStatus() == 1 ? "SUCCESS" : "FAILED", dataStyle);
+                setCellValue(row, 12, log.getErrorMessage(), dataStyle);
+                setCellValue(row, 13, log.getExecuteTime(), dataStyle);
+                setCellValue(row, 14, log.getCreateTime(), dataStyle);
+                setCellValue(row, 15, log.getMethodJson(), dataStyle);
             }
 
             try (OutputStream outputStream = response.getOutputStream()) {

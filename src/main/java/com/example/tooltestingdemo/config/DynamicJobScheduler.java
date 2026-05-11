@@ -32,18 +32,23 @@ public class DynamicJobScheduler {
         return scheduler;
     }
 
-    /**F
+    /**
      * 注册一个 Cron 任务
      */
     public void scheduleJob(Long jobId, String cronExpression, Runnable task) {
-        if (cronExpression == null || cronExpression.isEmpty()) {
+        if (cronExpression == null || cronExpression.trim().isEmpty()) {
             log.warn("任务Cron为空，跳过注册: jobId={}", jobId);
             return;
         }
         cancelJob(jobId);
-        ScheduledFuture<?> future = taskScheduler().schedule(task, new CronTrigger(cronExpression));
-        futureMap.put(jobId, future);
-        log.info("任务已注册: jobId={}, cron={}", jobId, cronExpression);
+        String normalizedCron = cronExpression.trim();
+        try {
+            ScheduledFuture<?> future = taskScheduler().schedule(task, new CronTrigger(normalizedCron));
+            futureMap.put(jobId, future);
+            log.info("任务已注册: jobId={}, cron={}", jobId, normalizedCron);
+        } catch (Exception e) {
+            log.error("任务注册失败: jobId={}, cron={}", jobId, normalizedCron, e);
+        }
     }
 
     /**

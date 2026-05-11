@@ -3,6 +3,7 @@ package com.example.tooltestingdemo.controller.template;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.common.Result;
+import com.example.tooltestingdemo.dto.template.TemplateJobAutomationConfigDTO;
 import com.example.tooltestingdemo.entity.template.TemplateJob;
 import com.example.tooltestingdemo.entity.template.TemplateJobLog;
 import com.example.tooltestingdemo.service.template.TemplateJobService;
@@ -63,6 +64,45 @@ public class TemplateJobController {
     public Result<TemplateJob> getJobById(@PathVariable Long id) {
         TemplateJob job = jobService.getJobDetail(id);
         return job != null ? Result.success(job) : Result.error("任务不存在");
+    }
+
+    /**
+     * 获取任务自动化配置
+     */
+    @GetMapping("/{id}/automation-config")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
+    public Result<TemplateJobAutomationConfigDTO> getAutomationConfig(@PathVariable Long id) {
+        return Result.success(jobService.getAutomationConfig(id));
+    }
+
+    /**
+     * 保存任务自动化配置
+     */
+    @PutMapping("/{id}/automation-config")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
+    public Result<TemplateJobAutomationConfigDTO> saveAutomationConfig(
+            @PathVariable Long id,
+            @RequestBody TemplateJobAutomationConfigDTO config) {
+        return Result.success("保存成功", jobService.saveAutomationConfig(id, config));
+    }
+
+    /**
+     * 导出接口传输报告
+     */
+    @GetMapping("/{id}/transfer-report/export")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
+    public void exportTransferReport(
+            @PathVariable Long id,
+            @RequestParam(required = false) Integer limit,
+            HttpServletResponse response) throws IOException {
+        String content = jobService.exportTransferReport(id, limit);
+        response.setContentType("text/csv;charset=UTF-8");
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setHeader("Content-Disposition",
+                "attachment; filename=template_job_transfer_report_" + id + "_" + System.currentTimeMillis() + ".csv");
+        response.getWriter().write('\ufeff');
+        response.getWriter().write(content);
+        response.getWriter().flush();
     }
 
     /**

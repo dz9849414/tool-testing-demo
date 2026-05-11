@@ -1,6 +1,8 @@
 package com.example.tooltestingdemo.service.template;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.example.tooltestingdemo.dto.TemplateFolderTreeQueryDTO;
 import com.example.tooltestingdemo.entity.template.TemplateFolder;
 import com.example.tooltestingdemo.vo.TemplateFolderVO;
 
@@ -20,6 +22,14 @@ public interface TemplateFolderService extends IService<TemplateFolder> {
      * @return 文件夹VO列表（包含子文件夹）
      */
     List<TemplateFolderVO> getFolderTree(Long parentId);
+
+    /**
+     * 分页获取文件夹树形结构。
+     *
+     * @param query 查询参数
+     * @return 当前页根节点列表，每条记录包含子树
+     */
+    IPage<TemplateFolderVO> pageFolderTree(TemplateFolderTreeQueryDTO query);
 
     /**
      * 创建文件夹

@@ -2,6 +2,8 @@ package com.example.tooltestingdemo.controller.protocol;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.example.tooltestingdemo.common.Result;
+import com.example.tooltestingdemo.dto.ProtocolConnectivityResultDTO;
+import com.example.tooltestingdemo.dto.ProtocolConnectivityTestDTO;
 import com.example.tooltestingdemo.dto.ProtocolTestConnectDTO;
 import com.example.tooltestingdemo.dto.ProtocolTestRecordQueryDTO;
 import com.example.tooltestingdemo.dto.ProtocolTestTransferDTO;
@@ -60,6 +62,19 @@ public class ProtocolTestRecordController {
         ProtocolTestRecord record = protocolTestRecordService.testTransfer(dto);
         String msg = ProtocolTestRecord.ResultStatus.SUCCESS.name().equals(record.getResultStatus()) ? "数据传输测试成功" : "数据传输测试失败";
         return Result.success(msg, record);
+    }
+
+    /**
+     * 协议网络诊断：ping + telnet
+     */
+    @PostMapping("/testConnectivity")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('protocol:param:url')")
+    @Operation(summary = "协议网络诊断", description = "根据模板ID解析目标地址执行 ping 与 telnet 诊断；UDP 等非TCP协议会跳过 telnet")
+    public Result<ProtocolConnectivityResultDTO> testConnectivity(@RequestBody @Valid ProtocolConnectivityTestDTO dto) {
+        ProtocolConnectivityResultDTO result = protocolTestRecordService.testConnectivity(dto);
+        boolean pingOk = result.getPing() == null || Boolean.TRUE.equals(result.getPing().getSuccess()) || Boolean.FALSE.equals(result.getPing().getExecuted());
+        boolean telnetOk = result.getTelnet() == null || Boolean.TRUE.equals(result.getTelnet().getSuccess()) || Boolean.FALSE.equals(result.getTelnet().getExecuted());
+        return Result.success(pingOk && telnetOk ? "网络诊断成功" : "网络诊断失败", result);
     }
 
     /**

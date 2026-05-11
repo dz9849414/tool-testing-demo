@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.tooltestingdemo.entity.template.TemplateExecuteLog;
-import com.example.tooltestingdemo.vo.TraceChainDetailVO;
 import java.time.LocalDateTime;
 
 /**
@@ -24,8 +23,4 @@ public interface TemplateExecuteLogService extends IService<TemplateExecuteLog> 
                                        LocalDateTime startTime,
                                        LocalDateTime endTime);
 
-    /**
-     * 根据 traceId 查询完整链路信息。
-     */
-    TraceChainDetailVO getTraceChainDetail(String traceId);
 }

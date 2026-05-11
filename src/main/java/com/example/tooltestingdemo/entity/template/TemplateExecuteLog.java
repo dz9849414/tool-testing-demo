@@ -86,12 +86,6 @@ public class TemplateExecuteLog {
     private String errorMsg;
 
     /**
-     * 链路追踪ID
-     */
-    @TableField(value = "trace_id")
-    private String traceId;
-
-    /**
      * 执行人ID（手动执行时填充）
      */
     @TableField(value = "create_id")

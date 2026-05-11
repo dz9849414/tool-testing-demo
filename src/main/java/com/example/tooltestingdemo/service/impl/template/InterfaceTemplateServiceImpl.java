@@ -1,9 +1,11 @@
 package com.example.tooltestingdemo.service.impl.template;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.InterfaceTemplateDTO;
+import com.example.tooltestingdemo.dto.TemplateParamConfigDTO;
 import com.example.tooltestingdemo.entity.template.*;
 import com.example.tooltestingdemo.enums.TemplateEnums;
 import com.example.tooltestingdemo.exception.TemplateValidationException;
@@ -39,7 +41,7 @@ import java.util.stream.Stream;
 @Service
 @RequiredArgsConstructor
 public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateMapper, InterfaceTemplate>
-        implements InterfaceTemplateService {
+    implements InterfaceTemplateService {
 
     private final TemplateHeaderMapper headerMapper;
     private final TemplateParameterMapper parameterMapper;
@@ -106,11 +108,60 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     }
 
     @Override
+    public TemplateParamConfigDTO getParamConfig(Long id) {
+        return Optional.ofNullable(getTemplateDetail(id))
+            .map(this::toParamConfigDTO)
+            .orElse(null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public TemplateParamConfigDTO updateParamConfig(Long id, TemplateParamConfigDTO dto) {
+        InterfaceTemplate template = Optional.ofNullable(getById(id))
+            .orElseThrow(() -> new TemplateValidationException(TemplateValidationException.ErrorType.NOT_FOUND, "模板不存在"));
+
+        InterfaceTemplateVO oldVO = getTemplateDetail(id);
+        applyParamConfig(template, dto);
+        updateById(template);
+
+        // 参数配置页只管理请求配置相关数据；模板基础信息、版本、文件等不在这里重建。
+        headerMapper.deleteByTemplateId(id);
+        parameterMapper.deleteByTemplateId(id);
+        formDataMapper.deleteByTemplateId(id);
+        assertionMapper.deleteByTemplateId(id);
+        preProcessorMapper.deleteByTemplateId(id);
+        postProcessorMapper.deleteByTemplateId(id);
+        // 变量表有 (template_id, variable_name) 唯一索引。参数配置页保存时会整表重建变量，
+        // 这里必须物理删除旧变量，否则逻辑删除后的同名变量仍会占用唯一索引，导致重新保存后插入失败。
+        variableMapper.physicalDeleteByTemplateId(id);
+        insertBatch(dto.getHeaders(), TemplateConverter::toHeaderEntityList,
+            h -> h.setTemplateId(id), headerMapper::batchInsert);
+        insertBatch(dto.getParameters(), TemplateConverter::toParameterEntityList,
+            p -> p.setTemplateId(id), parameterMapper::batchInsert);
+        insertBatch(dto.getFormDataList(), TemplateConverter::toFormDataEntityList,
+            f -> f.setTemplateId(id), formDataMapper::batchInsert);
+        insertBatch(dto.getAssertions(), TemplateConverter::toAssertionEntityList,
+            a -> a.setTemplateId(id), assertionMapper::batchInsert);
+        insertBatch(dto.getPreProcessors(), TemplateConverter::toPreProcessorEntityList,
+            p -> p.setTemplateId(id), preProcessorMapper::batchInsert);
+        insertBatch(dto.getPostProcessors(), TemplateConverter::toPostProcessorEntityList,
+            p -> p.setTemplateId(id), postProcessorMapper::batchInsert);
+        insertBatch(dto.getVariables(), TemplateConverter::toVariableEntityList,
+            v -> v.setTemplateId(id), variableMapper::batchInsert);
+
+        InterfaceTemplateVO newVO = getTemplateDetail(id);
+        saveHistory(template, oldVO, newVO, "UPDATE", "更新模板参数配置");
+        log.info("更新模板参数配置成功: id={}", id);
+        return toParamConfigDTO(newVO);
+    }
+
+    @Override
     public IPage<InterfaceTemplateVO> pageTemplates(Page<InterfaceTemplate> page, Long folderId,
-                                                     String keyword, Long protocolId, String protocolType, Integer status,
-                                                     Long extNum1) {
+                                                    String keyword, String name, String extField2, String extField3,
+                                                    Long protocolId, String protocolType, List<Integer> statuses,
+                                                    Long extNum1, String pdmSystemType) {
         IPage<InterfaceTemplate> entityPage = baseMapper.selectTemplatePage(
-            page, folderId, keyword, protocolId, protocolType, status, extNum1);
+            page, folderId, keyword, name, extField2, extField3, protocolId, protocolType, statuses, extNum1, pdmSystemType);
 
         Page<InterfaceTemplateVO> voPage = new Page<>(entityPage.getCurrent(), entityPage.getSize(), entityPage.getTotal());
         voPage.setPages(entityPage.getPages());
@@ -265,10 +316,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
 
     private InterfaceTemplateVO enrichTemplateVO(InterfaceTemplate template) {
         InterfaceTemplateVO vo = TemplateConverter.toVO(template);
-        List<TemplateFile> files = fileMapper.selectByTemplateId(template.getId());
-        vo.setFileCount(files.size());
-        vo.setHasRequestFile(files.stream().anyMatch(f -> "REQUEST".equals(f.getFileCategory())) ? 1 : 0);
-        vo.setHasResponseFile(files.stream().anyMatch(f -> "RESPONSE".equals(f.getFileCategory())) ? 1 : 0);
+        loadRelatedData(vo);
         return vo;
     }
 
@@ -314,6 +362,49 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         return Objects.equals(versionUp, 1);
     }
 
+    private TemplateParamConfigDTO toParamConfigDTO(InterfaceTemplateVO vo) {
+        TemplateParamConfigDTO dto = new TemplateParamConfigDTO();
+        BeanUtils.copyProperties(vo, dto);
+        dto.setHeaders(convertList(vo.getHeaders(), com.example.tooltestingdemo.dto.TemplateHeaderDTO.class));
+        dto.setParameters(convertList(vo.getParameters(), com.example.tooltestingdemo.dto.TemplateParameterDTO.class));
+        dto.setFormDataList(convertList(vo.getFormDataList(), com.example.tooltestingdemo.dto.TemplateFormDataDTO.class));
+        dto.setAssertions(convertList(vo.getAssertions(), com.example.tooltestingdemo.dto.TemplateAssertionDTO.class));
+        dto.setPreProcessors(convertList(vo.getPreProcessors(), com.example.tooltestingdemo.dto.TemplatePreProcessorDTO.class));
+        dto.setPostProcessors(convertList(vo.getPostProcessors(), com.example.tooltestingdemo.dto.TemplatePostProcessorDTO.class));
+        dto.setVariables(convertList(vo.getVariables(), com.example.tooltestingdemo.dto.TemplateVariableDTO.class));
+        return dto;
+    }
+
+    private void applyParamConfig(InterfaceTemplate template, TemplateParamConfigDTO dto) {
+        template.setFullUrl(dto.getFullUrl());
+        template.setBaseUrl(dto.getBaseUrl());
+        template.setPath(dto.getPath());
+        template.setMethod(dto.getMethod());
+        template.setContentType(dto.getContentType());
+        template.setCharset(dto.getCharset());
+        template.setBodyType(dto.getBodyType());
+        template.setBodyRawType(dto.getBodyRawType());
+        template.setBodyContent(dto.getBodyContent());
+        template.setConnectTimeout(dto.getConnectTimeout());
+        template.setReadTimeout(dto.getReadTimeout());
+        template.setExtField5(dto.getExtField5());
+    }
+
+    private <S, T> List<T> convertList(List<S> source, Class<T> targetClass) {
+        if (CollectionUtils.isEmpty(source)) {
+            return Collections.emptyList();
+        }
+        return source.stream().map(item -> {
+            try {
+                T target = targetClass.getDeclaredConstructor().newInstance();
+                BeanUtils.copyProperties(item, target);
+                return target;
+            } catch (Exception e) {
+                throw new TemplateValidationException(TemplateValidationException.ErrorType.CONVERT_ERROR, "对象转换失败", e);
+            }
+        }).collect(Collectors.toList());
+    }
+
     private Long doSaveTemplate(Long id, InterfaceTemplateDTO dto, Integer status, String version, String desc) {
         InterfaceTemplate template = new InterfaceTemplate();
         BeanUtils.copyProperties(dto, template);
@@ -345,7 +436,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     }
 
     private boolean checkAndUpdateStatus(Long id, Integer requiredStatus, Integer newStatus,
-                                          String errorMsg, String opType, String desc) {
+                                         String errorMsg, String opType, String desc) {
         return Optional.ofNullable(getById(id)).map(t -> {
             if (!requiredStatus.equals(t.getStatus())) {
                 throw new TemplateValidationException(TemplateValidationException.ErrorType.OPERATION_NOT_ALLOWED, errorMsg);
@@ -399,7 +490,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
     }
 
     private <D, E> void insertBatch(List<D> data, java.util.function.Function<List<D>, List<E>> converter,
-                                     Consumer<E> setter, Consumer<List<E>> inserter) {
+                                    Consumer<E> setter, Consumer<List<E>> inserter) {
         Optional.ofNullable(data).filter(l -> !l.isEmpty()).map(converter).ifPresent(list -> {
             list.forEach(setter);
             inserter.accept(list);
@@ -415,6 +506,8 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         vo.setPreProcessors(TemplateConverter.toPreProcessorVOList(preProcessorMapper.selectByTemplateId(tid)));
         vo.setPostProcessors(TemplateConverter.toPostProcessorVOList(postProcessorMapper.selectByTemplateId(tid)));
         vo.setVariables(TemplateConverter.toVariableVOList(variableMapper.selectByTemplateId(tid)));
+//        vo.setEnvironments(TemplateConverter.toEnvironmentVOList(environmentMapper.selectByTemplateId(tid)));
+//        vo.setHistories(TemplateConverter.toHistoryVOList(historyMapper.selectByTemplateId(tid)));
 
         List<TemplateFile> files = fileMapper.selectByTemplateId(tid);
         vo.setFiles(TemplateConverter.toFileVOList(files));
@@ -425,19 +518,40 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
 
     private void copyRelatedData(Long sourceId, Long targetId) {
         copyEntities(headerMapper.selectByTemplateId(sourceId), targetId,
-            h -> { h.setId(null); h.setTemplateId(targetId); }, headerMapper::batchInsert);
+            h -> {
+                h.setId(null);
+                h.setTemplateId(targetId);
+            }, headerMapper::batchInsert);
         copyEntities(parameterMapper.selectByTemplateId(sourceId), targetId,
-            p -> { p.setId(null); p.setTemplateId(targetId); }, parameterMapper::batchInsert);
+            p -> {
+                p.setId(null);
+                p.setTemplateId(targetId);
+            }, parameterMapper::batchInsert);
         copyEntities(formDataMapper.selectByTemplateId(sourceId), targetId,
-            f -> { f.setId(null); f.setTemplateId(targetId); }, formDataMapper::batchInsert);
+            f -> {
+                f.setId(null);
+                f.setTemplateId(targetId);
+            }, formDataMapper::batchInsert);
         copyEntities(assertionMapper.selectByTemplateId(sourceId), targetId,
-            a -> { a.setId(null); a.setTemplateId(targetId); }, assertionMapper::batchInsert);
+            a -> {
+                a.setId(null);
+                a.setTemplateId(targetId);
+            }, assertionMapper::batchInsert);
         copyEntities(preProcessorMapper.selectByTemplateId(sourceId), targetId,
-            p -> { p.setId(null); p.setTemplateId(targetId); }, preProcessorMapper::batchInsert);
+            p -> {
+                p.setId(null);
+                p.setTemplateId(targetId);
+            }, preProcessorMapper::batchInsert);
         copyEntities(postProcessorMapper.selectByTemplateId(sourceId), targetId,
-            p -> { p.setId(null); p.setTemplateId(targetId); }, postProcessorMapper::batchInsert);
+            p -> {
+                p.setId(null);
+                p.setTemplateId(targetId);
+            }, postProcessorMapper::batchInsert);
         copyEntities(variableMapper.selectByTemplateId(sourceId), targetId,
-            v -> { v.setId(null); v.setTemplateId(targetId); }, variableMapper::batchInsert);
+            v -> {
+                v.setId(null);
+                v.setTemplateId(targetId);
+            }, variableMapper::batchInsert);
 
         copyFiles(sourceId, targetId);
     }
@@ -534,22 +648,30 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
 
         // 保存变更前快照
         if (oldVO != null) {
-            h.setTemplateSnapshot(JSON.toJSONString(oldVO));
+            h.setTemplateSnapshot(toHistorySnapshotJson(oldVO));
             if (newVO != null) {
                 h.setChangeDetails(buildChangeDetails(oldVO, newVO));
             }
         } else if (newVO != null) {
             // 创建/复制操作：保存新数据快照
-            h.setTemplateSnapshot(JSON.toJSONString(newVO));
+            h.setTemplateSnapshot(toHistorySnapshotJson(newVO));
         }
 
         historyMapper.insert(h);
     }
 
+    private String toHistorySnapshotJson(InterfaceTemplateVO vo) {
+        InterfaceTemplateVO snapshot = new InterfaceTemplateVO();
+        BeanUtils.copyProperties(vo, snapshot);
+        snapshot.setHistories(null);
+        snapshot.setFiles(null);
+        return JSON.toJSONString(snapshot);
+    }
+
     private String buildChangeDetails(InterfaceTemplateVO oldVO, InterfaceTemplateVO newVO) {
         try {
-            JSONObject oldJson = JSON.parseObject(JSON.toJSONString(oldVO));
-            JSONObject newJson = JSON.parseObject(JSON.toJSONString(newVO));
+            JSONObject oldJson = JSON.parseObject(toHistorySnapshotJson(oldVO));
+            JSONObject newJson = JSON.parseObject(toHistorySnapshotJson(newVO));
             JSONObject before = new JSONObject();
             JSONObject after = new JSONObject();
 
