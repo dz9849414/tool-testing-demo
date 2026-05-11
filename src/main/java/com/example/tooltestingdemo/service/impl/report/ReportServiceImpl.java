@@ -3846,6 +3846,13 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     private void formatJsonObjectWithoutChart(JSONObject jsonObject, StringBuilder result, int indent) {
         String indentStr = "  ".repeat(indent);
 
+        // 如果只有一个字段且是 "text"，直接显示文本内容
+        if (jsonObject.size() == 1 && jsonObject.containsKey("text")) {
+            Object textValue = jsonObject.get("text");
+            result.append(formatValue(textValue));
+            return;
+        }
+
         for (String key : jsonObject.keySet()) {
             Object value = jsonObject.get(key);
             String readableKey = getReadableKey(key);
