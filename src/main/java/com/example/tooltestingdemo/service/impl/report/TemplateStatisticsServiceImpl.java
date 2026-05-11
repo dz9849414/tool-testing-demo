@@ -1,5 +1,6 @@
 package com.example.tooltestingdemo.service.impl.report;
 
+import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.example.tooltestingdemo.dto.report.CompareResultDTO;
@@ -840,11 +841,17 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
                     hourlyStats = templateStatisticsMapper.getBatchHourlyResponseTimeStats(startTime, endTime);
                     break;
                 case "UNIFIED":
-                    hourlyStats = templateStatisticsMapper.getUnifiedHourlyResponseTimeStats(startTime, endTime);
+                    // UNIFIED = JOB_LOG（手动+定时） + BATCH（批次）
+                    hourlyStats = templateStatisticsMapper.getHourlyResponseTimeStats(startTime, endTime);
+//                    List<Map<String, Object>> batchStats = templateStatisticsMapper.getBatchHourlyResponseTimeStats(startTime, endTime);
+                    // 合并两个数据源
+//                    hourlyStats = new ArrayList<>();
+//                    hourlyStats.addAll(jobLogStats);
+//                    hourlyStats.addAll(batchStats);
                     break;
                 case "JOB_LOG":
                 default:
-                    hourlyStats = templateStatisticsMapper.getHourlyResponseTimeStats(startTime, endTime);
+                    hourlyStats = templateStatisticsMapper.getHourlyResponseTimeStatsToManual(startTime, endTime);
                     break;
             }
             
@@ -2013,64 +2020,6 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
         }
     }
 
-    /**
-     * 获取响应时间对比数据（按日期聚合）
-     */
-    private List<Map<String, Object>> getResponseTimeCompareData(String startDate, String endDate, String dataSource) {
-        try {
-            LocalDate start = LocalDate.parse(startDate);
-            LocalDate end = LocalDate.parse(endDate);
-            
-            List<Map<String, Object>> result = new ArrayList<>();
-            
-            // 按日期遍历，获取每天的平均响应时间
-            LocalDate currentDate = start;
-            while (!currentDate.isAfter(end)) {
-                LocalDateTime startTime = currentDate.atStartOfDay();
-                LocalDateTime endTime = currentDate.atTime(23, 59, 59);
-                
-                List<Map<String, Object>> hourlyStats;
-                switch (dataSource != null ? dataSource.toUpperCase() : "JOB_LOG") {
-                    case "BATCH":
-                        hourlyStats = templateStatisticsMapper.getBatchHourlyResponseTimeStats(startTime, endTime);
-                        break;
-                    case "UNIFIED":
-                        hourlyStats = templateStatisticsMapper.getUnifiedHourlyResponseTimeStats(startTime, endTime);
-                        break;
-                    case "JOB_LOG":
-                    default:
-                        hourlyStats = templateStatisticsMapper.getHourlyResponseTimeStats(startTime, endTime);
-                        break;
-                }
-                
-                // 计算当日平均响应时间
-                double totalDuration = 0;
-                int totalExecutions = 0;
-                for (Map<String, Object> stat : hourlyStats) {
-                    BigDecimal executionCount = safeGetBigDecimal(stat, "execution_count");
-                    BigDecimal avgDuration = safeGetBigDecimal(stat, "avg_duration");
-                    if (executionCount != null && avgDuration != null) {
-                        totalDuration += avgDuration.doubleValue() * executionCount.longValue();
-                        totalExecutions += executionCount.longValue();
-                    }
-                }
-                
-                Map<String, Object> dayData = new HashMap<>();
-                dayData.put("name", currentDate.format(DateTimeFormatter.ISO_DATE));
-                dayData.put("value", totalExecutions > 0 ? totalDuration / totalExecutions : 0);
-                dayData.put("executionCount", totalExecutions);
-                
-                result.add(dayData);
-                
-                currentDate = currentDate.plusDays(1);
-            }
-            
-            return result;
-        } catch (Exception e) {
-            log.error("获取响应时间对比数据失败", e);
-            return new ArrayList<>();
-        }
-    }
 
     /**
      * 获取协议类型分布对比数据

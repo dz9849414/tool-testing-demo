@@ -225,7 +225,7 @@ public interface TemplateStatisticsMapper {
     // ====================== 每2小时响应时间统计 ======================
 
     /**
-     * 获取每2小时平均响应时间统计（JOB_LOG数据源）
+     * 获取每2小时平均响应时间统计（定时+手动数据源）
      */
     @Select("SELECT " +
             "DATE_FORMAT(create_time, '%Y-%m-%d %H:00:00') as time_slot, " +
@@ -235,11 +235,32 @@ public interface TemplateStatisticsMapper {
             "MAX(duration_ms) as max_duration, " +
             "MIN(duration_ms) as min_duration " +
             "FROM pdm_tool_template_job_log " +
-
+            "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
+            "AND success = 1 " +
             "GROUP BY DATE(create_time), FLOOR(HOUR(create_time) / 2) * 2, time_slot " +
             "ORDER BY time_slot")
     List<Map<String, Object>> getHourlyResponseTimeStats(@Param("startTime") LocalDateTime startTime,
                                                         @Param("endTime") LocalDateTime endTime);
+
+
+    /**
+     * 获取每2小时平均响应时间统计（JOB数据源）
+     */
+    @Select("SELECT " +
+            "DATE_FORMAT(create_time, '%Y-%m-%d %H:00:00') as time_slot, " +
+            "FLOOR(HOUR(create_time) / 2) * 2 as hour_group, " +
+            "COUNT(*) as execution_count, " +
+            "AVG(duration_ms) as avg_duration, " +
+            "MAX(duration_ms) as max_duration, " +
+            "MIN(duration_ms) as min_duration " +
+            "FROM pdm_tool_template_execute_log " +
+            "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
+            "AND success = 1 " +
+            "AND execute_type = 'JOB' " +
+            "GROUP BY DATE(create_time), FLOOR(HOUR(create_time) / 2) * 2, time_slot " +
+            "ORDER BY time_slot")
+    List<Map<String, Object>> getHourlyResponseTimeStatsToManual(@Param("startTime") LocalDateTime startTime,
+                                                         @Param("endTime") LocalDateTime endTime);
 
     /**
      * 获取每2小时平均响应时间统计（UNIFIED数据源）
@@ -266,14 +287,12 @@ public interface TemplateStatisticsMapper {
     @Select("SELECT " +
             "DATE_FORMAT(create_time, '%Y-%m-%d %H:00:00') as time_slot, " +
             "FLOOR(HOUR(create_time) / 2) * 2 as hour_group, " +
-            "batch_type, " +
-            "COUNT(*) as execution_count, " +
-            "AVG(response_time) as avg_response_time " +
+            "COUNT(*) as execution_count " +
             "FROM pdm_tool_template_job_batch " +
-            "WHERE create_time BETWEEN ? AND ? " +
-            "AND is_deleted = 0 " +
-            "AND response_time IS NOT NULL " +
-            "GROUP BY DATE(create_time), FLOOR(HOUR(create_time) / 2) * 2, time_slot, batch_type " +
+            "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
+            "AND status = 'DONE' " +
+            "AND result IS NOT NULL " +
+            "GROUP BY DATE(create_time), FLOOR(HOUR(create_time) / 2) * 2, time_slot " +
             "ORDER BY DATE(create_time), hour_group")
     List<Map<String, Object>> getBatchHourlyResponseTimeStats(@Param("startTime") LocalDateTime startTime,
                                                             @Param("endTime") LocalDateTime endTime);
@@ -304,7 +323,7 @@ public interface TemplateStatisticsMapper {
             "COUNT(*) as execution_count " +
             "FROM pdm_tool_template_job_batch " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
-            "AND status = 'DONE' " +
+//            "AND status = 'DONE' " +
             "GROUP BY DAYNAME(create_time), DAYOFWEEK(create_time) " +
             "ORDER BY DAYOFWEEK(create_time)")
     List<Map<String, Object>> getBatchWeeklyExecutionStats(@Param("startTime") LocalDateTime startTime,
@@ -320,7 +339,7 @@ public interface TemplateStatisticsMapper {
             "COUNT(*) as execution_count " +
             "FROM pdm_tool_template_execute_log " +
             "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
-            "AND success = 1 " +
+//            "AND success = 1 " +
             "GROUP BY DAYNAME(create_time), DAYOFWEEK(create_time), execute_type " +
             "ORDER BY DAYOFWEEK(create_time)")
     List<Map<String, Object>> getUnifiedWeeklyExecutionStats(@Param("startTime") LocalDateTime startTime,
