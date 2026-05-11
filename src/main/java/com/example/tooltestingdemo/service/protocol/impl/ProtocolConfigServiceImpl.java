@@ -314,7 +314,8 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
      */
     private void validateUrlConfig(List<ProtocolConfigCreateDTO.UrlConfigItemDTO> list) {
         if (list == null || list.isEmpty()) {
-            throw new IllegalArgumentException("urlConfigList不能为空");
+            log.info("validateUrlConfig-不是HTTP or HTTPS协议");
+            return;
         }
         long primaryTrue = list.stream().filter(i -> Boolean.TRUE.equals(i.getPrimary())).count();
         if (primaryTrue != 1) {
