@@ -214,8 +214,14 @@ public class SysUserServiceImpl implements SysUserService {
             
             // 如果密码不为空，则更新密码并编码
             if (user.getPassword() != null && !user.getPassword().isEmpty()) {
-                org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder passwordEncoder = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
-                existingUser.setPassword(passwordEncoder.encode(user.getPassword()));
+                // 检查密码是否已经是BCrypt加密格式（以$2a$开头）
+                if (user.getPassword().startsWith("$2a$") || user.getPassword().startsWith("$2b$") || user.getPassword().startsWith("$2y$")) {
+                    // 已经是BCrypt加密格式，直接使用
+                    existingUser.setPassword(user.getPassword());
+                } else {
+                    // 不是加密格式，进行加密
+                    existingUser.setPassword(passwordEncoder.encode(user.getPassword()));
+                }
             }
             
             userMapper.updateById(existingUser);

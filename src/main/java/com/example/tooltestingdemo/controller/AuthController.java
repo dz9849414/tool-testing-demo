@@ -164,7 +164,7 @@ public class AuthController {
             response.put("code", 400);
             response.put("message", "用户名已存在");
             response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.ok().body(response);
         }
         
         if (userService.existsByEmail(registerDTO.getEmail())) {
@@ -172,7 +172,7 @@ public class AuthController {
             response.put("code", 400);
             response.put("message", "邮箱已存在");
             response.put("data", null);
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.ok().body(response);
         }
         
         SysUser user = new SysUser();
