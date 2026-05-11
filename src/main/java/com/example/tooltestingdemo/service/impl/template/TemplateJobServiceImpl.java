@@ -133,6 +133,8 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
     private static final String MSG_BATCH_CANCELED = "批次已取消";
     private static final String MSG_BATCH_DONE = "批次执行完成";
     private static final String MSG_BATCH_RUNNING = "批次执行中";
+    private static final String EXECUTE_TYPE_MANUAL = "MANUAL";
+    private static final String EXECUTE_TYPE_JOB = "JOB";
     private static final String MSG_JOB_ITEM_LIST_EMPTY = "任务模板列表不能为空";
     private static final String LOG_JOB_ALREADY_RUNNING = "任务已在执行，跳过本次请求 jobId={}";
     private static final String MSG_JOB_RUNNING = "任务正在执行";
@@ -140,9 +142,6 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
     private static final String MSG_JOB_DISABLED = "任务已停用";
     private static final String MSG_JOB_ITEM_NOT_CONFIGURED = "任务未配置任务项";
     private static final String MSG_ALL_SUCCESS = "全部成功";
-    private static final String LOG_DEMO_PAUSE_START = "演示暂停开始 jobId={}, jobName={}, sleepMs={}";
-    private static final String MSG_DEMO_PAUSE_INTERRUPTED = "任务演示暂停被中断";
-    private static final String LOG_DEMO_PAUSE_END = "演示暂停结束 jobId={}, jobName={}";
     private static final String LOG_SCHEDULE_EXECUTE_ERROR = "定时任务执行异常 jobId={}";
     private static final String LOG_SCHEDULE_EXECUTE_FAILED = "定时任务执行失败 jobId={}, 连续失败次数={}/{}";
     private static final String LOG_SCHEDULE_AUTO_DISABLED = "定时任务连续失败{}次，自动停用: jobId={}";
@@ -309,51 +308,9 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
             throw new TemplateValidationException(TemplateValidationException.ErrorType.OPERATION_NOT_ALLOWED, MSG_JOB_DISABLED_CANNOT_EXECUTE);
         }
 
-        return doExecuteJob(id, job.getJobName());
+        return doExecuteJob(id, job.getJobName(), EXECUTE_TYPE_MANUAL);
     }
 
-    @Override
-    public Map<String, Object> batchTriggerJobs(Long[] ids) {
-        List<Long> success = new ArrayList<>();
-        List<Long> fail = new ArrayList<>();
-        Map<Long, Object> details = new HashMap<>();
-        for (Long id : ids) {
-            try {
-                Map<String, Object> res = triggerJob(id);
-                Boolean ok = (Boolean) res.get(ApiResultKeys.SUCCESS.getKey());
-                if (Boolean.TRUE.equals(ok)) {
-                    success.add(id);
-                } else {
-                    fail.add(id);
-                }
-                details.put(id, res);
-            } catch (Exception e) {
-                log.error(LOG_BATCH_TRIGGER_FAILED, id, e);
-                fail.add(id);
-                details.put(id, e.getMessage());
-            }
-        }
-        Map<String, Object> result = new HashMap<>();
-        result.put("successIds", success);
-        result.put("failIds", fail);
-        result.put("details", details);
-        return result;
-    }
-
-    /* submitBatchTriggerAsync(ids)
-       ├── 生成 batchKey + batchId
-       ├── BATCH_ASYNC_LOCKS.putIfAbsent 幂等锁
-       ├── insert PENDING
-       ├── AtomicBoolean dbUpdated = false
-       ├── runAsync
-       │     ├── updateBatch(RUNNING)
-       │     ├── batchTriggerJobs(ids)  // 可能阻塞很久
-       │     └── updateBatch(DONE)
-       └── orTimeout(5分钟)
-             └── whenComplete
-                   ├── 清理 BATCH_ASYNC_FUTURES / BATCH_ASYNC_LOCKS
-                   ├── 若超时：cancel(true) + updateBatch(FAILED, "执行超时")
-                   └── 若其他异常且未更新：updateBatch(FAILED, 异常信息)*/
     @Override
     public String submitBatchTriggerAsync(Long[] ids) {
         validateBatchIds(ids);
@@ -1259,7 +1216,7 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
     /**
      * 执行模板任务核心逻辑（遍历所有子项）
      */
-    public Map<String, Object> doExecuteJob(Long jobId, String jobName) {
+    public Map<String, Object> doExecuteJob(Long jobId, String jobName, String executeType) {
         ReentrantLock lock = JOB_LOCKS.computeIfAbsent(jobId, id -> new ReentrantLock());
         boolean locked = lock.tryLock();
 
@@ -1269,7 +1226,6 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
         }
         try {
             log.info(LOG_START_EXECUTE_JOB, jobId, jobName);
-            randomPauseForDemo(jobId, jobName);
             TemplateJob job = getById(jobId);
             if (job == null || Integer.valueOf(1).equals(job.getIsDeleted())) {
                 return Map.of("success", false, "message", MSG_JOB_NOT_FOUND);
@@ -1316,7 +1272,7 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
             List<Map<String, Object>> results = jobDispatcher.dispatch(
                 jobId,
                 items,
-                item -> executeSingleItem(jobId, jobName, item, finalAutomationVariables),
+                item -> executeSingleItem(jobId, jobName, item, finalAutomationVariables, executeType),
                 Boolean.TRUE.equals(concurrentConfig.getEnabled()) ? concurrentConfig.getMaxConcurrency() : null,
                 Boolean.TRUE.equals(concurrentConfig.getEnabled()) ? concurrentConfig.getTimeoutMs() : null,
                 Boolean.TRUE.equals(concurrentConfig.getEnabled()) ? concurrentConfig.getRetryCount() : null
@@ -1369,28 +1325,13 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
         }
     }
 
-    private void randomPauseForDemo(Long jobId, String jobName) {
-        long sleepMillis = ThreadLocalRandom.current().nextLong(3000, 5001);
-        log.info(LOG_DEMO_PAUSE_START, jobId, jobName, sleepMillis);
-        try {
-            Thread.sleep(sleepMillis);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new TemplateValidationException(
-                TemplateValidationException.ErrorType.OPERATION_NOT_ALLOWED,
-                MSG_DEMO_PAUSE_INTERRUPTED
-            );
-        }
-        log.info(LOG_DEMO_PAUSE_END, jobId, jobName);
-    }
-
     /**
      * 供自动调度使用的执行入口（带连续失败自动停用保护）
      */
     private void executeJobForSchedule(Long jobId, String jobName) {
         Map<String, Object> result;
         try {
-            result = doExecuteJob(jobId, jobName);
+            result = doExecuteJob(jobId, jobName, EXECUTE_TYPE_JOB);
         } catch (Exception e) {
             log.error(LOG_SCHEDULE_EXECUTE_ERROR, jobId, e);
             result = Map.of("success", false, "message", e.getMessage());
@@ -1417,7 +1358,8 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
     private Map<String, Object> executeSingleItem(Long jobId,
                                                   String jobName,
                                                   TemplateJobItem item,
-                                                  Map<String, Object> automationVariables) {
+                                                  Map<String, Object> automationVariables,
+                                                  String executeType) {
 
         Map<String, Object> variables = automationVariables == null ? null : new HashMap<>(automationVariables);
 
@@ -1440,7 +1382,8 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
                 jobName,
                 item.getTemplateId(),
                 item.getEnvironmentId(),
-                variables
+                variables,
+                executeType
             );
         } catch (Exception e) {
             return Map.of(

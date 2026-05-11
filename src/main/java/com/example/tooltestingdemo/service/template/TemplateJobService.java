@@ -54,13 +54,6 @@ public interface TemplateJobService extends IService<TemplateJob> {
     Map<String, Object> triggerJob(Long id);
 
     /**
-     * 批量触发执行任务
-     * @param ids 任务ID数组
-     * @return 结果包含 successIds 与 failIds
-     */
-    Map<String, Object> batchTriggerJobs(Long[] ids);
-
-    /**
      * 批量停止任务（停用并取消调度）
      * @param ids 任务ID数组
      * @return 结果包含 successIds 与 failIds

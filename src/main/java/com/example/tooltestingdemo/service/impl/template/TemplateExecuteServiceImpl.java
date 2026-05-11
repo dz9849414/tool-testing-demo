@@ -52,6 +52,16 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
      */
     public Map<String, Object> executeTemplateForJob(Long jobId, String jobName, Long templateId,
                                                       Long environmentId, Map<String, Object> variables) {
+        return executeTemplateForJob(jobId, jobName, templateId, environmentId, variables, "JOB");
+    }
+
+    /**
+     * 供任务调用的执行方法，可显式区分手动触发和定时调度
+     */
+    @Override
+    public Map<String, Object> executeTemplateForJob(Long jobId, String jobName, Long templateId,
+                                                      Long environmentId, Map<String, Object> variables,
+                                                      String executeType) {
         log.info("定时任务执行模板: jobId={}, 模板id={}", jobId, templateId);
 
         ExecutionRequest request = ExecutionRequest.builder()
@@ -65,8 +75,12 @@ public class TemplateExecuteServiceImpl implements TemplateExecuteService {
 
         ExecutionResult result = executionEngine.execute(request);
         Map<String, Object> legacy = convertToLegacyFormat(result);
-        saveExecuteLog(jobId, jobName, templateId, environmentId, "JOB", legacy, null, null);
+        saveExecuteLog(jobId, jobName, templateId, environmentId, normalizeExecuteType(executeType), legacy, null, null);
         return legacy;
+    }
+
+    private String normalizeExecuteType(String executeType) {
+        return "MANUAL".equalsIgnoreCase(executeType) ? "MANUAL" : "JOB";
     }
 
     private void saveExecuteLog(Long jobId, String jobName, Long templateId, Long environmentId,
