@@ -2,6 +2,7 @@ package com.example.tooltestingdemo.service.impl.report;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONException;
 import com.alibaba.fastjson2.JSONObject;
 import com.example.tooltestingdemo.dto.report.CompareResultDTO;
 import com.example.tooltestingdemo.dto.report.FailureTimelineDTO;
@@ -26,8 +27,8 @@ import java.util.*;
 /**
  * 模板统计服务实现类
  */
-@Service
 @Slf4j
+@Service
 @RequiredArgsConstructor
 public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService {
 
@@ -1254,14 +1255,14 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
                 endTime = end.atTime(23, 59, 59);
             }
             
-            // 根据报告类型获取统计信息
+            // 根据报告类型获取统计信息 - 从execute_result字段提取URL进行统计
             Map<String, Object> reportData;
             switch (reportType != null ? reportType.toUpperCase() : "CATEGORY") {
                 case "CATEGORY":
                 default:
-                    // 查询指定日期范围内的协议类型分布统计
-                    List<Map<String, Object>> categoryStats = templateStatisticsMapper.getProtocolCategoryStats(startTime, endTime);
-                    reportData = buildProtocolCategoryData(categoryStats);
+                    // 从pdm_tool_template_execute_log表的execute_result字段获取URL进行统计
+                    List<Map<String, Object>> executeLogs = templateStatisticsMapper.getExecuteLogUrls(startTime, endTime);
+                    reportData = buildProtocolCategoryDataFromExecuteLogs(executeLogs);
                     break;
             }
             
@@ -1269,7 +1270,7 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
             StatisticsReportDTO report = new StatisticsReportDTO();
             report.setId(System.currentTimeMillis());
             report.setName("协议类型分布统计报告 - " + getReportTypeDisplayName(reportType) + " - " + startDate + " 至 " + endDate);
-            report.setDescription("基于协议测试记录生成的" + getReportTypeDisplayName(reportType) + "分布统计报告");
+            report.setDescription("基于执行日志URL生成的" + getReportTypeDisplayName(reportType) + "分布统计报告");
             
             // 将content改为JSON数组格式
             JSONArray contentArray = new JSONArray();
@@ -1314,6 +1315,96 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
         reportData.put("generateTime", LocalDate.now().format(DateTimeFormatter.ISO_DATE));
         
         return reportData;
+    }
+
+    /**
+     * 从执行日志中提取URL并构建协议分类分布数据
+     */
+    private Map<String, Object> buildProtocolCategoryDataFromExecuteLogs(List<Map<String, Object>> executeLogs) {
+        Map<String, Object> reportData = new HashMap<>();
+        
+        // 统计各协议类型的调用次数
+        Map<String, Long> protocolCountMap = new HashMap<>();
+        
+        for (Map<String, Object> logEntry : executeLogs) {
+            String executeResult = safeGetString(logEntry, "execute_result");
+            if (executeResult == null || executeResult.isEmpty()) {
+                continue;
+            }
+            
+            try {
+                JSONObject resultJson = JSONObject.parseObject(executeResult);
+                if (resultJson != null && resultJson.containsKey("request")) {
+                    JSONObject requestJson = resultJson.getJSONObject("request");
+                    if (requestJson != null && requestJson.containsKey("url")) {
+                        String url = requestJson.getString("url");
+                        if (url != null && !url.isEmpty()) {
+                            String protocol = extractProtocolFromUrl(url);
+                            protocolCountMap.merge(protocol, 1L, Long::sum);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("解析execute_result JSON失败: {}", e.getMessage());
+            }
+        }
+        
+        // 构建分类数据列表
+        List<Map<String, Object>> categoryData = new ArrayList<>();
+        int totalProtocolCount = 0;
+        
+        for (Map.Entry<String, Long> entry : protocolCountMap.entrySet()) {
+            Map<String, Object> categoryInfo = new HashMap<>();
+            categoryInfo.put("category", entry.getKey());
+            categoryInfo.put("categoryName", entry.getKey());
+            categoryInfo.put("protocolCount", entry.getValue());
+            
+            categoryData.add(categoryInfo);
+            totalProtocolCount += entry.getValue();
+        }
+        
+        // 按调用次数降序排序
+        categoryData.sort((a, b) -> Long.compare(
+            (Long) b.getOrDefault("protocolCount", 0L),
+            (Long) a.getOrDefault("protocolCount", 0L)
+        ));
+        
+        reportData.put("categoryData", categoryData);
+        reportData.put("totalProtocolCount", totalProtocolCount);
+        reportData.put("reportType", "CATEGORY");
+        reportData.put("reportTypeName", "按协议分类");
+        reportData.put("generateTime", LocalDate.now().format(DateTimeFormatter.ISO_DATE));
+        
+        return reportData;
+    }
+
+    /**
+     * 从URL中提取协议类型
+     */
+    private String extractProtocolFromUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            return "UNKNOWN";
+        }
+        
+        if (url.startsWith("https://")) {
+            return "HTTPS";
+        } else if (url.startsWith("http://")) {
+            return "HTTP";
+        } else if (url.startsWith("ftp://")) {
+            return "FTP";
+        } else if (url.startsWith("ws://")) {
+            return "WebSocket";
+        } else if (url.startsWith("wss://")) {
+            return "WebSocket Secure";
+        } else {
+            // 尝试从URL中提取协议部分
+            int colonIndex = url.indexOf(':');
+            if (colonIndex > 0) {
+                String protocol = url.substring(0, colonIndex).toUpperCase();
+                return protocol;
+            }
+            return "UNKNOWN";
+        }
     }
 
     /**

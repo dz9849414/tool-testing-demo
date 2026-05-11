@@ -444,6 +444,20 @@ public interface TemplateStatisticsMapper {
                                                     @Param("endTime") LocalDateTime endTime);
 
     /**
+     * 获取执行日志中的请求URL（用于协议类型统计）
+     */
+    @Select("<script>" +
+            "SELECT execute_result " +
+            "FROM pdm_tool_template_execute_log " +
+            "WHERE execute_result IS NOT NULL " +
+            "<if test=\"startTime != null and endTime != null\">" +
+            "AND create_time BETWEEN #{startTime} AND #{endTime} " +
+            "</if>" +
+            "</script>")
+    List<Map<String, Object>> getExecuteLogUrls(@Param("startTime") LocalDateTime startTime,
+                                                @Param("endTime") LocalDateTime endTime);
+
+    /**
      * 获取协议测试类型分布统计
      */
     @Select("SELECT " +
