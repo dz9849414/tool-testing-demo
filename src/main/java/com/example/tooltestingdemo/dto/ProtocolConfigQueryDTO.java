@@ -49,4 +49,9 @@ public class ProtocolConfigQueryDTO extends PageQuery {
     @Schema(description = "修改结束时间（yyyy-MM-dd HH:mm:ss）", example = "2026-04-30 23:59:59")
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTimeEnd;
+
+    /**
+     * 1-配置认证方式导出，2-配置数据格式导出，3-配置协议端口导出，4-配置重试机制导出，5-配置超时时间导出，6-配置协议URL导出（0或者null导出全部）
+     */
+    private Integer flag;
 }
