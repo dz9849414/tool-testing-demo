@@ -754,6 +754,7 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
                 try {
                     List<Map<String, Object>> resultList = JSON.parseObject(logEntity.getExecuteResult(), new TypeReference<List<Map<String, Object>>>() {
                     });
+                    boolean hasTemplateResult = resultList.stream().anyMatch(this::isTemplateExecutionResult);
                     for (Map<String, Object> item : resultList) {
                         TemplateJobLogItemVO itemVO = new TemplateJobLogItemVO();
                         itemVO.setTemplateId(getLongValue(item.get(ApiResultKeys.TEMPLATE_ID.getKey())));
@@ -768,6 +769,9 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
                         itemVO.setVariables(getMapValue(item, "variables"));
                         results.add(itemVO);
 
+                        if (hasTemplateResult && !isTemplateExecutionResult(item)) {
+                            continue;
+                        }
                         if (Boolean.TRUE.equals(item.get(ApiResultKeys.SUCCESS.getKey()))) {
                             successCount++;
                         } else {
@@ -1406,7 +1410,11 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
             List<Map<String, Object>> resultList =
                 JSON.parseObject(json, new TypeReference<>() {
                 });
+            boolean hasTemplateResult = resultList.stream().anyMatch(this::isTemplateExecutionResult);
             for (Map<String, Object> item : resultList) {
+                if (hasTemplateResult && !isTemplateExecutionResult(item)) {
+                    continue;
+                }
                 if (Boolean.TRUE.equals(item.get(ApiResultKeys.SUCCESS.getKey()))) {
                     success++;
                 } else {
@@ -1418,6 +1426,14 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
         }
 
         return new Summary(success, fail);
+    }
+
+    private boolean isTemplateExecutionResult(Map<String, Object> item) {
+        if (item == null) {
+            return false;
+        }
+        Object templateId = item.get(ApiResultKeys.TEMPLATE_ID.getKey());
+        return templateId != null && StringUtils.hasText(String.valueOf(templateId));
     }
 
     private Map<String, Object> convertJobForExport(TemplateJob job) {

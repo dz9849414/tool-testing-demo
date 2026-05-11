@@ -5,12 +5,14 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.tooltestingdemo.common.ErrorStatus;
 import com.example.tooltestingdemo.dto.ProtocolConfigCreateDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigModifyDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigQueryDTO;
 import com.example.tooltestingdemo.dto.ProtocolConfigStatusUpdateDTO;
 import com.example.tooltestingdemo.entity.protocol.ProtocolConfig;
 import com.example.tooltestingdemo.entity.protocol.ProtocolFileImportExport;
+import com.example.tooltestingdemo.exception.BusinessException;
 import com.example.tooltestingdemo.mapper.protocol.ProtocolConfigMapper;
 import com.example.tooltestingdemo.service.SecurityService;
 import com.example.tooltestingdemo.service.protocol.IProtocolConfigService;
@@ -68,6 +70,9 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ProtocolConfig createProtocolConfig(ProtocolConfigCreateDTO dto) {
+        if (Objects.isNull(dto.getProtocolId())) {
+            throw new BusinessException(ErrorStatus.INTERNAL_SERVER_ERROR, "协议类型ID不能为空");
+        }
         log.info("服务-新增协议配置开始, protocolId={}, configName={}", dto.getProtocolId(), dto.getConfigName());
         validateUrlConfig(dto.getUrlConfigList());
         validateAuthConfig(dto.getAuthConfigList());
@@ -947,17 +952,17 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         Long currentUserId = securityService.getCurrentUserId();
         return currentUserId == null ? 1L : currentUserId;
     }
-    
+
     @Override
     public java.util.List<com.example.tooltestingdemo.vo.ProtocolPermissionVO.AssignablePermission> getAssignableProtocols() {
         log.info("服务-查询可分配协议权限开始");
         // 查询所有启用的协议配置
         LambdaQueryWrapper<ProtocolConfig> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(ProtocolConfig::getStatus, 1) // 只查询启用的协议配置
-                  .eq(ProtocolConfig::getIsDeleted, 0); // 只查询未删除的协议配置
-        
+                .eq(ProtocolConfig::getIsDeleted, 0); // 只查询未删除的协议配置
+
         List<ProtocolConfig> protocolConfigs = this.list(queryWrapper);
-        
+
         // 转换为AssignablePermission对象
         List<com.example.tooltestingdemo.vo.ProtocolPermissionVO.AssignablePermission> assignablePermissions = protocolConfigs.stream()
                 .map(this::convertToAssignablePermission)
@@ -965,13 +970,13 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         log.info("服务-查询可分配协议权限完成, count={}", assignablePermissions.size());
         return assignablePermissions;
     }
-    
+
     /**
      * 将ProtocolConfig转换为AssignablePermission
      */
     private com.example.tooltestingdemo.vo.ProtocolPermissionVO.AssignablePermission convertToAssignablePermission(ProtocolConfig protocolConfig) {
-        com.example.tooltestingdemo.vo.ProtocolPermissionVO.AssignablePermission permission = 
-            new com.example.tooltestingdemo.vo.ProtocolPermissionVO.AssignablePermission();
+        com.example.tooltestingdemo.vo.ProtocolPermissionVO.AssignablePermission permission =
+                new com.example.tooltestingdemo.vo.ProtocolPermissionVO.AssignablePermission();
         // 使用协议配置ID作为协议代码
         permission.setProtocolCode(String.valueOf(protocolConfig.getId()));
         permission.setProtocolName(protocolConfig.getProtocolName());
@@ -979,6 +984,6 @@ public class ProtocolConfigServiceImpl extends ServiceImpl<ProtocolConfigMapper,
         permission.setCategory(protocolConfig.getConfigName());
         return permission;
     }
-    
+
 
 }
