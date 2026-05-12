@@ -87,6 +87,16 @@ public interface ITemplateStatisticsService {
     StatisticsReportDTO getWeeklyExecutionReport(String startDate, String endDate, String dataSource);
 
     /**
+     * 获取日执行量统计报告（按天统计）
+     * 
+     * @param startDate 开始日期
+     * @param endDate 结束日期
+     * @param dataSource 数据源：JOB_LOG（定时任务）/UNIFIED（手动+定时）/EXECUTE_LOG（执行日志）
+     * @return 日执行量统计报告（按天统计）
+     */
+    StatisticsReportDTO getDailyExecutionReport(String startDate, String endDate, String dataSource);
+
+    /**
      * 获取成功率分析报告（成功失败占比）
      * 
      * @param startDate 开始日期

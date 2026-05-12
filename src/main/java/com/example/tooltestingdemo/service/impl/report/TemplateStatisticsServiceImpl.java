@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -1069,6 +1070,155 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
     }
 
     /**
+     * 获取日执行量统计报告（按天统计）
+     */
+    public StatisticsReportDTO getDailyExecutionReport(String startDate, String endDate, String dataSource) {
+        try {
+            // 参数验证
+            if (startDate == null || endDate == null) {
+                throw new IllegalArgumentException("开始日期和结束日期不能为空");
+            }
+            
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+            
+            if (start.isAfter(end)) {
+                throw new IllegalArgumentException("开始日期不能晚于结束日期");
+            }
+            
+            LocalDateTime startTime = start.atStartOfDay();
+            LocalDateTime endTime = end.atTime(23, 59, 59);
+            
+            // 根据数据源获取统计信息
+            List<Map<String, Object>> dailyStats;
+            switch (dataSource != null ? dataSource.toUpperCase() : "EXECUTE_LOG") {
+                case "UNIFIED":
+                    dailyStats = templateStatisticsMapper.getDailyExecutionStatsToUnified(startTime, endTime);
+                    break;
+                case "JOB_LOG":
+                    dailyStats = templateStatisticsMapper.getDailyExecutionStatsToJob(startTime, endTime);
+                    break;
+                case "JOB_BATCH":
+                    dailyStats = templateStatisticsMapper.getDailyExecutionStatsToJob(startTime, endTime);
+                    break;
+                case "EXECUTE_LOG":
+                default:
+                    dailyStats = templateStatisticsMapper.getDailyExecutionStatsToUnified(startTime, endTime);
+                    break;
+            }
+            
+            // 构建报告数据
+            Map<String, Object> reportData = buildDailyExecutionData(dailyStats, dataSource, start, end);
+            
+            // 构建报告DTO
+            StatisticsReportDTO report = new StatisticsReportDTO();
+            report.setId(System.currentTimeMillis());
+            report.setName("日执行量统计报告 - " + getDataSourceDisplayName(dataSource) + " - " + startDate + " 至 " + endDate);
+            report.setDescription("基于" + getDataSourceDisplayName(dataSource) + "生成的日执行量统计报告（按天统计）");
+            JSONArray contentArray = new JSONArray();
+            contentArray.add(reportData);
+            report.setContent(contentArray);
+            report.setCreateTime(LocalDateTime.now());
+            
+            return report;
+        } catch (Exception e) {
+            log.error("获取日执行量统计报告失败", e);
+            throw new RuntimeException("获取日执行量统计报告失败：" + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 构建日执行量统计数据（按天统计）
+     */
+    private Map<String, Object> buildDailyExecutionData(List<Map<String, Object>> dailyStats, String dataSource, LocalDate startDate, LocalDate endDate) {
+        Map<String, Object> reportData = new HashMap<>();
+        
+        // 初始化日期范围内每天的数据结构
+        List<Map<String, Object>> dayDataList = new ArrayList<>();
+        Map<String, Object> dayDataMap = new LinkedHashMap<>();
+        
+        LocalDate currentDate = startDate;
+        while (!currentDate.isAfter(endDate)) {
+            String dateStr = currentDate.toString();
+            Map<String, Object> dayData = new HashMap<>();
+            dayData.put("date", dateStr);
+            dayData.put("dayLabel", currentDate.getDayOfMonth() + "日");
+            dayData.put("dayOfWeek", translateDayNameToChinese(currentDate.getDayOfWeek().name()));
+            dayData.put("executionCount", 0L);
+            dayData.put("typeDetails", new ArrayList<Map<String, Object>>());
+            dayDataList.add(dayData);
+            dayDataMap.put(dateStr, dayData);
+            currentDate = currentDate.plusDays(1);
+        }
+        
+        long totalExecutions = 0;
+        
+        // 填充实际统计数据
+        for (Map<String, Object> stat : dailyStats) {
+            String dateStr = safeGetString(stat, "date_str");
+            BigDecimal executionCount = safeGetBigDecimal(stat, "execution_count");
+            
+            if (dateStr != null && dayDataMap.containsKey(dateStr)) {
+                Map<String, Object> dayData = (Map<String, Object>) dayDataMap.get(dateStr);
+                
+                long currentCount = dayData.containsKey("executionCount") ? ((Number) dayData.get("executionCount")).longValue() : 0;
+                long newCount = executionCount != null ? executionCount.longValue() : 0;
+                dayData.put("executionCount", currentCount + newCount);
+                totalExecutions += newCount;
+                
+                // 添加执行类型详情
+                String executeType = safeGetString(stat, "execute_type");
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> typeDetails = (List<Map<String, Object>>) dayData.get("typeDetails");
+                
+                Map<String, Object> typeDetail = new HashMap<>();
+                typeDetail.put("executeType", executeType);
+                typeDetail.put("count", newCount);
+                typeDetails.add(typeDetail);
+            }
+        }
+        
+        reportData.put("startDate", startDate.toString());
+        reportData.put("endDate", endDate.toString());
+        reportData.put("dayData", dayDataList);
+        
+        // 计算摘要信息
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("totalExecutions", totalExecutions);
+        int days = (int) ChronoUnit.DAYS.between(startDate, endDate) + 1;
+        summary.put("avgExecutionsPerDay", totalExecutions > 0 ? Math.round(totalExecutions / (double) days * 100.0) / 100.0 : 0);
+        summary.put("days", days);
+        
+        // 找出执行量最高和最低的日期
+        long maxCount = 0;
+        long minCount = Long.MAX_VALUE;
+        String maxDate = startDate.toString();
+        String minDate = startDate.toString();
+        
+        for (Map<String, Object> dayData : dayDataList) {
+            long count = ((Number) dayData.get("executionCount")).longValue();
+            String dateStr = (String) dayData.get("date");
+            if (count > maxCount) {
+                maxCount = count;
+                maxDate = dateStr;
+            }
+            if (count < minCount) {
+                minCount = count;
+                minDate = dateStr;
+            }
+        }
+        
+        summary.put("peakDate", maxDate);
+        summary.put("peakExecutions", maxCount);
+        summary.put("lowestDate", minDate);
+        summary.put("lowestExecutions", minCount == Long.MAX_VALUE ? 0 : minCount);
+        
+        reportData.put("summary", summary);
+        
+        return reportData;
+    }
+
+    /**
      * 构建周一到周日执行量统计数据
      */
     private Map<String, Object> buildWeeklyExecutionData(List<Map<String, Object>> weeklyStats, String dataSource, LocalDate startDate, LocalDate endDate) {
@@ -1866,9 +2016,18 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
                 result.setSummary1(calculateFailureReasonsSummary(failureReasonsData1));
                 result.setSummary2(calculateFailureReasonsSummary(failureReasonsData2));
                 break;
+            case "DAILY_EXECUTION":
+                // 调用日执行量统计接口（按天统计）
+                StatisticsReportDTO dailyReport1 = getDailyExecutionReport(group1StartDate, group1EndDate, dataSource);
+                StatisticsReportDTO dailyReport2 = getDailyExecutionReport(group2StartDate, group2EndDate, dataSource);
+                result.setData1(extractDailyExecutionCompareData(dailyReport1));
+                result.setData2(extractDailyExecutionCompareData(dailyReport2));
+                result.setSummary1(extractDailyExecutionSummary(dailyReport1));
+                result.setSummary2(extractDailyExecutionSummary(dailyReport2));
+                break;
             case "WEEKLY_EXECUTION":
             default:
-                // 调用现有的日执行量统计接口
+                // 调用周执行量统计接口
                 StatisticsReportDTO weeklyReport1 = getWeeklyExecutionReport(group1StartDate, group1EndDate, dataSource);
                 StatisticsReportDTO weeklyReport2 = getWeeklyExecutionReport(group2StartDate, group2EndDate, dataSource);
                 result.setData1(extractWeeklyExecutionCompareData(weeklyReport1));
@@ -1904,6 +2063,40 @@ public class TemplateStatisticsServiceImpl implements ITemplateStatisticsService
             }
         }
         return result;
+    }
+
+    /**
+     * 从日执行量报告中提取对比数据
+     */
+    private List<Map<String, Object>> extractDailyExecutionCompareData(StatisticsReportDTO report) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        if (report != null && report.getContent() != null && !report.getContent().isEmpty()) {
+            Map<String, Object> reportData = report.getContent().getJSONObject(0);
+            if (reportData != null && reportData.containsKey("dayData")) {
+                List<Map<String, Object>> dayData = (List<Map<String, Object>>) reportData.get("dayData");
+                for (Map<String, Object> day : dayData) {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("name", day.getOrDefault("dayLabel", ""));
+                    item.put("value", day.getOrDefault("executionCount", 0));
+                    result.add(item);
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 从日执行量报告中提取摘要
+     */
+    private Map<String, Object> extractDailyExecutionSummary(StatisticsReportDTO report) {
+        Map<String, Object> summary = new HashMap<>();
+        if (report != null && report.getContent() != null && !report.getContent().isEmpty()) {
+            Map<String, Object> reportData = report.getContent().getJSONObject(0);
+            if (reportData != null && reportData.containsKey("summary")) {
+                summary = (Map<String, Object>) reportData.get("summary");
+            }
+        }
+        return summary;
     }
 
     /**

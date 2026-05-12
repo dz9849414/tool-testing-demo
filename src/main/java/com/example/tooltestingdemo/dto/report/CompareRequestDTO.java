@@ -10,7 +10,8 @@ public class CompareRequestDTO {
     
     /**
      * 报告类型
-     * WEEKLY_EXECUTION - 日执行量统计
+     * DAILY_EXECUTION - 日执行量统计（小时级别）
+     * WEEKLY_EXECUTION - 周执行量统计（按天）
      * SUCCESS_RATE - 成功率分析
      * RESPONSE_TIME - 平均响应时间
      * PROTOCOL_DISTRIBUTION - 协议类型分布

@@ -363,6 +363,35 @@ public interface TemplateStatisticsMapper {
     List<Map<String, Object>> getExecutionWeeklyExecutionStatsToUnified(@Param("startTime") LocalDateTime startTime,
                                                            @Param("endTime") LocalDateTime endTime);
 
+    /**
+     * 获取日执行量统计（UNIFIED数据源）- 按天统计
+     */
+    @Select("SELECT " +
+            "DATE(create_time) as date_str, " +
+            "execute_type, " +
+            "COUNT(*) as execution_count " +
+            "FROM pdm_tool_template_execute_log " +
+            "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
+            "GROUP BY DATE(create_time), execute_type " +
+            "ORDER BY DATE(create_time)")
+    List<Map<String, Object>> getDailyExecutionStatsToUnified(@Param("startTime") LocalDateTime startTime,
+                                                           @Param("endTime") LocalDateTime endTime);
+
+    /**
+     * 获取日执行量统计（JOB数据源）- 按天统计
+     */
+    @Select("SELECT " +
+            "DATE(create_time) as date_str, " +
+            "execute_type, " +
+            "COUNT(*) as execution_count " +
+            "FROM pdm_tool_template_execute_log " +
+            "WHERE create_time BETWEEN #{startTime} AND #{endTime} " +
+            "AND execute_type = 'JOB' " +
+            "GROUP BY DATE(create_time), execute_type " +
+            "ORDER BY DATE(create_time)")
+    List<Map<String, Object>> getDailyExecutionStatsToJob(@Param("startTime") LocalDateTime startTime,
+                                                          @Param("endTime") LocalDateTime endTime);
+
     // ====================== 成功率分析统计方法 ======================
 
     /**

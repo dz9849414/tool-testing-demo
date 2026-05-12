@@ -199,6 +199,29 @@ public class TemplateStatisticsController {
         }
     }
 
+    @GetMapping("/daily-execution")
+    @Operation(summary = "获取日执行量统计报告（按天统计）")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:view')")
+    public Result<StatisticsReportDTO> getDailyExecutionReport(
+            @RequestParam String startDate,
+            @RequestParam String endDate,
+            @RequestParam(defaultValue = "EXECUTE_LOG") String dataSource) {
+        try {
+            // 参数校验
+            if (dataSource != null && !dataSource.trim().isEmpty()) {
+                String validDataSource = dataSource.toUpperCase();
+                if (!validDataSource.equals("JOB_LOG") && !validDataSource.equals("UNIFIED") && !validDataSource.equals("EXECUTE_LOG")) {
+                    return Result.error("数据源参数不正确，请使用JOB_LOG/UNIFIED/EXECUTE_LOG");
+                }
+            }
+
+            StatisticsReportDTO report = templateStatisticsService.getDailyExecutionReport(startDate, endDate, dataSource);
+            return Result.success("日执行量统计报告获取成功", report);
+        } catch (Exception e) {
+            return Result.error("获取日执行量统计报告失败：" + e.getMessage());
+        }
+    }
+
     @GetMapping("/success-rate")
     @Operation(summary = "获取成功率分析报告（成功失败占比）")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:view')")
@@ -306,11 +329,12 @@ public class TemplateStatisticsController {
             // 验证报告类型
             String reportType = request.getReportType().toUpperCase();
             if (!reportType.equals("WEEKLY_EXECUTION") && 
+                !reportType.equals("DAILY_EXECUTION") && 
                 !reportType.equals("SUCCESS_RATE") && 
                 !reportType.equals("RESPONSE_TIME") && 
                 !reportType.equals("PROTOCOL_DISTRIBUTION") && 
                 !reportType.equals("FAILURE_REASONS")) {
-                return Result.error("报告类型不正确，请使用WEEKLY_EXECUTION/SUCCESS_RATE/RESPONSE_TIME/PROTOCOL_DISTRIBUTION/FAILURE_REASONS");
+                return Result.error("报告类型不正确，请使用WEEKLY_EXECUTION/DAILY_EXECUTION/SUCCESS_RATE/RESPONSE_TIME/PROTOCOL_DISTRIBUTION/FAILURE_REASONS");
             }
             
             // 验证日期参数

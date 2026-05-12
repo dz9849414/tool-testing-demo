@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.dto.common.PageResult;
 import com.example.tooltestingdemo.dto.report.*;
@@ -109,23 +110,31 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     }
 
     @Override
-    public List<ReportDTO> getReportList(String reportType, String status) {
+    public PageResult<ReportDTO> getReportList(Integer pageNum, Integer pageSize, String reportType, String status) {
         LambdaQueryWrapper<Report> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Report::getIsDeleted, 0);
         
-        if (reportType != null) {
+        if (reportType != null && !reportType.trim().isEmpty()) {
             queryWrapper.eq(Report::getReportType, reportType);
         }
         
-        if (status != null) {
+        if (status != null && !status.trim().isEmpty()) {
             queryWrapper.eq(Report::getStatus, status);
         }
         
         queryWrapper.orderByDesc(Report::getCreateTime);
         
-        List<Report> reports = reportMapper.selectList(queryWrapper);
+        // 分页查询
+        Page<Report> page = new Page<>(pageNum, pageSize);
+        Page<Report> resultPage = reportMapper.selectPage(page, queryWrapper);
         
-        return reports.stream().map(this::convertToDTO).collect(Collectors.toList());
+        List<ReportDTO> dtoList = resultPage.getRecords().stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+        
+        // 显式指定泛型类型
+        PageResult<ReportDTO> pageResult = new PageResult<>(pageNum, pageSize, resultPage.getTotal(), dtoList);
+        return pageResult;
     }
 
     @Override
@@ -1353,6 +1362,9 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                     generateProtocolDistributionReportContent(document, font, report.getContent(), coverStream);
                 } else if ("WEEKLY_EXECUTION".equalsIgnoreCase(report.getReportType()) && report.getContent() != null && !report.getContent().trim().isEmpty()) {
                     // 处理 WEEKLY_EXECUTION 类型报告
+                    generateWeeklyExecutionReportContent(document, font, report.getContent(), coverStream);
+                } else if ("DAILY_EXECUTION".equalsIgnoreCase(report.getReportType()) && report.getContent() != null && !report.getContent().trim().isEmpty()) {
+                    // 处理 DAILY_EXECUTION 类型报告（与周执行量使用相同的生成方法）
                     generateWeeklyExecutionReportContent(document, font, report.getContent(), coverStream);
                 } else {
                     // 其他类型：继续在第一页输出部分内容
@@ -3579,6 +3591,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             case "RESPONSE_TIME": return "响应时间分析";
             case "FAILURE_REASONS": return "失败原因分析";
             case "WEEKLY_EXECUTION": return "周执行量统计";
+            case "DAILY_EXECUTION": return "日执行量统计";
             case "SUCCESS_RATE": return "成功率分析";
             case "AUTO_GENERATED": return "自动生成报告";
             default: return reportType;

@@ -132,11 +132,13 @@ public class ReportController {
     @GetMapping
     @Operation(summary = "获取报告列表")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:view')")
-    public Result<List<ReportDTO>> getReportList(
+    public Result<PageResult<ReportDTO>> getReportList(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
             @RequestParam(required = false) String reportType,
             @RequestParam(required = false) String status) {
         try {
-            List<ReportDTO> reports = reportService.getReportList(reportType, status);
+            PageResult<ReportDTO> reports = reportService.getReportList(pageNum, pageSize, reportType, status);
             return Result.success(reports);
         } catch (Exception e) {
             return Result.error("获取报告列表失败：" + e.getMessage());

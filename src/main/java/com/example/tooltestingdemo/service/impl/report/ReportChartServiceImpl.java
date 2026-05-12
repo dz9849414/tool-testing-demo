@@ -12,12 +12,16 @@ import com.example.tooltestingdemo.entity.report.ReportChart;
 import com.example.tooltestingdemo.mapper.report.ReportChartMapper;
 import com.example.tooltestingdemo.mapper.report.ReportMapper;
 import com.example.tooltestingdemo.service.report.IReportChartService;
+import com.example.tooltestingdemo.service.report.ITemplateStatisticsService;
+import com.example.tooltestingdemo.dto.report.StatisticsReportDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,6 +37,7 @@ public class ReportChartServiceImpl extends ServiceImpl<ReportChartMapper, Repor
 
     private final ReportChartMapper reportChartMapper;
     private final ReportMapper reportMapper;
+    private final ITemplateStatisticsService templateStatisticsService;
 
     @Override
     public Long createChart(ReportChartDTO chartDTO) {
@@ -542,23 +547,24 @@ public class ReportChartServiceImpl extends ServiceImpl<ReportChartMapper, Repor
             queryWrapper.eq(Report::getIsDeleted, 0);
             
             // 时间范围筛选
+            LocalDateTime startDateTime = null;
+            LocalDateTime endDateTime = null;
             if (startTime != null && endTime != null) {
                 queryWrapper.between(Report::getCreateTime, startTime, endTime);
+                startDateTime = LocalDateTime.parse(startTime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                endDateTime = LocalDateTime.parse(endTime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
             } else if (timeRange != null) {
                 // 根据预定义时间范围筛选
                 LocalDateTime[] dateRange = calculateDateRange(timeRange);
                 if (dateRange != null) {
                     queryWrapper.between(Report::getCreateTime, dateRange[0], dateRange[1]);
+                    startDateTime = dateRange[0];
+                    endDateTime = dateRange[1];
                 }
             }
             
             // 获取符合条件的报告
             List<Report> reports = reportMapper.selectList(queryWrapper);
-            
-            if (reports.isEmpty()) {
-                JSONObject emptyData = new JSONObject();
-                return createTimeRangeResult(startTime, endTime, timeRange, emptyData, "无数据");
-            }
             
             // 分析报告数据
             JSONObject chartData = new JSONObject();
@@ -599,6 +605,37 @@ public class ReportChartServiceImpl extends ServiceImpl<ReportChartMapper, Repor
                 }
             }
             
+            // 添加DAILY_EXECUTION数据（从模板统计服务获取）
+            if (startDateTime != null && endDateTime != null) {
+                try {
+                    String startDate = startDateTime.toLocalDate().toString();
+                    String endDate = endDateTime.toLocalDate().toString();
+                    
+                    // 调用日执行量统计接口获取数据
+                    StatisticsReportDTO dailyReport = templateStatisticsService.getDailyExecutionReport(startDate, endDate, "EXECUTE_LOG");
+                    
+                    if (dailyReport != null && dailyReport.getContent() != null && !dailyReport.getContent().isEmpty()) {
+                        JSONObject dailyContent = dailyReport.getContent().getJSONObject(0);
+                        if (dailyContent.containsKey("summary")) {
+                            JSONObject summary = dailyContent.getJSONObject("summary");
+                            Long totalExecutions = summary.getLong("totalExecutions");
+                            
+                            // 更新DAILY_EXECUTION类型的统计
+                            String dailyType = "DAILY_EXECUTION";
+                            int currentCount = reportTypeCount.getOrDefault(dailyType, 0);
+                            reportTypeCount.put(dailyType, currentCount + 1);
+                            
+                            if (totalExecutions != null) {
+                                totalCountByType.put(dailyType, 
+                                    totalCountByType.getOrDefault(dailyType, 0) + totalExecutions.intValue());
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("获取DAILY_EXECUTION数据失败: {}"+ e.getMessage());
+                }
+            }
+            
             // 构建图表数据
             for (Map.Entry<String, Integer> entry : reportTypeCount.entrySet()) {
                 String reportType = entry.getKey();
@@ -629,7 +666,7 @@ public class ReportChartServiceImpl extends ServiceImpl<ReportChartMapper, Repor
             chartData.put("data", dataArray);
             chartData.put("title", "时间范围分析 - " + calculateTimePeriod(startTime, endTime, timeRange));
             chartData.put("type", "BAR");
-            chartData.put("reportCount", reports.size());
+            chartData.put("reportCount", reports.size() + (reportTypeCount.containsKey("DAILY_EXECUTION") ? 1 : 0));
             chartData.put("reportTypes", reportTypeCount.size());
             
             return createTimeRangeResult(startTime, endTime, timeRange, chartData, "时间范围数据分析完成");

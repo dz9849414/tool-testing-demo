@@ -29,9 +29,10 @@ public interface IReportService extends IService<Report> {
     Boolean deleteReport(Long id);
     
     /**
-     * 获取报告列表
+     * 获取报告列表（支持分页）
      */
-    List<ReportDTO> getReportList(String reportType, String status);
+    PageResult<ReportDTO> getReportList(Integer pageNum, Integer pageSize, String reportType, String status);
+
     
     /**
      * 获取报告详情
