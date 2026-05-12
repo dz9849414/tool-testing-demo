@@ -33,7 +33,7 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
             // 其他值暂时不处理，按默认逻辑
         } else {
             // 不传值：查除了协议模块的范围
-            queryWrapper.ne(SysPermission::getModule, "protocol");
+//            queryWrapper.ne(SysPermission::getModule, "protocol");
         }
         
         queryWrapper.orderByAsc(SysPermission::getModule)

@@ -779,8 +779,36 @@ INSERT IGNORE INTO `pdm_tool_sys_menu` (`id`, `name`, `code`, `description`, `mo
 ('m187', '角色搜索', 'system:role:search', '角色搜索功能', 'system', 'BUTTON', 'm170', 3, 155, 1),
 ('m188', '角色关联', 'system:role:relate', '角色关联功能', 'system', 'BUTTON', 'm170', 3, 156, 1);
 
+-- ====================== 六、报告管理API权限（补充ReportController接口权限） ======================
+-- 报告管理API权限（与ReportController中@PreAuthorize注解对应）
+INSERT IGNORE INTO `pdm_tool_sys_permission` (`id`, `name`, `code`, `description`, `module`, `type`, `parent_id`, `level`, `sort`) VALUES
+-- 报告基础操作权限
+('report_p1', '创建报告', 'report:create', '创建报告接口权限', 'report', 'API', 'p1', 2, 1),
+('report_p2', '更新报告', 'report:update', '更新报告接口权限', 'report', 'API', 'p1', 2, 2),
+('report_p3', '删除报告', 'report:delete', '删除报告接口权限', 'report', 'API', 'p1', 2, 3),
+('report_p4', '查看报告', 'report:view', '查看报告接口权限', 'report', 'API', 'p1', 2, 4),
+('report_p5', '自动生成报告', 'report:auto-generate', '自动生成报告接口权限', 'report', 'API', 'p1', 2, 5),
+('report_p6', '预览报告', 'report:preview', '预览报告接口权限', 'report', 'API', 'p1', 2, 6),
+('report_p7', '导出报告', 'report:export', '导出报告接口权限', 'report', 'API', 'p1', 2, 7),
+('report_p8', '批量导出报告', 'report:batch-export', '批量导出报告接口权限', 'report', 'API', 'p1', 2, 8),
+('report_p9', '设置定时生成', 'report:schedule', '设置定时生成接口权限', 'report', 'API', 'p1', 2, 9),
+('report_p10', '获取报告统计', 'report:statistics', '获取报告统计接口权限', 'report', 'API', 'p1', 2, 10);
+
+-- 为admin角色分配报告管理API权限
+INSERT IGNORE INTO `pdm_tool_sys_role_permission` (`id`, `role_id`, `permission_id`, `create_time`, `create_user`) VALUES
+('rp_report_p1', 'admin', 'report_p1', NOW(), 'admin'),
+('rp_report_p2', 'admin', 'report_p2', NOW(), 'admin'),
+('rp_report_p3', 'admin', 'report_p3', NOW(), 'admin'),
+('rp_report_p4', 'admin', 'report_p4', NOW(), 'admin'),
+('rp_report_p5', 'admin', 'report_p5', NOW(), 'admin'),
+('rp_report_p6', 'admin', 'report_p6', NOW(), 'admin'),
+('rp_report_p7', 'admin', 'report_p7', NOW(), 'admin'),
+('rp_report_p8', 'admin', 'report_p8', NOW(), 'admin'),
+('rp_report_p9', 'admin', 'report_p9', NOW(), 'admin'),
+('rp_report_p10', 'admin', 'report_p10', NOW(), 'admin');
+
 -- ===========================================
--- 补充报告与分析管理模块的API权限
+-- 补充报告与分析管理模块的API权限（已在上方添加）
 -- ===========================================
 
 -- 插入报告与分析管理模块的API权限（使用INSERT IGNORE避免重复）
