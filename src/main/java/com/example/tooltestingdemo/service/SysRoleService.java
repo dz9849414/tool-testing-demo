@@ -147,4 +147,11 @@ public interface SysRoleService extends IService<SysRole> {
      * @return 是否成功
      */
     boolean batchAssignPermissions(List<String> roleIds, List<String> permissions, String operationType);
+    
+    /**
+     * 移除角色的所有权限
+     * 
+     * @param roleId 角色ID
+     */
+    void removeAllPermissions(String roleId);
 }

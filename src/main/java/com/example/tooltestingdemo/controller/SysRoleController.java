@@ -6,8 +6,10 @@ import com.example.tooltestingdemo.dto.RoleBatchPermissionDTO;
 import com.example.tooltestingdemo.entity.SysPermission;
 import com.example.tooltestingdemo.entity.SysRole;
 import com.example.tooltestingdemo.entity.SysUser;
+import com.example.tooltestingdemo.mapper.SysPermissionMapper;
 import com.example.tooltestingdemo.service.SysRoleService;
 import com.example.tooltestingdemo.service.SysUserService;
+import com.example.tooltestingdemo.util.ExcelUtils;
 import lombok.RequiredArgsConstructor;
 import com.example.tooltestingdemo.common.Result;
 import com.example.tooltestingdemo.common.ErrorStatus;
@@ -15,9 +17,12 @@ import com.example.tooltestingdemo.dto.SysRoleDTO;
 import com.example.tooltestingdemo.enums.RoleEnum;
 import com.example.tooltestingdemo.util.IdGenerator;
 import org.apache.commons.beanutils.BeanUtils;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.time.LocalDate;
 
 import java.util.ArrayList;
@@ -35,6 +40,7 @@ public class SysRoleController {
     
     private final SysRoleService roleService;
     private final SysUserService userService;
+    private final SysPermissionMapper permissionMapper;
     
     /**
      * 分页获取角色列表（支持模糊查询、状态筛选、日期范围和排序）
@@ -454,5 +460,168 @@ public class SysRoleController {
         // 查询角色关联的用户列表
         List<SysUser> users = userService.findByRoleId(roleId);
         return Result.success("获取角色关联用户列表成功", users);
+    }
+    
+    /**
+     * 导出角色权限配置
+     * 
+     * @param roleId 角色ID
+     * @param format 导出格式：json或excel，默认json
+     */
+    @GetMapping("/{roleId}/permissions/export")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:permission:export')")
+    public Object exportRolePermissions(
+            @PathVariable String roleId,
+            @RequestParam(defaultValue = "json") String format) {
+        // 检查角色是否存在
+        SysRole role = roleService.getById(roleId);
+        if (role == null) {
+            return Result.error(ErrorStatus.NOT_FOUND, "角色不存在");
+        }
+        
+        // 获取角色的所有权限
+        List<SysPermission> permissions = roleService.getPermissionsByRoleId(roleId);
+        
+        if ("excel".equalsIgnoreCase(format)) {
+            // 导出Excel格式
+            List<Map<String, Object>> permissionList = new ArrayList<>();
+            for (SysPermission permission : permissions) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", permission.getId());
+                map.put("name", permission.getName());
+                map.put("code", permission.getCode());
+                map.put("description", permission.getDescription());
+                map.put("module", permission.getModule());
+                permissionList.add(map);
+            }
+            
+            byte[] excelBytes = ExcelUtils.exportRolePermissionsToExcel(
+                    "角色权限配置", roleId, role.getName(), permissionList);
+            
+            return org.springframework.http.ResponseEntity.ok()
+                    .header("Content-Disposition", "attachment; filename=\"role_permissions_" + roleId + ".xlsx\"")
+                    .contentType(org.springframework.http.MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .body(excelBytes);
+        } else {
+            // 导出JSON格式
+            Map<String, Object> exportData = new HashMap<>();
+            exportData.put("roleId", roleId);
+            exportData.put("roleName", role.getName());
+            exportData.put("permissions", permissions);
+            exportData.put("exportTime", java.time.LocalDateTime.now().toString());
+            
+            return Result.success("导出角色权限成功", exportData);
+        }
+    }
+    
+    /**
+     * 导入角色权限配置（JSON格式）
+     * 
+     * @param roleId 角色ID
+     * @param permissionIds 权限ID列表
+     * @param mode 导入模式：OVERWRITE-覆盖导入（清空现有权限），APPEND-增量导入（保留现有权限，追加新权限），默认OVERWRITE
+     */
+    @PostMapping("/{roleId}/permissions/import")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:permission:import')")
+    public Result<String> importRolePermissions(
+            @PathVariable String roleId, 
+            @RequestBody List<String> permissionIds,
+            @RequestParam(defaultValue = "OVERWRITE") String mode) {
+        return doImportRolePermissions(roleId, permissionIds, mode);
+    }
+    
+    /**
+     * 导入角色权限配置（Excel格式）
+     * 
+     * @param roleId 角色ID
+     * @param file Excel文件
+     * @param mode 导入模式：OVERWRITE-覆盖导入（清空现有权限），APPEND-增量导入（保留现有权限，追加新权限），默认OVERWRITE
+     */
+    @PostMapping("/{roleId}/permissions/excel-import")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:permission:import')")
+    public Result<String> importRolePermissionsFromExcel(
+            @PathVariable String roleId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(defaultValue = "OVERWRITE") String mode) {
+        
+        if (file.isEmpty()) {
+            return Result.error(ErrorStatus.BAD_REQUEST, "请选择要上传的Excel文件");
+        }
+        
+        try {
+            // 从Excel文件中读取权限编码
+            List<String> permissionCodes = ExcelUtils.importPermissionsFromExcel(file.getInputStream());
+            
+            if (permissionCodes.isEmpty()) {
+                return Result.error(ErrorStatus.BAD_REQUEST, "Excel文件中没有有效数据");
+            }
+            
+            // 根据权限编码获取权限ID
+            List<String> permissionIds = new ArrayList<>();
+            for (String code : permissionCodes) {
+                SysPermission permission = permissionMapper.selectByCode(code);
+                if (permission != null) {
+                    permissionIds.add(permission.getId());
+                }
+            }
+            
+            return doImportRolePermissions(roleId, permissionIds, mode);
+        } catch (Exception e) {
+            return Result.error(ErrorStatus.BAD_REQUEST, "导入Excel失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 执行角色权限导入逻辑
+     */
+    private Result<String> doImportRolePermissions(String roleId, List<String> permissionIds, String mode) {
+        // 检查是否是admin角色
+        if ("admin".equals(roleId)) {
+            return Result.error(ErrorStatus.BAD_REQUEST, "不能为admin角色导入权限");
+        }
+        
+        // 检查角色是否存在
+        SysRole role = roleService.getById(roleId);
+        if (role == null) {
+            return Result.error(ErrorStatus.NOT_FOUND, "角色不存在");
+        }
+        
+        // 检查权限列表中是否包含admin权限
+        if (permissionIds != null && !permissionIds.isEmpty()) {
+            List<String> adminPermissions = new ArrayList<>();
+            for (String permissionId : permissionIds) {
+                if (permissionId.toLowerCase().contains("admin")) {
+                    adminPermissions.add(permissionId);
+                }
+            }
+            if (!adminPermissions.isEmpty()) {
+                return Result.error(ErrorStatus.BAD_REQUEST, "不能导入admin权限");
+            }
+        }
+        
+        // 根据导入模式执行不同操作
+        if ("APPEND".equalsIgnoreCase(mode)) {
+            // 增量导入：保留现有权限，追加新权限（去重）
+            List<SysPermission> existingPermissions = roleService.getPermissionsByRoleId(roleId);
+            List<String> existingPermissionIds = existingPermissions.stream()
+                    .map(SysPermission::getId)
+                    .collect(java.util.stream.Collectors.toList());
+            
+            // 过滤掉已存在的权限
+            List<String> newPermissionIds = permissionIds.stream()
+                    .filter(p -> !existingPermissionIds.contains(p))
+                    .collect(java.util.stream.Collectors.toList());
+            
+            if (!newPermissionIds.isEmpty()) {
+                // 使用批量添加模式
+                roleService.batchAssignPermissions(java.util.Arrays.asList(roleId), newPermissionIds, "ADD");
+            }
+            return Result.success("增量导入角色权限成功");
+        } else {
+            // 覆盖导入：先清除角色现有权限，再导入新权限
+            roleService.removeAllPermissions(roleId);
+            roleService.assignPermissions(roleId, permissionIds);
+            return Result.success("覆盖导入角色权限成功");
+        }
     }
 }

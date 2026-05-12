@@ -422,4 +422,10 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         }
         return permissionIds;
     }
+    
+    @Override
+    @Transactional
+    public void removeAllPermissions(String roleId) {
+        rolePermissionMapper.deleteByRoleId(roleId);
+    }
 }

@@ -5,8 +5,11 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.tooltestingdemo.annotation.PermissionCheck;
 import com.example.tooltestingdemo.dto.PasswordUpdateDTO;
 import com.example.tooltestingdemo.dto.UserBatchPermissionDTO;
+import com.example.tooltestingdemo.entity.SysPermission;
 import com.example.tooltestingdemo.entity.SysUser;
+import com.example.tooltestingdemo.mapper.SysPermissionMapper;
 import com.example.tooltestingdemo.service.SysUserService;
+import com.example.tooltestingdemo.util.ExcelUtils;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import com.example.tooltestingdemo.common.Result;
@@ -24,6 +27,9 @@ import com.example.tooltestingdemo.dto.SysUserUpdateDTO;
 import com.example.tooltestingdemo.enums.RoleEnum;
 import com.example.tooltestingdemo.vo.SysUserVO;
 import org.apache.commons.beanutils.BeanUtils;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +44,7 @@ import java.util.stream.Collectors;
 public class SysUserController {
     
     private final SysUserService userService;
+    private final SysPermissionMapper permissionMapper;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     /**
@@ -536,6 +543,154 @@ public class SysUserController {
             }
         } catch (Exception e) {
             return Result.error("批量分配权限异常: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 导出用户权限配置
+     * 
+     * @param id 用户ID
+     * @param format 导出格式：json或excel，默认json
+     */
+    @GetMapping("/{id}/permissions/export")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:user:permission:export') or @securityService.isCurrentUser(#id)")
+    public Object exportUserPermissions(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "json") String format) {
+        // 检查用户是否存在
+        SysUser user = userService.findById(id);
+        if (user == null) {
+            return Result.error(ErrorStatus.NOT_FOUND, "用户不存在");
+        }
+        
+        // 获取用户的所有权限（包括直接分配和继承的）
+        java.util.Map<String, java.util.List<String>> permissions = userService.getPermissionsByUserIdGrouped(id);
+        
+        if ("excel".equalsIgnoreCase(format)) {
+            // 导出Excel格式
+            byte[] excelBytes = ExcelUtils.exportUserPermissionsToExcel(
+                    "用户权限配置", 
+                    id.toString(), 
+                    user.getUsername(), 
+                    user.getRealName(), 
+                    permissions);
+            
+            return org.springframework.http.ResponseEntity.ok()
+                    .header("Content-Disposition", "attachment; filename=\"user_permissions_" + id + ".xlsx\"")
+                    .contentType(org.springframework.http.MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .body(excelBytes);
+        } else {
+            // 导出JSON格式
+            Map<String, Object> exportData = new HashMap<>();
+            exportData.put("userId", id);
+            exportData.put("username", user.getUsername());
+            exportData.put("realName", user.getRealName());
+            exportData.put("permissions", permissions);
+            exportData.put("exportTime", java.time.LocalDateTime.now().toString());
+            
+            return Result.success("导出用户权限成功", exportData);
+        }
+    }
+    
+    /**
+     * 导入用户权限配置（JSON格式）
+     * 
+     * @param id 用户ID
+     * @param permissionCodes 权限编码列表
+     * @param mode 导入模式：OVERWRITE-覆盖导入（清空现有权限），APPEND-增量导入（保留现有权限，追加新权限），默认OVERWRITE
+     */
+    @PostMapping("/{id}/permissions/import")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:user:permission:import')")
+    public Result<String> importUserPermissions(
+            @PathVariable Long id, 
+            @RequestBody List<String> permissionCodes,
+            @RequestParam(defaultValue = "OVERWRITE") String mode) {
+        return doImportUserPermissions(id, permissionCodes, mode);
+    }
+    
+    /**
+     * 导入用户权限配置（Excel格式）
+     * 
+     * @param id 用户ID
+     * @param file Excel文件
+     * @param mode 导入模式：OVERWRITE-覆盖导入（清空现有权限），APPEND-增量导入（保留现有权限，追加新权限），默认OVERWRITE
+     */
+    @PostMapping("/{id}/permissions/excel-import")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:user:permission:import')")
+    public Result<String> importUserPermissionsFromExcel(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(defaultValue = "OVERWRITE") String mode) {
+        
+        if (file.isEmpty()) {
+            return Result.error(ErrorStatus.BAD_REQUEST, "请选择要上传的Excel文件");
+        }
+        
+        try {
+            // 从Excel文件中读取权限编码（使用用户权限专用的导入方法）
+            List<String> permissionCodes = ExcelUtils.importUserPermissionsFromExcel(file.getInputStream());
+            
+            if (permissionCodes.isEmpty()) {
+                return Result.error(ErrorStatus.BAD_REQUEST, "Excel文件中没有有效数据");
+            }
+            
+            return doImportUserPermissions(id, permissionCodes, mode);
+        } catch (Exception e) {
+            return Result.error(ErrorStatus.BAD_REQUEST, "导入Excel失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 执行用户权限导入逻辑
+     */
+    private Result<String> doImportUserPermissions(Long id, List<String> permissionCodes, String mode) {
+        // 检查用户是否存在
+        SysUser user = userService.findById(id);
+        if (user == null) {
+            return Result.error(ErrorStatus.NOT_FOUND, "用户不存在");
+        }
+        
+        // 检查是否是admin用户
+        if ("admin".equals(user.getUsername())) {
+            return Result.error(ErrorStatus.BAD_REQUEST, "不能为admin用户导入权限");
+        }
+        
+        // 检查权限列表中是否包含admin权限
+        if (permissionCodes != null && !permissionCodes.isEmpty()) {
+            List<String> adminPermissions = new ArrayList<>();
+            for (String permissionCode : permissionCodes) {
+                if (permissionCode.toLowerCase().contains("admin")) {
+                    adminPermissions.add(permissionCode);
+                }
+            }
+            if (!adminPermissions.isEmpty()) {
+                return Result.error(ErrorStatus.BAD_REQUEST, "不能导入admin权限");
+            }
+        }
+        
+        // 根据导入模式执行不同操作
+        if ("APPEND".equalsIgnoreCase(mode)) {
+            // 增量导入：保留现有权限，追加新权限（去重）
+            java.util.Map<String, java.util.List<String>> existingPermissions = userService.getPermissionsByUserIdGrouped(id);
+            java.util.Set<String> existingPermissionCodes = new java.util.HashSet<>();
+            for (java.util.List<String> perms : existingPermissions.values()) {
+                existingPermissionCodes.addAll(perms);
+            }
+            
+            // 过滤掉已存在的权限
+            List<String> newPermissionCodes = permissionCodes.stream()
+                    .filter(p -> !existingPermissionCodes.contains(p))
+                    .collect(java.util.stream.Collectors.toList());
+            
+            if (!newPermissionCodes.isEmpty()) {
+                userService.batchAssignDirectPermissions(id, newPermissionCodes);
+            }
+            return Result.success("增量导入用户权限成功");
+        } else {
+            // 覆盖导入：先清除用户直接分配的权限，再导入新权限
+            userService.removeAllDirectPermissions(id);
+            userService.batchAssignDirectPermissions(id, permissionCodes);
+            return Result.success("覆盖导入用户权限成功");
         }
     }
 }

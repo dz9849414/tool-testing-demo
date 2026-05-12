@@ -3,11 +3,16 @@ package com.example.tooltestingdemo.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.tooltestingdemo.entity.SysPermission;
 import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.entity.SysUserRole;
+import com.example.tooltestingdemo.entity.system.SysUserPermission;
+import com.example.tooltestingdemo.mapper.SysPermissionMapper;
 import com.example.tooltestingdemo.mapper.SysUserMapper;
 import com.example.tooltestingdemo.mapper.SysUserRoleMapper;
+import com.example.tooltestingdemo.mapper.system.SysUserPermissionMapper;
 import com.example.tooltestingdemo.service.SysUserService;
+import com.example.tooltestingdemo.util.IdGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,6 +31,8 @@ public class SysUserServiceImpl implements SysUserService {
     
     private final SysUserMapper userMapper;
     private final SysUserRoleMapper userRoleMapper;
+    private final SysUserPermissionMapper userPermissionMapper;
+    private final SysPermissionMapper permissionMapper;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     
     @Override
@@ -775,5 +782,39 @@ public class SysUserServiceImpl implements SysUserService {
         // TODO: 实现具体的权限更新逻辑
         // 实际项目中需要操作用户-权限关联表，这里暂时记录日志
         // 例如：删除用户现有权限关联，然后插入新的权限关联
+    }
+    
+    @Override
+    @Transactional
+    public void removeAllDirectPermissions(Long userId) {
+        LambdaQueryWrapper<SysUserPermission> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysUserPermission::getUserId, userId.toString());
+        queryWrapper.eq(SysUserPermission::getGrantType, "DIRECT");
+        userPermissionMapper.delete(queryWrapper);
+    }
+    
+    @Override
+    @Transactional
+    public void batchAssignDirectPermissions(Long userId, List<String> permissionCodes) {
+        if (permissionCodes == null || permissionCodes.isEmpty()) {
+            return;
+        }
+        
+        for (String code : permissionCodes) {
+            SysPermission permission = permissionMapper.selectByCode(code);
+            if (permission != null) {
+                SysUserPermission userPermission = new SysUserPermission();
+                userPermission.setId("up_" + IdGenerator.generateSnowflakeId());
+                userPermission.setUserId(userId.toString());
+                userPermission.setPermissionId(permission.getId());
+                userPermission.setPermissionCode(code);
+                userPermission.setGrantType("DIRECT");
+                userPermission.setScopeType("GLOBAL");
+                userPermission.setStatus(1);
+                userPermission.setCreateTime(LocalDateTime.now());
+                userPermission.setCreateUser("system");
+                userPermissionMapper.insert(userPermission);
+            }
+        }
     }
 }

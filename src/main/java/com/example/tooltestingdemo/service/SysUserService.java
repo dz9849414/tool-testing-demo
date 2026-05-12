@@ -152,4 +152,19 @@ public interface SysUserService {
      * @return 是否成功
      */
     boolean batchAssignPermissions(List<Long> userIds, List<String> permissions, String operationType);
+    
+    /**
+     * 移除用户的所有直接分配权限
+     * 
+     * @param userId 用户ID
+     */
+    void removeAllDirectPermissions(Long userId);
+    
+    /**
+     * 批量直接分配权限给用户
+     * 
+     * @param userId 用户ID
+     * @param permissionCodes 权限编码列表
+     */
+    void batchAssignDirectPermissions(Long userId, List<String> permissionCodes);
 }
