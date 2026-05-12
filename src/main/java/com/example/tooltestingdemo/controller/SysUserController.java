@@ -277,11 +277,16 @@ public class SysUserController {
     
     /**
      * 根据角色ID获取用户列表
+     * 
+     * @param roleId 角色ID
+     * @param username 用户名关键词（可选，支持模糊搜索）
      */
     @GetMapping("/role/{roleId}")
     @PreAuthorize("@securityService.hasPermission('system:user:api')")
-    public Result<List<SysUserVO>> getUsersByRoleId(@PathVariable String roleId) {
-        List<SysUser> users = userService.findByRoleId(roleId);
+    public Result<List<SysUserVO>> getUsersByRoleId(
+            @PathVariable String roleId,
+            @RequestParam(required = false) String username) {
+        List<SysUser> users = userService.findByRoleId(roleId, username);
         
         // 转换为VO
         List<SysUserVO> userVOs = users.stream().map(user -> {

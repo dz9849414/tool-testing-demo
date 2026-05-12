@@ -457,8 +457,8 @@ public class SysRoleController {
             return Result.error(ErrorStatus.NOT_FOUND, "角色不存在");
         }
         
-        // 查询角色关联的用户列表
-        List<SysUser> users = userService.findByRoleId(roleId);
+        // 查询角色关联的用户列表（不传username参数，保持原有功能）
+        List<SysUser> users = userService.findByRoleId(roleId, null);
         return Result.success("获取角色关联用户列表成功", users);
     }
     

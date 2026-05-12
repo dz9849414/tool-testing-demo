@@ -364,7 +364,7 @@ public class SysUserServiceImpl implements SysUserService {
     }
     
     @Override
-    public List<SysUser> findByRoleId(String roleId) {
+    public List<SysUser> findByRoleId(String roleId, String username) {
         // 获取当前登录用户
         org.springframework.security.core.Authentication authentication = 
             org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
@@ -379,8 +379,8 @@ public class SysUserServiceImpl implements SysUserService {
         // 获取当前用户的角色列表
         List<String> currentRoles = userMapper.selectRolesByUserId(currentUser.getId());
         
-        // 执行查询
-        List<SysUser> users = userMapper.selectByRoleId(roleId);
+        // 执行查询（支持用户名模糊搜索）
+        List<SysUser> users = userMapper.selectByRoleId(roleId, username);
         
         // 根据角色权限过滤结果
         List<SysUser> filteredUsers = new java.util.ArrayList<>();

@@ -73,7 +73,7 @@ public interface SysUserService {
     /**
      * 根据角色ID查找用户列表
      */
-    List<SysUser> findByRoleId(String roleId);
+    List<SysUser> findByRoleId(String roleId, String username);
     
     /**
      * 更新用户最后登录信息
