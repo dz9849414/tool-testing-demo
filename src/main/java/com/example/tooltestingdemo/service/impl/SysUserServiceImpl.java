@@ -483,6 +483,11 @@ public class SysUserServiceImpl implements SysUserService {
 
     @Override
     public java.util.Map<String, java.util.List<String>> getPermissionsByUserIdGrouped(Long userId) {
+        return getPermissionsByUserIdGrouped(userId, null);
+    }
+
+    @Override
+    public java.util.Map<String, java.util.List<String>> getPermissionsByUserIdGrouped(Long userId, Integer moduleType) {
         List<String> permissions = getPermissionsByUserId(userId);
         java.util.Map<String, java.util.List<String>> groupedPermissions = new java.util.HashMap<>();
 
@@ -491,7 +496,15 @@ public class SysUserServiceImpl implements SysUserService {
             String[] parts = permission.split(":");
             if (parts.length >= 2) {
                 String module = parts[0];
-                groupedPermissions.computeIfAbsent(module, k -> new java.util.ArrayList<>()).add(permission);
+                
+                // 根据moduleType过滤：传2只返回协议模块权限
+                if (moduleType != null && moduleType == 2) {
+                    if ("protocol".equals(module)) {
+                        groupedPermissions.computeIfAbsent(module, k -> new java.util.ArrayList<>()).add(permission);
+                    }
+                } else {
+                    groupedPermissions.computeIfAbsent(module, k -> new java.util.ArrayList<>()).add(permission);
+                }
             }
         }
 

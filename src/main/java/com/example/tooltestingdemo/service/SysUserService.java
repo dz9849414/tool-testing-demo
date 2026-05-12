@@ -116,6 +116,14 @@ public interface SysUserService {
     java.util.Map<String, java.util.List<String>> getPermissionsByUserIdGrouped(Long userId);
     
     /**
+     * 获取用户的权限列表，按模块分组（支持过滤）
+     * 
+     * @param userId 用户ID
+     * @param moduleType 模块类型：null返回所有权限，2只返回协议模块权限
+     */
+    java.util.Map<String, java.util.List<String>> getPermissionsByUserIdGrouped(Long userId, Integer moduleType);
+    
+    /**
      * 搜索用户
      */
     List<SysUser> searchUsers(String keyword);

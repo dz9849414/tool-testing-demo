@@ -409,11 +409,16 @@ public class SysUserController {
 
     /**
      * 获取用户的权限列表，按模块分组
+     * 
+     * @param id 用户ID
+     * @param moduleType 模块类型：不传返回所有权限，传2只返回协议模块权限
      */
     @GetMapping("/{id}/permissions")
     @PreAuthorize("@securityService.hasPermission('system:user:api') or @securityService.isCurrentUser(#id)")
-    public Result<java.util.Map<String, java.util.List<String>>> getUserPermissions(@PathVariable Long id) {
-        java.util.Map<String, java.util.List<String>> permissions = userService.getPermissionsByUserIdGrouped(id);
+    public Result<java.util.Map<String, java.util.List<String>>> getUserPermissions(
+            @PathVariable Long id,
+            @RequestParam(required = false) Integer moduleType) {
+        java.util.Map<String, java.util.List<String>> permissions = userService.getPermissionsByUserIdGrouped(id, moduleType);
         return Result.success("获取权限列表成功", permissions);
     }
     

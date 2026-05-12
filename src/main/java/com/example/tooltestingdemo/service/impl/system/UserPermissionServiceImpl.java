@@ -111,9 +111,28 @@ public class UserPermissionServiceImpl extends ServiceImpl<SysUserPermissionMapp
     public Boolean batchGrantPermissions(List<UserPermissionDTO> dtos) {
         try {
             for (UserPermissionDTO dto : dtos) {
-                Boolean result = grantPermission(dto);
-                if (!result) {
-                    throw new RuntimeException("批量分配权限失败");
+                try {
+                    // 检查权限是否已存在
+                    LambdaQueryWrapper<SysUserPermission> queryWrapper = new LambdaQueryWrapper<>();
+                    queryWrapper.eq(SysUserPermission::getUserId, dto.getUserId())
+                               .eq(SysUserPermission::getPermissionId, dto.getPermissionId())
+                               .eq(SysUserPermission::getScopeType, dto.getScopeType());
+                    
+                    SysUserPermission existing = userPermissionMapper.selectOne(queryWrapper);
+                    if (existing != null) {
+                        // 权限已存在，忽略跳过
+                        log.info("用户已拥有该权限，跳过: userId={}, permissionId={}", dto.getUserId(), dto.getPermissionId());
+                        continue;
+                    }
+                    
+                    // 权限不存在，执行分配
+                    Boolean result = grantPermission(dto);
+                    if (!result) {
+                        throw new RuntimeException("批量分配权限失败");
+                    }
+                } catch (Exception e) {
+                    log.warn("分配权限失败，继续处理下一个: userId={}, permissionId={}, error={}", 
+                            dto.getUserId(), dto.getPermissionId(), e.getMessage());
                 }
             }
             return true;
