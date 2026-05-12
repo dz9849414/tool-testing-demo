@@ -18,7 +18,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 角色服务实现类
@@ -308,11 +311,6 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     @Transactional
     public void batchUpdateRoleStatus(List<String> roleIds, Integer status) {
         for (String roleId : roleIds) {
-            // 跳过admin角色
-            if ("admin".equals(roleId)) {
-                continue;
-            }
-            
             SysRole role = getById(roleId);
             if (role != null) {
                 role.setStatus(status);

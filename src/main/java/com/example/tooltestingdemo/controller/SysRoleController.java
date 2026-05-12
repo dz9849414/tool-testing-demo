@@ -430,6 +430,11 @@ public class SysRoleController {
             return Result.error(ErrorStatus.BAD_REQUEST, "状态值必须是0（禁用）或1（启用）");
         }
         
+        // 如果要禁用角色且包含admin，直接返回错误
+        if (status == 0 && roleIds.contains("admin")) {
+            return Result.error("admin角色为系统内置角色，不能被禁用");
+        }
+        
         roleService.batchUpdateRoleStatus(roleIds, status);
         return Result.success(status == 1 ? "角色批量启用成功" : "角色批量禁用成功");
     }
