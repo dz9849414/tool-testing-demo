@@ -221,13 +221,24 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
                 return buildDeleteResult(false, 0, Collections.emptyMap());
             }
 
-            Map<String, Integer> cleanupDetails = deleteTemplateAllRelations(id);
+            Map<String, Integer> cleanupDetails = cleanTemplateRelationsInternal(id);
             int cleanedRelationCount = cleanupDetails.values().stream().mapToInt(Integer::intValue).sum();
 
             InterfaceTemplateVO newVO = getTemplateDetail(id);
             saveHistory(t, oldVO, newVO, "DELETE", "删除模板，清理关联数据：" + cleanedRelationCount + "条");
             boolean deleted = removeById(id);
             return buildDeleteResult(deleted, cleanedRelationCount, cleanupDetails);
+        }).orElseGet(() -> buildDeleteResult(false, 0, Collections.emptyMap()));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> cleanTemplateRelations(Long id) {
+        return Optional.ofNullable(getById(id)).map(t -> {
+            Map<String, Integer> cleanupDetails = cleanTemplateRelationsInternal(id);
+            int cleanedRelationCount = cleanupDetails.values().stream().mapToInt(Integer::intValue).sum();
+            log.info("模板清理完成: id={}, cleanedRelationCount={}", id, cleanedRelationCount);
+            return buildDeleteResult(true, cleanedRelationCount, cleanupDetails);
         }).orElseGet(() -> buildDeleteResult(false, 0, Collections.emptyMap()));
     }
 
@@ -259,6 +270,37 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         result.put("cleanedRelationCount", cleanedRelationCount);
         result.put("cleanupDetails", cleanupDetails);
         log.info("批量删除完成: 成功={}, 失败={}, 清理关联数据={}", successIds.size(), failIds.size(), cleanedRelationCount);
+        return result;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> batchCleanTemplateRelations(Long[] ids) {
+        List<Long> successIds = new ArrayList<>();
+        List<Long> failIds = new ArrayList<>();
+        int cleanedRelationCount = 0;
+        Map<Long, Map<String, Integer>> cleanupDetails = new LinkedHashMap<>();
+
+        for (Long id : ids) {
+            Map<String, Object> cleanResult = cleanTemplateRelations(id);
+            if (Boolean.TRUE.equals(cleanResult.get("deleted"))) {
+                successIds.add(id);
+                Integer currentCleaned = (Integer) cleanResult.get("cleanedRelationCount");
+                cleanedRelationCount += currentCleaned == null ? 0 : currentCleaned;
+                @SuppressWarnings("unchecked")
+                Map<String, Integer> currentDetails = (Map<String, Integer>) cleanResult.get("cleanupDetails");
+                cleanupDetails.put(id, currentDetails == null ? Collections.emptyMap() : currentDetails);
+            } else {
+                failIds.add(id);
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", successIds);
+        result.put("fail", failIds);
+        result.put("cleanedRelationCount", cleanedRelationCount);
+        result.put("cleanupDetails", cleanupDetails);
+        log.info("批量模板清理完成: 成功={}, 失败={}, 清理关联数据={}", successIds.size(), failIds.size(), cleanedRelationCount);
         return result;
     }
 
@@ -595,7 +637,7 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
         deleteFiles(templateId);
     }
 
-    private Map<String, Integer> deleteTemplateAllRelations(Long templateId) {
+    private Map<String, Integer> cleanTemplateRelationsInternal(Long templateId) {
         Map<String, Integer> cleanupDetails = new LinkedHashMap<>();
         cleanupDetails.put("headers", headerMapper.deleteByTemplateId(templateId));
         cleanupDetails.put("parameters", parameterMapper.deleteByTemplateId(templateId));

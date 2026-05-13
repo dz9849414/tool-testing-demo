@@ -120,12 +120,28 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
     Map<String, Object> deleteTemplate(Long id);
 
     /**
+     * 清理模板关联数据，但保留模板主记录
+     *
+     * @param id 模板ID
+     * @return 清理结果
+     */
+    Map<String, Object> cleanTemplateRelations(Long id);
+
+    /**
      * 批量删除模板（逻辑删除）
      *
      * @param ids 模板ID数组
      * @return 删除结果，包含成功和失败的ID列表
      */
     Map<String, Object> batchDeleteTemplates(Long[] ids);
+
+    /**
+     * 批量清理模板关联数据，但保留模板主记录
+     *
+     * @param ids 模板ID数组
+     * @return 清理结果
+     */
+    Map<String, Object> batchCleanTemplateRelations(Long[] ids);
 
     /**
      * 移动模板到指定文件夹

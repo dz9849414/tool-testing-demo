@@ -1208,11 +1208,25 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
                 MSG_JOB_ITEM_LIST_EMPTY
             );
         }*/
+        List<Long> environmentIds = Optional.ofNullable(items).orElse(Collections.emptyList()).stream()
+            .map(TemplateJobItem::getEnvironmentId)
+            .filter(Objects::nonNull)
+            .filter(id -> id > 0)
+            .distinct()
+            .toList();
+        Set<Long> existingEnvironmentIds = environmentIds.isEmpty()
+            ? Collections.emptySet()
+            : templateEnvironmentService.listByIds(environmentIds).stream()
+                .map(TemplateEnvironment::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
         int sort = 1;
-        for (TemplateJobItem item : items) {
+        for (TemplateJobItem item : Optional.ofNullable(items).orElse(Collections.emptyList())) {
             item.setJobId(job.getId());
             item.setStatus(Optional.ofNullable(item.getStatus()).orElse(TemplateEnums.JobStatus.ENABLED.getCode()));
             item.setSortOrder(sort++);
+            item.setEnvironmentId(normalizeEnvironmentId(item.getEnvironmentId(), existingEnvironmentIds));
             jobItemMapper.insert(item);
         }
     }
@@ -1396,6 +1410,19 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
                 "templateId", item.getTemplateId()
             );
         }
+    }
+
+    private Long normalizeEnvironmentId(Long environmentId, Set<Long> existingEnvironmentIds) {
+        if (environmentId == null || environmentId <= 0) {
+            return null;
+        }
+        if (existingEnvironmentIds != null && !existingEnvironmentIds.contains(environmentId)) {
+            throw new TemplateValidationException(
+                TemplateValidationException.ErrorType.NOT_FOUND,
+                "环境配置不存在: " + environmentId
+            );
+        }
+        return environmentId;
     }
 
     private Summary parseSummary(String json) {
@@ -1735,6 +1762,15 @@ public class TemplateJobServiceImpl extends ServiceImpl<TemplateJobMapper, Templ
             throw new TemplateValidationException(
                 TemplateValidationException.ErrorType.NOT_FOUND,
                 String.format(MSG_JOB_ITEM_TEMPLATE_NOT_FOUND_TEMPLATE, jobName, itemIndex, item.getTemplateId())
+            );
+        }
+
+        Long environmentId = item.getEnvironmentId();
+        if (environmentId != null && environmentId > 0
+            && !validationContext.existingEnvironmentIds().contains(environmentId)) {
+            throw new TemplateValidationException(
+                TemplateValidationException.ErrorType.NOT_FOUND,
+                String.format("任务[%s]第%d个子项引用的环境不存在: %s", jobName, itemIndex, environmentId)
             );
         }
 

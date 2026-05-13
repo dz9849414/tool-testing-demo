@@ -224,9 +224,9 @@ public class SysOperationLogController {
             String[] headers = {
                     "日志ID", "用户ID", "用户名", "角色ID", "模块",
                     "操作", "方法", "请求URL", "请求参数", "IP地址",
-                    "用户代理", "状态", "错误信息", "执行时间(ms)", "创建时间", "方法调用链"
+                    "用户代理", "状态", "错误信息", "执行时间(ms)", "创建时间"
             };
-            int[] columnWidths = {36, 20, 20, 20, 24, 20, 20, 36, 50, 18, 36, 12, 36, 18, 24, 80};
+            int[] columnWidths = {36, 20, 20, 20, 24, 20, 20, 36, 50, 18, 36, 12, 36, 18, 24};
 
             XSSFRow headerRow = sheet.createRow(0);
             for (int i = 0; i < headers.length; i++) {
@@ -254,7 +254,6 @@ public class SysOperationLogController {
                 setCellValue(row, 12, log.getErrorMessage(), dataStyle);
                 setCellValue(row, 13, log.getExecuteTime(), dataStyle);
                 setCellValue(row, 14, log.getCreateTime(), dataStyle);
-                setCellValue(row, 15, log.getMethodJson(), dataStyle);
             }
 
             try (OutputStream outputStream = response.getOutputStream()) {
