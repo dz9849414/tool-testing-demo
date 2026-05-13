@@ -515,6 +515,66 @@ public class SysRoleController {
     }
     
     /**
+     * 批量导出角色权限配置
+     * 
+     * @param roleIds 角色ID列表（逗号分隔）
+     * @param format 导出格式：json或excel，默认json
+     */
+    @GetMapping("/permissions/batch-export")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:role:permission:export')")
+    public Object batchExportRolePermissions(
+            @RequestParam List<String> roleIds,
+            @RequestParam(defaultValue = "json") String format) {
+        
+        if (roleIds == null || roleIds.isEmpty()) {
+            return Result.error(ErrorStatus.BAD_REQUEST, "角色ID列表不能为空");
+        }
+        
+        List<Map<String, Object>> allRolePermissions = new ArrayList<>();
+        
+        for (String roleId : roleIds) {
+            SysRole role = roleService.getById(roleId);
+            if (role == null) {
+                continue;
+            }
+            
+            List<SysPermission> permissions = roleService.getPermissionsByRoleId(roleId);
+            
+            Map<String, Object> roleData = new HashMap<>();
+            roleData.put("roleId", roleId);
+            roleData.put("roleName", role.getName());
+            
+            List<Map<String, Object>> permissionList = new ArrayList<>();
+            for (SysPermission permission : permissions) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", permission.getId());
+                map.put("name", permission.getName());
+                map.put("code", permission.getCode());
+                map.put("description", permission.getDescription());
+                map.put("module", permission.getModule());
+                permissionList.add(map);
+            }
+            roleData.put("permissions", permissionList);
+            allRolePermissions.add(roleData);
+        }
+        
+        if ("excel".equalsIgnoreCase(format)) {
+            byte[] excelBytes = ExcelUtils.exportBatchRolePermissionsToExcel("批量角色权限配置", allRolePermissions);
+            
+            return org.springframework.http.ResponseEntity.ok()
+                    .header("Content-Disposition", "attachment; filename=\"batch_role_permissions.xlsx\"")
+                    .contentType(org.springframework.http.MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .body(excelBytes);
+        } else {
+            Map<String, Object> exportData = new HashMap<>();
+            exportData.put("roles", allRolePermissions);
+            exportData.put("exportTime", java.time.LocalDateTime.now().toString());
+            
+            return Result.success("批量导出角色权限成功", exportData);
+        }
+    }
+    
+    /**
      * 导入角色权限配置（JSON格式）
      * 
      * @param roleId 角色ID

@@ -5,10 +5,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Excel工具类
@@ -446,6 +443,205 @@ public class ExcelUtils {
             return outputStream.toByteArray();
         } catch (Exception e) {
             throw new RuntimeException("导出Excel失败", e);
+        }
+    }
+    
+    /**
+     * 批量导出角色权限到Excel
+     * 
+     * @param title             标题
+     * @param rolePermissions   角色权限列表
+     * @return Excel文件字节数组
+     */
+    public static byte[] exportBatchRolePermissionsToExcel(String title, List<Map<String, Object>> rolePermissions) {
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            
+            Sheet sheet = workbook.createSheet(title);
+            
+            // 创建标题行样式
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setBorderBottom(BorderStyle.THIN);
+            headerStyle.setBorderTop(BorderStyle.THIN);
+            headerStyle.setBorderLeft(BorderStyle.THIN);
+            headerStyle.setBorderRight(BorderStyle.THIN);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+            
+            // 创建数据行样式
+            CellStyle dataStyle = workbook.createCellStyle();
+            dataStyle.setBorderBottom(BorderStyle.THIN);
+            dataStyle.setBorderTop(BorderStyle.THIN);
+            dataStyle.setBorderLeft(BorderStyle.THIN);
+            dataStyle.setBorderRight(BorderStyle.THIN);
+            
+            int rowNum = 0;
+            
+            // 遍历每个角色
+            for (Map<String, Object> roleData : rolePermissions) {
+                String roleId = (String) roleData.get("roleId");
+                String roleName = (String) roleData.get("roleName");
+                List<Map<String, Object>> permissions = (List<Map<String, Object>>) roleData.get("permissions");
+                
+                // 角色信息标题行
+                Row infoHeaderRow = sheet.createRow(rowNum++);
+                Cell infoHeaderCell = infoHeaderRow.createCell(0);
+                infoHeaderCell.setCellValue("角色信息");
+                infoHeaderCell.setCellStyle(headerStyle);
+                
+                // 角色信息
+                Row roleIdRow = sheet.createRow(rowNum++);
+                roleIdRow.createCell(0).setCellValue("角色ID");
+                roleIdRow.createCell(1).setCellValue(roleId != null ? roleId : "");
+                
+                Row roleNameRow = sheet.createRow(rowNum++);
+                roleNameRow.createCell(0).setCellValue("角色名称");
+                roleNameRow.createCell(1).setCellValue(roleName != null ? roleName : "");
+                
+                // 空行
+                rowNum++;
+                
+                // 权限标题行
+                Row permissionHeaderRow = sheet.createRow(rowNum++);
+                String[] headers = {"权限ID", "权限名称", "权限编码", "权限描述", "所属模块"};
+                for (int i = 0; i < headers.length; i++) {
+                    Cell cell = permissionHeaderRow.createCell(i);
+                    cell.setCellValue(headers[i]);
+                    cell.setCellStyle(headerStyle);
+                }
+                
+                // 权限数据行
+                if (permissions != null) {
+                    for (Map<String, Object> permission : permissions) {
+                        Row dataRow = sheet.createRow(rowNum++);
+                        dataRow.createCell(0).setCellValue(permission.get("id") != null ? permission.get("id").toString() : "");
+                        dataRow.createCell(1).setCellValue(permission.get("name") != null ? permission.get("name").toString() : "");
+                        dataRow.createCell(2).setCellValue(permission.get("code") != null ? permission.get("code").toString() : "");
+                        dataRow.createCell(3).setCellValue(permission.get("description") != null ? permission.get("description").toString() : "");
+                        dataRow.createCell(4).setCellValue(permission.get("module") != null ? permission.get("module").toString() : "");
+                    }
+                }
+                
+                // 空行分隔
+                rowNum++;
+            }
+            
+            // 设置列宽
+            for (int i = 0; i < 5; i++) {
+                sheet.setColumnWidth(i, 5000);
+            }
+            
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("批量导出角色权限Excel失败", e);
+        }
+    }
+    
+    /**
+     * 批量导出用户权限到Excel
+     * 
+     * @param title             标题
+     * @param userPermissions   用户权限列表
+     * @return Excel文件字节数组
+     */
+    public static byte[] exportBatchUserPermissionsToExcel(String title, List<Map<String, Object>> userPermissions) {
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            
+            Sheet sheet = workbook.createSheet(title);
+            
+            // 创建标题行样式
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setBorderBottom(BorderStyle.THIN);
+            headerStyle.setBorderTop(BorderStyle.THIN);
+            headerStyle.setBorderLeft(BorderStyle.THIN);
+            headerStyle.setBorderRight(BorderStyle.THIN);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+            
+            int rowNum = 0;
+            
+            // 遍历每个用户
+            for (Map<String, Object> userData : userPermissions) {
+                Long userId = (Long) userData.get("userId");
+                String username = (String) userData.get("username");
+                String realName = (String) userData.get("realName");
+                Map<String, List<String>> permissions = (Map<String, List<String>>) userData.get("permissions");
+                
+                // 用户信息标题行
+                Row infoHeaderRow = sheet.createRow(rowNum++);
+                Cell infoHeaderCell = infoHeaderRow.createCell(0);
+                infoHeaderCell.setCellValue("用户信息");
+                infoHeaderCell.setCellStyle(headerStyle);
+                
+                // 用户信息
+                Row userIdRow = sheet.createRow(rowNum++);
+                userIdRow.createCell(0).setCellValue("用户ID");
+                userIdRow.createCell(1).setCellValue(userId != null ? userId.toString() : "");
+                
+                Row usernameRow = sheet.createRow(rowNum++);
+                usernameRow.createCell(0).setCellValue("用户名");
+                usernameRow.createCell(1).setCellValue(username != null ? username : "");
+                
+                Row realNameRow = sheet.createRow(rowNum++);
+                realNameRow.createCell(0).setCellValue("真实姓名");
+                realNameRow.createCell(1).setCellValue(realName != null ? realName : "");
+                
+                // 空行
+                rowNum++;
+                
+                // 权限标题行
+                Row permissionHeaderRow = sheet.createRow(rowNum++);
+                Cell moduleHeaderCell = permissionHeaderRow.createCell(0);
+                moduleHeaderCell.setCellValue("模块");
+                moduleHeaderCell.setCellStyle(headerStyle);
+                Cell codeHeaderCell = permissionHeaderRow.createCell(1);
+                codeHeaderCell.setCellValue("权限编码");
+                codeHeaderCell.setCellStyle(headerStyle);
+                
+                // 权限数据行
+                if (permissions != null) {
+                    for (Map.Entry<String, List<String>> entry : permissions.entrySet()) {
+                        String module = entry.getKey();
+                        List<String> permissionCodes = entry.getValue();
+                        
+                        if (permissionCodes != null) {
+                            for (int i = 0; i < permissionCodes.size(); i++) {
+                                Row dataRow = sheet.createRow(rowNum++);
+                                if (i == 0) {
+                                    dataRow.createCell(0).setCellValue(module);
+                                } else {
+                                    dataRow.createCell(0).setCellValue("");
+                                }
+                                dataRow.createCell(1).setCellValue(permissionCodes.get(i));
+                            }
+                        }
+                    }
+                }
+                
+                // 空行分隔
+                rowNum++;
+            }
+            
+            // 设置列宽
+            sheet.setColumnWidth(0, 4000);
+            sheet.setColumnWidth(1, 8000);
+            
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("批量导出用户权限Excel失败", e);
         }
     }
 }

@@ -598,6 +598,56 @@ public class SysUserController {
     }
     
     /**
+     * 批量导出用户权限配置
+     * 
+     * @param userIds 用户ID列表（逗号分隔）
+     * @param format 导出格式：json或excel，默认json
+     */
+    @GetMapping("/permissions/batch-export")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:user:permission:export')")
+    public Object batchExportUserPermissions(
+            @RequestParam List<Long> userIds,
+            @RequestParam(defaultValue = "json") String format) {
+        
+        if (userIds == null || userIds.isEmpty()) {
+            return Result.error(ErrorStatus.BAD_REQUEST, "用户ID列表不能为空");
+        }
+        
+        List<Map<String, Object>> allUserPermissions = new ArrayList<>();
+        
+        for (Long userId : userIds) {
+            SysUser user = userService.findById(userId);
+            if (user == null) {
+                continue;
+            }
+            
+            Map<String, List<String>> permissions = userService.getPermissionsByUserIdGrouped(userId);
+            
+            Map<String, Object> userData = new HashMap<>();
+            userData.put("userId", userId);
+            userData.put("username", user.getUsername());
+            userData.put("realName", user.getRealName());
+            userData.put("permissions", permissions);
+            allUserPermissions.add(userData);
+        }
+        
+        if ("excel".equalsIgnoreCase(format)) {
+            byte[] excelBytes = ExcelUtils.exportBatchUserPermissionsToExcel("批量用户权限配置", allUserPermissions);
+            
+            return org.springframework.http.ResponseEntity.ok()
+                    .header("Content-Disposition", "attachment; filename=\"batch_user_permissions.xlsx\"")
+                    .contentType(org.springframework.http.MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .body(excelBytes);
+        } else {
+            Map<String, Object> exportData = new HashMap<>();
+            exportData.put("users", allUserPermissions);
+            exportData.put("exportTime", java.time.LocalDateTime.now().toString());
+            
+            return Result.success("批量导出用户权限成功", exportData);
+        }
+    }
+    
+    /**
      * 导入用户权限配置（JSON格式）
      * 
      * @param id 用户ID
