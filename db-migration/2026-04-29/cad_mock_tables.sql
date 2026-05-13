@@ -37,7 +37,6 @@ CREATE TABLE IF NOT EXISTS `pdm_tool_cad_mock_interface` (
     INDEX `idx_cad_type_flow_status` (`cad_type`, `apply_flow`, `status`),
     INDEX `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CAD软件模拟接口配置表';
-
 CREATE TABLE IF NOT EXISTS `pdm_tool_cad_data_convert_mapping` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
     `mock_interface_id` BIGINT NOT NULL COMMENT '模拟接口ID',
