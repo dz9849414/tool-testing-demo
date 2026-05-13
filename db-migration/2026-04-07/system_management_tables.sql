@@ -159,6 +159,13 @@ CREATE TABLE `pdm_tool_sys_operation_log` (
     KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作日志表';
 
+ALTER TABLE `tool_testing`.`pdm_tool_sys_operation_log`
+MODIFY COLUMN `ip_address` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT 'IP地址' AFTER `request_params`;
+
+ALTER TABLE `tool_testing`.`pdm_tool_sys_operation_log`
+    ADD COLUMN `method_json` varchar(1024) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '方法调用链JSON' AFTER `method`;
+
+
 -- 系统配置表
 DROP TABLE IF EXISTS `pdm_tool_sys_config`;
 CREATE TABLE `pdm_tool_sys_config` (
@@ -987,3 +994,5 @@ INSERT IGNORE INTO `pdm_tool_sys_organization` (`id`, `name`, `description`, `pa
 ('org_1004', '质量保障部', '负责软件测试和质量保证', '0', 1, 4, 1),
 ('org_1005', '运维部', '负责生产环境管理和系统运维', '0', 1, 5, 1),
 ('org_1006', '信息技术部', '负责系统管理和技术支持', '0', 1, 6, 1);
+
+
