@@ -25,6 +25,7 @@ services:
       - ./db-migration/2026-04-29/cad_mock_permissions.sql:/docker-entrypoint-initdb.d/09_cad_mock_permissions.sql
       - ./db-migration/2026-04-29/cad_mock_tables.sql:/docker-entrypoint-initdb.d/10_cad_mock_tables.sql
       - ./db-migration/2026-05-08/template_job_automation_config.sql:/docker-entrypoint-initdb.d/11_template_job_automation_config.sql
+      - ./db-migration/2026-05-13/template_job_generation_log.sql:/docker-entrypoint-initdb.d/12_template_job_generation_log.sql
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
