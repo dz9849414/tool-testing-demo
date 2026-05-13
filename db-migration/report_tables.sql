@@ -6,6 +6,7 @@
 -- ----------------------------
 -- 1. 报告模板表 (report_template)
 -- ----------------------------
+DROP TABLE IF EXISTS `pdm_tool_report_template`;
 CREATE TABLE `pdm_tool_report_template` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '模板ID',
     `name` VARCHAR(200) NOT NULL COMMENT '模板名称',
@@ -42,6 +43,7 @@ CREATE TABLE `pdm_tool_report_template` (
 -- ----------------------------
 -- 2. 报告表 (report)
 -- ----------------------------
+DROP TABLE IF EXISTS `pdm_tool_report`;
 CREATE TABLE `pdm_tool_report` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '报告ID',
     `name` VARCHAR(200) NOT NULL COMMENT '报告名称',
@@ -80,6 +82,7 @@ CREATE TABLE `pdm_tool_report` (
 -- ----------------------------
 -- 3. 报告图表表 (report_chart)
 -- ----------------------------
+DROP TABLE IF EXISTS `pdm_tool_report_chart`;
 CREATE TABLE `pdm_tool_report_chart` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '图表ID',
     `name` VARCHAR(200) NOT NULL COMMENT '图表名称',
