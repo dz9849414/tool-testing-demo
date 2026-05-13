@@ -10,19 +10,12 @@ spring:
     password: ${SPRING_REDIS_PASSWORD:}
     database: ${SPRING_REDIS_DATABASE:0}
     timeout: 5000ms
-    lettuce:
+    jedis:
       pool:
         max-active: 8
         max-wait: -1ms
         max-idle: 8
         min-idle: 2
-        # 添加以下配置
-        time-between-eviction-runs: 60000ms  # 每60秒检查一次空闲连接
-      # 添加集群/单机配置
-      cluster:
-        refresh:
-          adaptive: true
-          period: 60000ms
   # 时区配置
   jackson:
     time-zone: Asia/Shanghai
