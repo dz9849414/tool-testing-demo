@@ -57,9 +57,32 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated()
             )
+            .exceptionHandling(exception -> exception
+                .accessDeniedHandler(accessDeniedHandler())
+            )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+    
+    /**
+     * 自定义AccessDeniedHandler，记录403错误日志
+     */
+    @Bean
+    public org.springframework.security.web.access.AccessDeniedHandler accessDeniedHandler() {
+        return (request, response, accessDeniedException) -> {
+            org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SecurityConfig.class);
+            String uri = request.getRequestURI();
+            String method = request.getMethod();
+            String remoteAddr = request.getRemoteAddr();
+            
+            log.warn("403 Forbidden - 访问被拒绝: Method={}, URI={}, IP={}, Message={}", 
+                     method, uri, remoteAddr, accessDeniedException.getMessage());
+            
+            response.setStatus(org.springframework.http.HttpStatus.FORBIDDEN.value());
+            response.setContentType("application/json; charset=utf-8");
+            response.getWriter().write("{\"code\": 403, \"message\": \"访问被拒绝\", \"data\": null}");
+        };
     }
 
     @Bean
