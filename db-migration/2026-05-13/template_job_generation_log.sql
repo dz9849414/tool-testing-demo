@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS `pdm_tool_template_job_generation_log` (
+    `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '生成记录ID',
+    `start_time` DATETIME NOT NULL COMMENT '随机创建时间开始',
+    `end_time` DATETIME NOT NULL COMMENT '随机创建时间结束',
+    `generate_count` INT NOT NULL COMMENT '生成条数',
+    `job_name_prefix` VARCHAR(100) COMMENT '任务名称前缀',
+    `job_ids` LONGTEXT COMMENT '生成的任务ID列表JSON',
+    `status` TINYINT DEFAULT 1 COMMENT '状态：0-失败，1-成功',
+    `message` VARCHAR(500) COMMENT '生成结果信息',
+    `create_id` BIGINT COMMENT '创建人',
+    `create_name` VARCHAR(200) COMMENT '创建人名称',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_id` BIGINT COMMENT '更新人',
+    `update_name` VARCHAR(200) COMMENT '更新人名称',
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `is_deleted` TINYINT DEFAULT 0 COMMENT '是否删除：0-否，1-是',
+    `deleted_by` BIGINT COMMENT '删除人',
+    `deleted_time` DATETIME COMMENT '删除时间',
+    INDEX `idx_create_time` (`create_time`),
+    INDEX `idx_is_deleted` (`is_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板任务批量生成记录表';
