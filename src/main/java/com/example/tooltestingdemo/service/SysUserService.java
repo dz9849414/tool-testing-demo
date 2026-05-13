@@ -73,7 +73,7 @@ public interface SysUserService {
     /**
      * 根据角色ID查找用户列表
      */
-    List<SysUser> findByRoleId(String roleId);
+    List<SysUser> findByRoleId(String roleId, String username);
     
     /**
      * 更新用户最后登录信息
@@ -116,6 +116,14 @@ public interface SysUserService {
     java.util.Map<String, java.util.List<String>> getPermissionsByUserIdGrouped(Long userId);
     
     /**
+     * 获取用户的权限列表，按模块分组（支持过滤）
+     * 
+     * @param userId 用户ID
+     * @param moduleType 模块类型：null返回所有权限，2只返回协议模块权限
+     */
+    java.util.Map<String, java.util.List<String>> getPermissionsByUserIdGrouped(Long userId, Integer moduleType);
+    
+    /**
      * 搜索用户
      */
     List<SysUser> searchUsers(String keyword);
@@ -144,4 +152,19 @@ public interface SysUserService {
      * @return 是否成功
      */
     boolean batchAssignPermissions(List<Long> userIds, List<String> permissions, String operationType);
+    
+    /**
+     * 移除用户的所有直接分配权限
+     * 
+     * @param userId 用户ID
+     */
+    void removeAllDirectPermissions(Long userId);
+    
+    /**
+     * 批量直接分配权限给用户
+     * 
+     * @param userId 用户ID
+     * @param permissionCodes 权限编码列表
+     */
+    void batchAssignDirectPermissions(Long userId, List<String> permissionCodes);
 }

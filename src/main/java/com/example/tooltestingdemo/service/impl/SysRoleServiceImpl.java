@@ -218,7 +218,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         // 先删除已有的权限关联
         rolePermissionMapper.deleteByRoleId(roleId);
         
-        // 创建新的权限关联
+        // 创建新的权限关联（使用INSERT IGNORE避免重复键冲突）
         for (String permissionId : permissionIds) {
             SysRolePermission rolePermission = new SysRolePermission();
             rolePermission.setId("rp_" + IdGenerator.generateSnowflakeId());
@@ -226,7 +226,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             rolePermission.setPermissionId(permissionId);
             rolePermission.setCreateTime(LocalDateTime.now());
             rolePermission.setCreateUser("system");
-            rolePermissionMapper.insert(rolePermission);
+            rolePermissionMapper.insertIgnore(rolePermission);
         }
     }
     
@@ -421,5 +421,11 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             permissionIds.add(permission.getId());
         }
         return permissionIds;
+    }
+    
+    @Override
+    @Transactional
+    public void removeAllPermissions(String roleId) {
+        rolePermissionMapper.deleteByRoleId(roleId);
     }
 }

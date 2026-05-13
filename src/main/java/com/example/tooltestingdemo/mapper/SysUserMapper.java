@@ -57,10 +57,13 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
     Long selectRoleIdByUserId(@Param("userId") Long userId);
     
     /**
-     * 根据角色ID查找用户列表
+     * 根据角色ID查找用户列表（支持用户名模糊搜索）
      */
-    @Select("SELECT u.* FROM pdm_tool_sys_user u JOIN pdm_tool_sys_user_role ur ON u.id = ur.user_id WHERE ur.role_id = #{roleId} AND u.is_deleted = 0")
-    List<SysUser> selectByRoleId(@Param("roleId") String roleId);
+    @Select("<script>" +
+            "SELECT u.* FROM pdm_tool_sys_user u JOIN pdm_tool_sys_user_role ur ON u.id = ur.user_id WHERE ur.role_id = #{roleId} AND u.is_deleted = 0" +
+            "<if test=\"username != null and username != ''\"> AND u.username LIKE CONCAT('%', #{username}, '%')</if>" +
+            "</script>")
+    List<SysUser> selectByRoleId(@Param("roleId") String roleId, @Param("username") String username);
     
     /**
      * 根据用户ID查找角色列表
