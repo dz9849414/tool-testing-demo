@@ -37,12 +37,6 @@ CREATE TABLE IF NOT EXISTS `pdm_tool_cad_mock_interface` (
     INDEX `idx_cad_type_flow_status` (`cad_type`, `apply_flow`, `status`),
     INDEX `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CAD软件模拟接口配置表';
-
-ALTER TABLE `pdm_tool_cad_mock_interface`
-    ADD COLUMN `auth_type` VARCHAR(32) DEFAULT 'NONE' COMMENT '认证方式：NONE/BASIC/BEARER/API_KEY/CUSTOM_HEADERS' AFTER `success_value`,
-    ADD COLUMN `auth_config` LONGTEXT COMMENT '认证配置JSON' AFTER `auth_type`;
-
-
 CREATE TABLE IF NOT EXISTS `pdm_tool_cad_data_convert_mapping` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
     `mock_interface_id` BIGINT NOT NULL COMMENT '模拟接口ID',
