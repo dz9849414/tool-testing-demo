@@ -64,10 +64,8 @@ services:
     volumes:
       - upload_data:/uploads
     depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - mysql
+      - redis
     networks:
       - tool-testing-network
     restart: unless-stopped
