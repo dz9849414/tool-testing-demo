@@ -11,7 +11,7 @@ COPY target/tool-testing-demo-1.0-SNAPSHOT.jar app.jar
 RUN mkdir -p /uploads
 
 # 暴露应用端口
-EXPOSE 8090
+EXPOSE 8080
 
 # 设置 JVM 参数以优化容器环境中的性能
 ENV JAVA_OPTS="-Xms512m -Xmx1024m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
