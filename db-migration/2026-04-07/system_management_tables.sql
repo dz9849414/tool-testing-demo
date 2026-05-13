@@ -2,7 +2,7 @@
 -- 系统管理模块建表SQL
 -- 仿照 Metersphere 系统管理模块设计
 -- ===========================================
-
+SET NAMES utf8mb4;
 -- 用户表
 DROP TABLE IF EXISTS `pdm_tool_sys_user`;
 CREATE TABLE `pdm_tool_sys_user` (

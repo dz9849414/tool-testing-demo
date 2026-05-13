@@ -1,4 +1,4 @@
-
+SET NAMES utf8mb4;
 DROP TABLE IF EXISTS `pdm_tool_template_execute_log`;
 DROP TABLE IF EXISTS `pdm_tool_template_job_log`;
 DROP TABLE IF EXISTS `pdm_tool_template_job_item`;

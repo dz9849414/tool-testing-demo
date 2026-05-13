@@ -1,3 +1,4 @@
+SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS `pdm_tool_template_job_generation_log` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '生成记录ID',
     `start_time` DATETIME NOT NULL COMMENT '随机创建时间开始',

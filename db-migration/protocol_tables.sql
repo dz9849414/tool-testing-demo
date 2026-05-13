@@ -1,7 +1,7 @@
 -- ========================================
 -- -- 船舶 PDM 接口测试工具 - 协议配置管理模块 - 表结构设计
 -- ========================================
-
+SET NAMES utf8mb4;
 -- 1. 协议类型主表
 DROP TABLE IF EXISTS protocol_type;
 DROP TABLE IF EXISTS pdm_tool_protocol_type;
