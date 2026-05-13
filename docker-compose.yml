@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # MySQL 数据库服务
+  mysql:
+    image: mysql:8.0
+    container_name: tool-testing-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: tool_testing
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # 只复制 SQL 文件到初始化目录，而不是整个目录结构
+      - ./db-migration/0506/dev_alert.sql:/docker-entrypoint-initdb.d/01_dev_alert.sql
+      - ./db-migration/protocol_alter.sql:/docker-entrypoint-initdb.d/02_protocol_alter.sql
+      - ./db-migration/protocol_tables.sql:/docker-entrypoint-initdb.d/03_protocol_tables.sql
+      - ./db-migration/report_tables.sql:/docker-entrypoint-initdb.d/04_report_tables.sql
+      - ./db-migration/2026-04-07/protocol_permission_tables.sql:/docker-entrypoint-initdb.d/05_protocol_permission_tables.sql
+      - ./db-migration/2026-04-07/system_management_tables.sql:/docker-entrypoint-initdb.d/06_system_management_tables.sql
+      - ./db-migration/2026-04-07/template.sql:/docker-entrypoint-initdb.d/07_template.sql
+      - ./db-migration/2026-04-29/cad_mock_auth_columns.sql:/docker-entrypoint-initdb.d/08_cad_mock_auth_columns.sql
+      - ./db-migration/2026-04-29/cad_mock_permissions.sql:/docker-entrypoint-initdb.d/09_cad_mock_permissions.sql
+      - ./db-migration/2026-04-29/cad_mock_tables.sql:/docker-entrypoint-initdb.d/10_cad_mock_tables.sql
+      - ./db-migration/2026-05-08/template_job_automation_config.sql:/docker-entrypoint-initdb.d/11_template_job_automation_config.sql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+    networks:
+      - tool-testing-network
+    restart: unless-stopped
+
+  # Redis 缓存服务
+  redis:
+    image: redis:7-alpine
+    container_name: tool-testing-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - tool-testing-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  # 主应用服务
+  app:
+    build: .
+    container_name: tool-testing-app
+    ports:
+      - "8090:8090"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/tool_testing?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 123456
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      APP_FILE_UPLOAD_PATH: /uploads
+      TZ: Asia/Shanghai
+    volumes:
+      - upload_data:/uploads
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - tool-testing-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  redis_data:
+  upload_data:
+
+networks:
+  tool-testing-network:
+    driver: bridge

@@ -1,14 +1,14 @@
 server:
-  port: 8081
+  port: ${SERVER_PORT:8080}
 
 spring:
   application:
     name: tool-testing-demo
   redis:
-    host: localhost
-    port: 6379
-    password:
-    database: 0
+    host: ${SPRING_REDIS_HOST:localhost}
+    port: ${SPRING_REDIS_PORT:6379}
+    password: ${SPRING_REDIS_PASSWORD:}
+    database: ${SPRING_REDIS_DATABASE:0}
     timeout: 3000ms
     lettuce:
       pool:
@@ -23,9 +23,9 @@ spring:
   # 数据源配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/tool_testing?useSSL=false&serverTimezone=Asia/Shanghai
-    username: root
-    password: root
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/tool_testing?useSSL=false&serverTimezone=Asia/Shanghai}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
 
   # MyBatis Plus配置
   mybatis-plus:
@@ -41,9 +41,9 @@ spring:
 
 # JWT配置
 jwt:
-  secret: mySecretKeyForJWTGenerationInSpringBootApplication2024
-  expiration: 864000
-  header: Authorization
+  secret: ${JWT_SECRET:mySecretKeyForJWTGenerationInSpringBootApplication2024}
+  expiration: ${JWT_EXPIRATION:864000}
+  header: ${JWT_HEADER:Authorization}
 
 
 
@@ -60,7 +60,7 @@ app:
   file:
     # 文件上传路径（绝对路径，默认使用用户目录下的 tool-testing-uploads 文件夹）
     # 示例：C:\Users\用户名\tool-testing-uploads 或 /home/用户名/tool-testing-uploads
-    upload-path: D:\file
+    upload-path: ${APP_FILE_UPLOAD_PATH:D:\file}
     # 文件访问基础URL（可选）
     base-url:
     # 最大文件大小
@@ -80,5 +80,5 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
   level:
-    com.example.tooltestingdemo: DEBUG
-    org.springframework.security: INFO
+    com.example.tooltestingdemo: ${LOG_LEVEL_APP:DEBUG}
+    org.springframework.security: ${LOG_LEVEL_SECURITY:INFO}

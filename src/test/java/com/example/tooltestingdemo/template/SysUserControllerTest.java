@@ -417,7 +417,7 @@ class SysUserControllerTest {
     @DisplayName("根据角色ID获取用户列表 - 成功")
     void testGetUsersByRoleId_Success() throws Exception {
         List<SysUser> users = Arrays.asList(testUser1, testUser2);
-        when(userService.findByRoleId("role_001")).thenReturn(users);
+        when(userService.findByRoleId("role_001","aaa")).thenReturn(users);
 
         mockMvc.perform(get("/api/users/role/role_001"))
                 .andExpect(status().isOk())

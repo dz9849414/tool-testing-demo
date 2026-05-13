@@ -771,7 +771,7 @@ class SysRoleControllerTest {
     void testGetRoleUsers_Success() throws Exception {
         List<SysUser> users = Arrays.asList(new SysUser(), new SysUser());
         when(roleService.getById("role_001")).thenReturn(testRole1);
-        when(userService.findByRoleId("role_001")).thenReturn(users);
+        when(userService.findByRoleId("role_001","aaa")).thenReturn(users);
 
         mockMvc.perform(get("/api/roles/role_001/users"))
                 .andExpect(status().isOk())
