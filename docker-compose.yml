@@ -56,6 +56,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: 123456
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_DATABASE: 0
+      SPRING_REDIS_TIMEOUT: 3000
       APP_FILE_UPLOAD_PATH: /uploads
       TZ: Asia/Shanghai
     volumes:
