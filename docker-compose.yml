@@ -41,7 +41,7 @@ services:
     networks:
       - tool-testing-network
     restart: unless-stopped
-    command: redis-server --appendonly yes
+    command: redis-server --bind 0.0.0.0 --appendonly yes
 
   # 主应用服务
   app:
