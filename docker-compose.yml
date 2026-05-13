@@ -15,8 +15,8 @@ services:
       - mysql_data:/var/lib/mysql
       # 只复制 SQL 文件到初始化目录，而不是整个目录结构
       - ./db-migration/0506/dev_alert.sql:/docker-entrypoint-initdb.d/01_dev_alert.sql
-      - ./db-migration/protocol_alter.sql:/docker-entrypoint-initdb.d/02_protocol_alter.sql
       - ./db-migration/protocol_tables.sql:/docker-entrypoint-initdb.d/03_protocol_tables.sql
+      - ./db-migration/protocol_alter.sql:/docker-entrypoint-initdb.d/02_protocol_alter.sql
       - ./db-migration/report_tables.sql:/docker-entrypoint-initdb.d/04_report_tables.sql
       - ./db-migration/2026-04-07/protocol_permission_tables.sql:/docker-entrypoint-initdb.d/05_protocol_permission_tables.sql
       - ./db-migration/2026-04-07/system_management_tables.sql:/docker-entrypoint-initdb.d/06_system_management_tables.sql
