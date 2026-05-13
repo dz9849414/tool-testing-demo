@@ -206,6 +206,25 @@ public class InterfaceTemplateController {
     }
 
     /**
+     * 清理模板关联数据，但保留模板主记录
+     *
+     * 接口地址：DELETE /api/template/{id}/cleanup
+     *
+     * @param id 模板ID
+     * @return 清理结果
+     */
+    @DeleteMapping("/{id}/cleanup")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:delete')")
+    public Result<Map<String, Object>> cleanTemplateRelations(@PathVariable Long id) {
+        Map<String, Object> result = templateService.cleanTemplateRelations(id);
+        if (Boolean.TRUE.equals(result.get("deleted"))) {
+            Integer cleanedRelationCount = (Integer) result.get("cleanedRelationCount");
+            return Result.success("清理成功，清理关联数据 " + cleanedRelationCount + " 条", result);
+        }
+        return Result.error("清理失败");
+    }
+
+    /**
      * 批量删除模板
      *
      * 接口地址：DELETE /api/template/batch
@@ -237,6 +256,51 @@ public class InterfaceTemplateController {
         } else {
             return Result.success("批量删除部分成功，清理关联数据 " + result.get("cleanedRelationCount") + " 条", data);
         }
+    }
+
+    /**
+     * 批量清理模板关联数据，但保留模板主记录
+     *
+     * 接口地址：DELETE /api/template/batch/cleanup
+     *
+     * @param ids 模板ID数组
+     * @return 清理结果
+     */
+    @DeleteMapping("/batch/cleanup")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:delete')")
+    public Result<Map<String, Object>> batchCleanTemplateRelations(@RequestBody Long[] ids) {
+        if (ids == null || ids.length == 0) {
+            return Result.error("模板ID列表不能为空");
+        }
+
+        Map<String, Object> result = templateService.batchCleanTemplateRelations(ids);
+
+        Map<String, Object> data = new HashMap<>();
+        List<Long> successIds = (List<Long>) result.get("success");
+        List<Long> failIds = (List<Long>) result.get("fail");
+        data.put("successIds", successIds);
+        data.put("failIds", failIds);
+        data.put("successCount", successIds.size());
+        data.put("failCount", failIds.size());
+        data.put("cleanedRelationCount", result.get("cleanedRelationCount"));
+        data.put("cleanupDetails", result.get("cleanupDetails"));
+
+        if (failIds.isEmpty()) {
+            return Result.success("批量清理成功，清理关联数据 " + result.get("cleanedRelationCount") + " 条", data);
+        } else {
+            return Result.success("批量清理部分成功，清理关联数据 " + result.get("cleanedRelationCount") + " 条", data);
+        }
+    }
+
+    /**
+     * 清理模板关联数据，单个模板版本
+     *
+     * 接口地址：DELETE /api/template/{id}/relations
+     */
+    @DeleteMapping("/{id}/relations")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:delete')")
+    public Result<Map<String, Object>> cleanTemplateRelationsOnly(@PathVariable Long id) {
+        return cleanTemplateRelations(id);
     }
 
     /**

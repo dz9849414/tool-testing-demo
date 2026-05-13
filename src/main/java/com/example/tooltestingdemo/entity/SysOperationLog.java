@@ -33,9 +33,6 @@ public class SysOperationLog {
     @TableField(value = "method")
     private String method;
 
-    @TableField(value = "method_json")
-    private String methodJson;
-
     @TableField(value = "request_url")
     private String requestUrl;
 
