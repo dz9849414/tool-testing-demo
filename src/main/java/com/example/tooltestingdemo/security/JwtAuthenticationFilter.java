@@ -51,7 +51,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
         String uri = request.getRequestURI();
-        if ( uri.startsWith("/api/auth/")
+        String httpMethod = request.getMethod();
+        
+        // 允许OPTIONS请求通过（CORS预检请求）
+        if ("OPTIONS".equalsIgnoreCase(httpMethod)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        
+        // 跳过公开路径
+        if (uri.startsWith("/api/auth/")
                 || uri.startsWith("/swagger-ui/")
                 || uri.startsWith("/v3/api-docs/")
                 || uri.startsWith("/webjars/")) {
