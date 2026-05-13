@@ -9,13 +9,13 @@ spring:
     port: ${SPRING_REDIS_PORT:6379}
     password: ${SPRING_REDIS_PASSWORD:}
     database: ${SPRING_REDIS_DATABASE:0}
-    timeout: 3000ms
+    timeout: 5000ms
     lettuce:
       pool:
         max-active: 8
         max-wait: -1ms
         max-idle: 8
-        min-idle: 0
+        min-idle: 2
   # 时区配置
   jackson:
     time-zone: Asia/Shanghai
