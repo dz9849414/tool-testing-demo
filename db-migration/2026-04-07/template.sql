@@ -870,14 +870,6 @@ INSERT INTO tool_testing.pdm_tool_interface_template
 (id, folder_id, name, description, protocol_id, protocol_type, `method`, base_url, `path`, full_url, auth_type, auth_config, content_type, charset, body_type, body_content, body_raw_type, connect_timeout, read_timeout, retry_count, retry_interval, version, version_remark, is_latest, ref_template_id, tags, team_id, visibility, pdm_system_type, pdm_module, business_scene, file_count, has_request_file, has_response_file, status, use_count, last_use_time, ext_field1, ext_field2, ext_field3, ext_field4, ext_field5, ext_num1, ext_num2, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
 VALUES
 
--- 一级分类 (folder_id:5-10)
-(1,5,'产品',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'产品负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
-(2,6,'工程专业',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'工程专业负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
-(3,7,'图纸文档',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'图纸文档负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
-(4,8,'物料部件',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'物料部件负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
-(5,9,'工艺制造',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'工艺制造负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
-(6,10,'项目阶段',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'项目阶段负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
-
 -- 产品 (folder_id:11-19)
 (7,11,'散货船',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'散货船负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
 (8,12,'集装箱船',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'集装箱船负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
