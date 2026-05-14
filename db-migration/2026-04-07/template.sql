@@ -725,3 +725,88 @@ VALUES
 
 ALTER TABLE `pdm_tool_template_folder` AUTO_INCREMENT = 100;
 ALTER TABLE `pdm_tool_interface_template` AUTO_INCREMENT = 1000;
+
+
+-- 5 产品
+INSERT INTO tool_testing.pdm_tool_template_folder
+(id, parent_id, name, description, sort_order, icon, color, team_id, visibility, status, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
+VALUES(5, 0, '产品', '产品类型', 1, NULL, NULL, NULL, 3, 1, 1, '1', now(), NULL, NULL, now(), 0, NULL, NULL);
+
+-- 6 工程专业
+INSERT INTO tool_testing.pdm_tool_template_folder
+(id, parent_id, name, description, sort_order, icon, color, team_id, visibility, status, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
+VALUES(6, 0, '工程专业', '工程专业类型', 2, NULL, NULL, NULL, 3, 1, 1, '1', now(), NULL, NULL, now(), 0, NULL, NULL);
+
+-- 7 图纸文档
+INSERT INTO tool_testing.pdm_tool_template_folder
+(id, parent_id, name, description, sort_order, icon, color, team_id, visibility, status, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
+VALUES(7, 0, '图纸文档', '图纸文档类型', 3, NULL, NULL, NULL, 3, 1, 1, '1', now(), NULL, NULL, now(), 0, NULL, NULL);
+
+-- 8 物料部件
+INSERT INTO tool_testing.pdm_tool_template_folder
+(id, parent_id, name, description, sort_order, icon, color, team_id, visibility, status, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
+VALUES(8, 0, '物料部件', '物料部件类型', 4, NULL, NULL, NULL, 3, 1, 1, '1', now(), NULL, NULL, now(), 0, NULL, NULL);
+
+-- 9 工艺制造
+INSERT INTO tool_testing.pdm_tool_template_folder
+(id, parent_id, name, description, sort_order, icon, color, team_id, visibility, status, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
+VALUES(9, 0, '工艺制造', '工艺制造类型', 5, NULL, NULL, NULL, 3, 1, 1, '1', now(), NULL, NULL, now(), 0, NULL, NULL);
+
+-- 10 项目阶段
+INSERT INTO tool_testing.pdm_tool_template_folder
+(id, parent_id, name, description, sort_order, icon, color, team_id, visibility, status, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
+VALUES(10, 0, '项目阶段', '项目阶段类型', 6, NULL, NULL, NULL, 3, 1, 1, '1', now(), NULL, NULL, now(), 0, NULL, NULL);
+
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(11,5,'散货船','散货船',1,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(12,5,'集装箱船','集装箱船',2,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(13,5,'油船','油船',3,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(14,5,'化学品船','化学品船',4,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(15,5,'LNG船','LNG船',5,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(16,5,'滚装船','滚装船',6,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(17,5,'工程船','工程船',7,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(18,5,'海工平台','海工平台',8,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(19,5,'分段/模块','分段/模块',9,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(20,6,'船体工程','船体工程',1,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(21,6,'舾装工程','舾装工程',2,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(22,6,'轮机工程','轮机工程',3,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(23,6,'管系工程','管系工程',4,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(24,6,'电气工程','电气工程',5,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(25,6,'涂装工程','涂装工程',6,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(26,6,'内装工程','内装工程',7,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(27,6,'通风空调','通风空调',8,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+
+
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(28,7,'总体图纸','总体图纸',1,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(29,7,'结构图纸','结构图纸',2,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(30,7,'管系图纸','管系图纸',3,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(31,7,'电气图纸','电气图纸',4,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(32,7,'舾装图纸','舾装图纸',5,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(33,7,'安装图纸','安装图纸',6,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(34,7,'原理图','原理图',7,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(35,7,'完工图纸','完工图纸',8,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(36,7,'技术文档','技术文档',9,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(37,8,'船体结构件','船体结构件',1,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(38,8,'舾装件','舾装件',2,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(39,8,'轮机设备','轮机设备',3,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(40,8,'管系附件','管系附件',4,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(41,8,'电气设备','电气设备',5,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(42,8,'标准件','标准件',6,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(43,8,'原材料','原材料',7,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(44,8,'涂装材料','涂装材料',8,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(45,8,'内装材料','内装材料',9,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(46,9,'切割工艺','切割工艺',1,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(47,9,'装配工艺','装配工艺',2,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(48,9,'焊接工艺','焊接工艺',3,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(49,9,'涂装工艺','涂装工艺',4,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(50,9,'安装工艺','安装工艺',5,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(51,9,'检验工艺','检验工艺',6,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(52,10,'初步设计','初步设计',1,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(53,10,'详细设计','详细设计',2,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(54,10,'生产设计','生产设计',3,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(55,10,'建造施工','建造施工',4,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(56,10,'下水试验','下水试验',5,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(57,10,'交船运维','交船运维',6,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
