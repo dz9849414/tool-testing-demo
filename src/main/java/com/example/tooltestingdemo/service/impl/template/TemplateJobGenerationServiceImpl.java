@@ -12,18 +12,25 @@ import com.example.tooltestingdemo.entity.template.TemplateJob;
 import com.example.tooltestingdemo.entity.template.TemplateJobGenerationLog;
 import com.example.tooltestingdemo.entity.template.TemplateJobItem;
 import com.example.tooltestingdemo.entity.template.TemplateEnvironment;
+import com.example.tooltestingdemo.entity.SysOperationLog;
 import com.example.tooltestingdemo.enums.TemplateEnums;
 import com.example.tooltestingdemo.exception.TemplateValidationException;
 import com.example.tooltestingdemo.mapper.template.TemplateJobGenerationLogMapper;
+import com.example.tooltestingdemo.service.SecurityService;
+import com.example.tooltestingdemo.service.SysOperationLogService;
 import com.example.tooltestingdemo.service.template.TemplateJobGenerationService;
 import com.example.tooltestingdemo.service.template.InterfaceTemplateService;
 import com.example.tooltestingdemo.service.template.TemplateEnvironmentService;
 import com.example.tooltestingdemo.service.template.TemplateJobService;
+import com.example.tooltestingdemo.util.OperationLogNameUtils;
 import com.example.tooltestingdemo.vo.TemplateJobGenerationLogVO;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -98,6 +105,8 @@ public class TemplateJobGenerationServiceImpl
     private final TemplateJobService templateJobService;
     private final InterfaceTemplateService interfaceTemplateService;
     private final TemplateEnvironmentService templateEnvironmentService;
+    private final SysOperationLogService operationLogService;
+    private final SecurityService securityService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -132,6 +141,7 @@ public class TemplateJobGenerationServiceImpl
 
             TemplateJob created = templateJobService.createJob(job);
             jobIds.add(created.getId());
+            recordOperationLog("新增任务", "createJob", created.getId(), created.getJobName(), null);
         }
 
         TemplateJobGenerationLog log = new TemplateJobGenerationLog();
@@ -193,7 +203,14 @@ public class TemplateJobGenerationServiceImpl
         for (TemplateJobGenerationLog log : logs) {
             for (Long jobId : parseJobIds(log.getJobIds())) {
                 if (jobId != null) {
-                    templateJobService.deleteJob(jobId);
+                    boolean deleted = templateJobService.deleteJob(jobId);
+                    recordOperationLog(
+                        "删除任务",
+                        "deleteJob",
+                        jobId,
+                        "jobId=" + jobId,
+                        deleted ? null : "删除失败"
+                    );
                 }
             }
         }
@@ -285,6 +302,54 @@ public class TemplateJobGenerationServiceImpl
 
     private String randomOf(List<String> values) {
         return values.get(ThreadLocalRandom.current().nextInt(values.size()));
+    }
+
+    private void recordOperationLog(String operation, String method, Long targetId, String requestParams, String errorMessage) {
+        SysOperationLog operationLog = new SysOperationLog();
+        Long userId = securityService.getCurrentUserId();
+        String username = securityService.getCurrentUsername();
+        String roleId = securityService.getCurrentUserRoleId();
+        operationLog.setUserId(String.valueOf(userId == null ? 1L : userId));
+        operationLog.setUsername(StringUtils.hasText(username) ? username : "anonymous");
+        operationLog.setRoleId(StringUtils.hasText(roleId) ? roleId : "anonymous");
+        operationLog.setModule(OperationLogNameUtils.getModuleDisplayName("TemplateJob"));
+        operationLog.setOperation(operation);
+        operationLog.setMethod(method);
+        operationLog.setRequestUrl(resolveRequestUrl());
+        operationLog.setRequestParams(requestParams);
+        operationLog.setIpAddress(resolveClientIp());
+        operationLog.setUserAgent(resolveUserAgent());
+        operationLog.setStatus(errorMessage == null ? 1 : 0);
+        operationLog.setErrorMessage(errorMessage);
+        operationLog.setExecuteTime(0L);
+        operationLogService.recordOperationLog(operationLog);
+    }
+
+    private String resolveRequestUrl() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes == null) {
+            return null;
+        }
+        HttpServletRequest request = attributes.getRequest();
+        return request == null ? null : request.getRequestURI();
+    }
+
+    private String resolveClientIp() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes == null) {
+            return null;
+        }
+        HttpServletRequest request = attributes.getRequest();
+        return request == null ? null : request.getRemoteAddr();
+    }
+
+    private String resolveUserAgent() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes == null) {
+            return null;
+        }
+        HttpServletRequest request = attributes.getRequest();
+        return request == null ? null : request.getHeader("User-Agent");
     }
 
     private TemplateJobGenerationLogVO toVO(TemplateJobGenerationLog log) {

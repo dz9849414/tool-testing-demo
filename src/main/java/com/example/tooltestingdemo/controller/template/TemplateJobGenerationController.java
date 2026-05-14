@@ -35,7 +35,7 @@ public class TemplateJobGenerationController {
      * 按时间范围和条数批量生成任务
      */
     @PostMapping("/generate")
-    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
+    @PreAuthorize("isAuthenticated()")
     public Result<TemplateJobGenerationLogVO> generate(@RequestBody TemplateJobGenerateRequest request) {
         return Result.success("生成成功", generationService.generate(request));
     }
@@ -44,7 +44,7 @@ public class TemplateJobGenerationController {
      * 分页查询生成记录
      */
     @GetMapping("/logs/page")
-    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
+    @PreAuthorize("isAuthenticated()")
     public Result<IPage<TemplateJobGenerationLogVO>> pageLogs(
         @RequestParam(defaultValue = "1") Long current,
         @RequestParam(defaultValue = "10") Long size,
@@ -57,7 +57,7 @@ public class TemplateJobGenerationController {
      * 批量删除生成记录，并删除这些记录对应生成的任务
      */
     @PostMapping("/logs/batch-delete")
-    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:relateTask')")
+    @PreAuthorize("isAuthenticated()")
     public Result<Map<String, Object>> batchDeleteLogs(@RequestBody List<Long> ids) {
         int deletedCount = generationService.batchDeleteLogsAndJobs(ids);
         return Result.success("删除成功", Map.of("deletedCount", deletedCount));

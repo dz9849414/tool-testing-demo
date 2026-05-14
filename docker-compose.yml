@@ -23,6 +23,7 @@ services:
       - ./db-migration/2026-04-07/template.sql:/docker-entrypoint-initdb.d/07_template.sql
       - ./db-migration/2026-05-08/template_job_automation_config.sql:/docker-entrypoint-initdb.d/11_template_job_automation_config.sql
       - ./db-migration/2026-05-13/template_job_generation_log.sql:/docker-entrypoint-initdb.d/12_template_job_generation_log.sql
+      - ./db-migration/2026-05-14/task_test.sql:/docker-entrypoint-initdb.d/task_test.sql
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
