@@ -14,9 +14,8 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       # 只复制 SQL 文件到初始化目录，而不是整个目录结构
-      - ./db-migration/0506/dev_alert.sql:/docker-entrypoint-initdb.d/01_dev_alert.sql
-      - ./db-migration/protocol_tables.sql:/docker-entrypoint-initdb.d/03_protocol_tables.sql
-      - ./db-migration/protocol_alter.sql:/docker-entrypoint-initdb.d/02_protocol_alter.sql
+      - ./db-migration/protocol_tables.sql:/docker-entrypoint-initdb.d/02_protocol_tables.sql
+      - ./db-migration/protocol_alter.sql:/docker-entrypoint-initdb.d/03_protocol_alter.sql
       - ./db-migration/report_tables.sql:/docker-entrypoint-initdb.d/04_report_tables.sql
       - ./db-migration/2026-04-07/protocol_permission_tables.sql:/docker-entrypoint-initdb.d/05_protocol_permission_tables.sql
       - ./db-migration/2026-04-07/system_management_tables.sql:/docker-entrypoint-initdb.d/06_system_management_tables.sql
@@ -43,7 +42,7 @@ services:
     networks:
       - tool-testing-network
     restart: unless-stopped
-    command: redis-server --appendonly yes
+    command: redis-server --bind 0.0.0.0 --appendonly yes
 
   # 主应用服务
   app:
@@ -58,6 +57,9 @@ services:
       SPRING_DATASOURCE_PASSWORD: 123456
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: ""
+      SPRING_REDIS_DATABASE: 0
+      SPRING_REDIS_TIMEOUT: 3000
       APP_FILE_UPLOAD_PATH: /uploads
       TZ: Asia/Shanghai
     volumes:
