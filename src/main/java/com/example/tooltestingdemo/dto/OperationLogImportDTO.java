@@ -12,6 +12,8 @@ public class OperationLogImportDTO {
 
     private String id;
 
+    private String traceId;
+
     private String userId;
 
     private String username;

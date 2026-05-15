@@ -1,9 +1,11 @@
 package com.example.tooltestingdemo.aspect;
 
+import com.example.tooltestingdemo.util.MethodCallChainTracker;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
@@ -26,9 +28,16 @@ public class ServiceMethodCallAspect {
             return joinPoint.proceed();
         }
 
+        // 记录方法调用
+        MethodCallChainTracker.recordMethodCall(className, methodName);
+        log.debug("记录Service方法调用: {}.{}", className, methodName);
+
         try {
-            return joinPoint.proceed();
+            Object result = joinPoint.proceed();
+            log.debug("Service方法调用完成: {}.{}", className, methodName);
+            return result;
         } catch (Throwable e) {
+            log.debug("Service方法调用异常: {}.{} - {}", className, methodName, e.getMessage());
             throw e;
         }
     }
@@ -58,7 +67,7 @@ public class ServiceMethodCallAspect {
         }
 
         // 排除日志相关Service
-        if (className.contains("OperationLog")) {
+        if (className.contains("OperationLog") || className.contains("TraceRuntimeLogStore")) {
             return true;
         }
 
@@ -69,15 +78,15 @@ public class ServiceMethodCallAspect {
 
         // 排除getter/setter方法
         if (methodName.startsWith("get") || methodName.startsWith("set") ||
-            methodName.startsWith("is") || methodName.startsWith("has")) {
+                methodName.startsWith("is") || methodName.startsWith("has")) {
             return true;
         }
 
         // 排除查询方法
         if (methodName.startsWith("select") || methodName.startsWith("find") ||
-            methodName.startsWith("list") || methodName.startsWith("query") ||
-            methodName.startsWith("search") || methodName.startsWith("count") ||
-            methodName.startsWith("exists")) {
+                methodName.startsWith("list") || methodName.startsWith("query") ||
+                methodName.startsWith("search") || methodName.startsWith("count") ||
+                methodName.startsWith("exists")) {
             return true;
         }
 

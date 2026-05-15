@@ -137,12 +137,13 @@ DROP TABLE IF EXISTS `pdm_tool_sys_operation_log`;
 CREATE TABLE `pdm_tool_sys_operation_log` (
     `id` VARCHAR(50) NOT NULL COMMENT '日志ID',
     `user_id` VARCHAR(50) COMMENT '操作用户ID',
+    `trace_id` VARCHAR(64) COMMENT '追踪ID，用于链路追踪和日志还原追踪',
     `username` VARCHAR(64) COMMENT '操作用户名',
     `role_id` VARCHAR(50) COMMENT '角色ID',
     `operation` VARCHAR(128) NOT NULL COMMENT '操作内容',
     `module` VARCHAR(64) COMMENT '操作模块',
     `method` VARCHAR(128) COMMENT '操作方法',
-    `method_json` VARCHAR(1024) COMMENT '方法调用链JSON',
+    `method_json` VARCHAR(10240) COMMENT '方法调用链JSON',
     `request_url` VARCHAR(512) COMMENT '请求URL',
     `request_params` TEXT COMMENT '请求参数',
     `ip_address` VARCHAR(128) COMMENT 'IP地址',
@@ -159,7 +160,7 @@ CREATE TABLE `pdm_tool_sys_operation_log` (
     KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作日志表';
 
-ALTER TABLE `tool_testing`.`pdm_tool_sys_operation_log`
+ALTER TABLE `pdm_tool_sys_operation_log`
 MODIFY COLUMN `ip_address` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT 'IP地址' AFTER `request_params`;
 
 -- 系统配置表

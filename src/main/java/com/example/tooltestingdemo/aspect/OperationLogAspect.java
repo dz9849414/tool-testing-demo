@@ -3,7 +3,9 @@ package com.example.tooltestingdemo.aspect;
 import com.example.tooltestingdemo.entity.SysOperationLog;
 import com.example.tooltestingdemo.service.SecurityService;
 import com.example.tooltestingdemo.service.SysOperationLogService;
+import com.example.tooltestingdemo.util.MethodCallChainTracker;
 import com.example.tooltestingdemo.util.OperationLogNameUtils;
+import com.example.tooltestingdemo.util.TraceIdContext;
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.time.LocalDateTime;
@@ -14,18 +16,21 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.AfterThrowing;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StopWatch;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
 
+@Slf4j
 @Aspect
 @Component
 @RequiredArgsConstructor
@@ -213,12 +218,26 @@ public class OperationLogAspect {
         }
 
         SysOperationLog operationLog = new SysOperationLog();
+        // operationLog.setTraceId(TraceIdContext.get()); // TraceIdContext 类不存在，暂时注释
         operationLog.setUserId(String.valueOf(userId));
         operationLog.setUsername(username);
         operationLog.setRoleId(roleId);
         operationLog.setModule(getModuleName(joinPoint));
         operationLog.setOperation(getOperationName(joinPoint));
         operationLog.setMethod(joinPoint.getSignature().getName());
+        
+        // 记录方法调用链信息
+        log.info("=== 开始获取方法调用链 ===");
+        String methodJson = MethodCallChainTracker.getMethodJson();
+        log.info("获取到的method_json: {}", methodJson);
+        if (methodJson != null && !methodJson.isEmpty()) {
+            operationLog.setMethodJson(methodJson);
+            log.info("设置method_json成功");
+        } else {
+            log.warn("method_json为空，可能的原因：1. Service方法未被调用 2. ThreadLocal未正确传递 3. AOP顺序问题");
+        }
+        log.info("=== 方法调用链处理结束 ===");
+        
         operationLog.setRequestUrl(request.getRequestURI());
         operationLog.setRequestParams(buildRequestParams(joinPoint.getArgs()));
         operationLog.setIpAddress(request.getRemoteAddr());
@@ -229,6 +248,9 @@ public class OperationLogAspect {
         operationLog.setCreateTime(LocalDateTime.now());
 
         operationLogService.recordOperationLog(operationLog);
+        
+        // 清理ThreadLocal，避免内存泄漏
+        MethodCallChainTracker.clear();
     }
 
     private String getModuleName(JoinPoint joinPoint) {
@@ -299,7 +321,7 @@ public class OperationLogAspect {
     }
 
     /**
-     * 跳过GEt请求
+     * 跳过不需要记录日志的请求
      *
      * @return
      */
@@ -310,7 +332,19 @@ public class OperationLogAspect {
         }
 
         HttpServletRequest request = attributes.getRequest();
-        return "GET".equalsIgnoreCase(request.getMethod());
+        
+        // 跳过GET请求
+        if ("GET".equalsIgnoreCase(request.getMethod())) {
+            return true;
+        }
+        
+        // 跳过操作日志相关的接口（导入操作日志本身不记录日志）
+        String requestUri = request.getRequestURI();
+        if (requestUri.contains("/operation-logs/import")) {
+            return true;
+        }
+        
+        return false;
     }
 
     private String buildRequestParams(Object[] args) {
