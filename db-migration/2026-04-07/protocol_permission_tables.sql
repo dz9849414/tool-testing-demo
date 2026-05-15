@@ -3,7 +3,7 @@
 -- 创建时间：2026-04-27
 -- 说明：协议权限独立于系统权限，完全隔离的权限体系
 -- ================================================
-
+SET NAMES utf8mb4;
 -- 先删表（按外键依赖顺序）
 DROP TABLE IF EXISTS `pdm_tool_user_protocol_role_rel`;
 DROP TABLE IF EXISTS `pdm_tool_role_protocol_rel`;

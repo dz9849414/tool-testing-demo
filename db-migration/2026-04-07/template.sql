@@ -1,4 +1,4 @@
-
+SET NAMES utf8mb4;
 DROP TABLE IF EXISTS `pdm_tool_template_execute_log`;
 DROP TABLE IF EXISTS `pdm_tool_template_job_log`;
 DROP TABLE IF EXISTS `pdm_tool_template_job_item`;
@@ -725,3 +725,249 @@ VALUES
 
 ALTER TABLE `pdm_tool_template_folder` AUTO_INCREMENT = 100;
 ALTER TABLE `pdm_tool_interface_template` AUTO_INCREMENT = 1000;
+
+
+-- 5 产品
+INSERT INTO tool_testing.pdm_tool_template_folder
+(id, parent_id, name, description, sort_order, icon, color, team_id, visibility, status, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
+VALUES(5, 0, '产品', '产品类型', 1, NULL, NULL, NULL, 3, 1, 1, '1', now(), NULL, NULL, now(), 0, NULL, NULL);
+
+-- 6 工程专业
+INSERT INTO tool_testing.pdm_tool_template_folder
+(id, parent_id, name, description, sort_order, icon, color, team_id, visibility, status, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
+VALUES(6, 0, '工程专业', '工程专业类型', 2, NULL, NULL, NULL, 3, 1, 1, '1', now(), NULL, NULL, now(), 0, NULL, NULL);
+
+-- 7 图纸文档
+INSERT INTO tool_testing.pdm_tool_template_folder
+(id, parent_id, name, description, sort_order, icon, color, team_id, visibility, status, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
+VALUES(7, 0, '图纸文档', '图纸文档类型', 3, NULL, NULL, NULL, 3, 1, 1, '1', now(), NULL, NULL, now(), 0, NULL, NULL);
+
+-- 8 物料部件
+INSERT INTO tool_testing.pdm_tool_template_folder
+(id, parent_id, name, description, sort_order, icon, color, team_id, visibility, status, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
+VALUES(8, 0, '物料部件', '物料部件类型', 4, NULL, NULL, NULL, 3, 1, 1, '1', now(), NULL, NULL, now(), 0, NULL, NULL);
+
+-- 9 工艺制造
+INSERT INTO tool_testing.pdm_tool_template_folder
+(id, parent_id, name, description, sort_order, icon, color, team_id, visibility, status, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
+VALUES(9, 0, '工艺制造', '工艺制造类型', 5, NULL, NULL, NULL, 3, 1, 1, '1', now(), NULL, NULL, now(), 0, NULL, NULL);
+
+-- 10 项目阶段
+INSERT INTO tool_testing.pdm_tool_template_folder
+(id, parent_id, name, description, sort_order, icon, color, team_id, visibility, status, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
+VALUES(10, 0, '项目阶段', '项目阶段类型', 6, NULL, NULL, NULL, 3, 1, 1, '1', now(), NULL, NULL, now(), 0, NULL, NULL);
+
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(11,5,'散货船','散货船',1,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(12,5,'集装箱船','集装箱船',2,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(13,5,'油船','油船',3,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(14,5,'化学品船','化学品船',4,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(15,5,'LNG船','LNG船',5,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(16,5,'滚装船','滚装船',6,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(17,5,'工程船','工程船',7,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(18,5,'海工平台','海工平台',8,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(19,5,'分段/模块','分段/模块',9,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(20,6,'船体工程','船体工程',1,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(21,6,'舾装工程','舾装工程',2,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(22,6,'轮机工程','轮机工程',3,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(23,6,'管系工程','管系工程',4,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(24,6,'电气工程','电气工程',5,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(25,6,'涂装工程','涂装工程',6,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(26,6,'内装工程','内装工程',7,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(27,6,'通风空调','通风空调',8,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+
+
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(28,7,'总体图纸','总体图纸',1,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(29,7,'结构图纸','结构图纸',2,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(30,7,'管系图纸','管系图纸',3,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(31,7,'电气图纸','电气图纸',4,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(32,7,'舾装图纸','舾装图纸',5,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(33,7,'安装图纸','安装图纸',6,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(34,7,'原理图','原理图',7,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(35,7,'完工图纸','完工图纸',8,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(36,7,'技术文档','技术文档',9,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(37,8,'船体结构件','船体结构件',1,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(38,8,'舾装件','舾装件',2,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(39,8,'轮机设备','轮机设备',3,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(40,8,'管系附件','管系附件',4,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(41,8,'电气设备','电气设备',5,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(42,8,'标准件','标准件',6,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(43,8,'原材料','原材料',7,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(44,8,'涂装材料','涂装材料',8,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(45,8,'内装材料','内装材料',9,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(46,9,'切割工艺','切割工艺',1,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(47,9,'装配工艺','装配工艺',2,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(48,9,'焊接工艺','焊接工艺',3,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(49,9,'涂装工艺','涂装工艺',4,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(50,9,'安装工艺','安装工艺',5,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(51,9,'检验工艺','检验工艺',6,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(52,10,'初步设计','初步设计',1,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(53,10,'详细设计','详细设计',2,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(54,10,'生产设计','生产设计',3,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(55,10,'建造施工','建造施工',4,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(56,10,'下水试验','下水试验',5,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+INSERT INTO tool_testing.pdm_tool_template_folder VALUES(57,10,'交船运维','交船运维',6,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+
+
+INSERT INTO tool_testing.pdm_tool_template_folder
+(id, parent_id, name, description, sort_order, icon, color, team_id, visibility, status, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
+VALUES
+(58,5,'底部分段','船底结构、双层底、肋板',10,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(59,5,'舷侧分段','舷侧外板、纵骨、肋骨',11,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(60,5,'甲板分段','主甲板、平台甲板',12,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(61,5,'舱壁分段','横舱壁、纵舱壁、水密舱壁',13,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(62,5,'上层建筑分段','驾驶台、住舱、甲板室',14,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(63,5,'艏部分段','球鼻艏、锚机舱、艏尖舱',15,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(64,5,'艉部分段','舵机舱、艉尖舱、推进区域',16,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(65,5,'机舱分段','机舱基座、加强结构、设备区域',17,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+
+INSERT INTO tool_testing.pdm_tool_template_folder
+(id, parent_id, name, description, sort_order, icon, color, team_id, visibility, status, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
+VALUES
+(66,6,'外舾装','锚泊、系泊、救生、消防、梯道栏杆',9,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(67,6,'内舾装','舱室、家具、门窗、绝缘、内装',10,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(68,6,'铁舾件','支架、吊架、基座、加强件、格栅',11,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(69,6,'动力系统','主机、辅机、轴系、推进器',12,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(70,6,'压载系统','压载水舱、压载泵、管路',13,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(71,6,'消防系统','水消防、CO2、泡沫、喷淋',14,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(72,6,'导航通讯系统','雷达、GPS、VDR、通导设备',15,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+
+INSERT INTO tool_testing.pdm_tool_template_folder
+(id, parent_id, name, description, sort_order, icon, color, team_id, visibility, status, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
+VALUES
+(73,7,'工艺文件','焊接、涂装、装配、切割工艺',10,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(74,7,'检验文件','探伤、试验、报验、船检报告',11,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(75,7,'计算书','强度、稳性、水力、结构计算',12,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(76,7,'技术协议','设备协议、采购规范、技术要求',13,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(77,7,'完工文件','完工图、完工报告、交付文件',14,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(78,7,'变更文件','设计变更、材料代用、现场变更',15,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+
+INSERT INTO tool_testing.pdm_tool_template_folder
+(id, parent_id, name, description, sort_order, icon, color, team_id, visibility, status, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
+VALUES
+(79,8,'设计BOM(EBOM)','设计阶段物料清单',10,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(80,8,'工艺BOM(PBOM)','工艺规划阶段物料清单',11,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(81,8,'制造BOM(MBOM)','生产制造物料清单',12,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(82,8,'采购BOM','采购计划、采购清单',13,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(83,8,'自制件','船厂自行加工零件',14,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(84,8,'外购件','外部采购成品设备',15,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(85,8,'外协件','委外加工部件、分段',16,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+
+INSERT INTO tool_testing.pdm_tool_template_folder
+(id, parent_id, name, description, sort_order, icon, color, team_id, visibility, status, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
+VALUES
+(86,10,'CCS规范','中国船级社规范',7,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(87,10,'LR规范','英国劳氏船级社规范',8,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(88,10,'ABS规范','美国船级社规范',9,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(89,10,'SOLAS公约','国际海上人命安全公约',10,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL),
+(90,10,'MARPOL公约','国际防污染公约',11,NULL,NULL,NULL,3,1,1,'1',now(),NULL,NULL,now(),0,NULL,NULL);
+
+
+INSERT INTO tool_testing.pdm_tool_interface_template
+(id, folder_id, name, description, protocol_id, protocol_type, `method`, base_url, `path`, full_url, auth_type, auth_config, content_type, charset, body_type, body_content, body_raw_type, connect_timeout, read_timeout, retry_count, retry_interval, version, version_remark, is_latest, ref_template_id, tags, team_id, visibility, pdm_system_type, pdm_module, business_scene, file_count, has_request_file, has_response_file, status, use_count, last_use_time, ext_field1, ext_field2, ext_field3, ext_field4, ext_field5, ext_num1, ext_num2, create_id, create_name, create_time, update_id, update_name, update_time, is_deleted, deleted_by, deleted_time)
+VALUES
+
+-- 产品 (folder_id:11-19)
+(7,11,'散货船',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'散货船负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(8,12,'集装箱船',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'集装箱船负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(9,13,'油船',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'油船负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(10,14,'化学品船',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'化学品船负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(11,15,'LNG船',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'LNG船负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(12,16,'滚装船',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'滚装船负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(13,17,'工程船',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'工程船负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(14,18,'海工平台',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'海工平台负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(15,19,'分段/模块',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'分段/模块负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+
+-- 工程专业 (20-27)
+(16,20,'船体工程',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'船体工程负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(17,21,'舾装工程',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'舾装工程负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(18,22,'轮机工程',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'轮机工程负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(19,23,'管系工程',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'管系工程负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(20,24,'电气工程',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'电气工程负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(21,25,'涂装工程',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'涂装工程负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(22,26,'内装工程',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'内装工程负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(23,27,'通风空调',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'通风空调负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+
+-- 图纸文档 (28-36)
+(24,28,'总体图纸',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'总体图纸负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(25,29,'结构图纸',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'结构图纸负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(26,30,'管系图纸',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'管系图纸负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(27,31,'电气图纸',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'电气图纸负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(28,32,'舾装图纸',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'舾装图纸负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(29,33,'安装图纸',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'安装图纸负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(30,34,'原理图',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'原理图负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(31,35,'完工图纸',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'完工图纸负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(32,36,'技术文档',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'技术文档负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+
+-- 物料部件 (37-45)
+(33,37,'船体结构件',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'船体结构件负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(34,38,'舾装件',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'舾装件负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(35,39,'轮机设备',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'轮机设备负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(36,40,'管系附件',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'管系附件负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(37,41,'电气设备',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'电气设备负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(38,42,'标准件',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'标准件负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(39,43,'原材料',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'原材料负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(40,44,'涂装材料',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'涂装材料负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(41,45,'内装材料',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'内装材料负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+
+-- 工艺制造 (46-51)
+(42,46,'切割工艺',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'切割工艺负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(43,47,'装配工艺',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'装配工艺负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(44,48,'焊接工艺',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'焊接工艺负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(45,49,'涂装工艺',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'涂装工艺负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(46,50,'安装工艺',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'安装工艺负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(47,51,'检验工艺',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'检验工艺负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+
+-- 项目阶段 (52-57)
+(48,52,'初步设计',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'初步设计负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(49,53,'详细设计',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'详细设计负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(50,54,'生产设计',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'生产设计负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(51,55,'建造施工',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'建造施工负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(52,56,'下水试验',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'下水试验负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(53,57,'交船运维',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'交船运维负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+
+-- 补充：分段/区域 (58-65)
+(54,58,'底部分段',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'底部分段负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(55,59,'舷侧分段',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'舷侧分段负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(56,60,'甲板分段',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'甲板分段负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(57,61,'舱壁分段',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'舱壁分段负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(58,62,'上层建筑分段',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'上层建筑分段负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(59,63,'艏部分段',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'艏部分段负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(60,64,'艉部分段',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'艉部分段负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(61,65,'机舱分段',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'机舱分段负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+
+-- 补充：舾装/系统 (66-72)
+(62,66,'外舾装',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'外舾装负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(63,67,'内舾装',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'内舾装负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(64,68,'铁舾件',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'铁舾件负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(65,69,'动力系统',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'动力系统负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(66,70,'压载系统',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'压载系统负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(67,71,'消防系统',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'消防系统负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(68,72,'导航通讯系统',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'导航通讯系统负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+
+-- 补充：工艺/检验/完工 (73-78)
+(69,73,'工艺文件',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'工艺文件负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(70,74,'检验文件',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'检验文件负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(71,75,'计算书',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'计算书负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(72,76,'技术协议',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'技术协议负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(73,77,'完工文件',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'完工文件负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(74,78,'变更文件',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'变更文件负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+
+-- 补充：BOM/来源 (79-85)
+(75,79,'设计BOM(EBOM)',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'设计BOM(EBOM)负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(76,80,'工艺BOM(PBOM)',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'工艺BOM(PBOM)负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(77,81,'制造BOM(MBOM)',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'制造BOM(MBOM)负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(78,82,'采购BOM',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'采购BOM负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(79,83,'自制件',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'自制件负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(80,84,'外购件',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'外购件负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(81,85,'外协件',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'外协件负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+
+-- 补充：船级社/规范 (86-90)
+(82,86,'CCS规范',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'CCS规范负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(83,87,'LR规范',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'LR规范负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(84,88,'ABS规范',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'ABS规范负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(85,89,'SOLAS公约',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'SOLAS公约负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL),
+(86,90,'MARPOL公约',NULL,NULL,'HTTP','GET',NULL,NULL,NULL,'NONE',NULL,'application/json','UTF-8','NONE',NULL,'JSON',30000,30000,0,1000,'V1.0',NULL,1,NULL,NULL,NULL,1,'0',NULL,NULL,0,0,0,0,0,NULL,'MARPOL公约负责人',NULL,NULL,NULL,NULL,NULL,NULL,1,'管理员',now(),NULL,NULL,now(),0,NULL,NULL);

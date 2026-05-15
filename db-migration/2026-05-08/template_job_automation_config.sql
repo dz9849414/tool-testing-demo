@@ -1,3 +1,4 @@
+SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS `pdm_tool_template_job_automation_config` (
     `job_id` BIGINT NOT NULL PRIMARY KEY COMMENT '任务ID',
     `concurrent_config` TEXT COMMENT '并发接口配置JSON',

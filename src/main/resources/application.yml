@@ -5,17 +5,17 @@ spring:
   application:
     name: tool-testing-demo
   redis:
-    host: ${SPRING_REDIS_HOST:localhost}
+    host: ${SPRING_REDIS_HOST:redis}
     port: ${SPRING_REDIS_PORT:6379}
     password: ${SPRING_REDIS_PASSWORD:}
     database: ${SPRING_REDIS_DATABASE:0}
-    timeout: 3000ms
-    lettuce:
+    timeout: 5000ms
+    jedis:
       pool:
         max-active: 8
         max-wait: -1ms
         max-idle: 8
-        min-idle: 0
+        min-idle: 2
   # 时区配置
   jackson:
     time-zone: Asia/Shanghai
@@ -23,9 +23,9 @@ spring:
   # 数据源配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/tool_testing?useSSL=false&serverTimezone=Asia/Shanghai}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/tool_testing?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
     username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
 
   # MyBatis Plus配置
   mybatis-plus:
@@ -54,6 +54,7 @@ security:
     - /swagger-ui/authorization
     - /v3/api-docs/**
     - /webjars/**
+    - /hello
 
 # 文件上传配置
 app:
