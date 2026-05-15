@@ -16,9 +16,9 @@ public class RedisConfig {
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration();
-        config.setHostName(System.getenv("SPRING_REDIS_HOST"));
-        config.setPort(Integer.parseInt(System.getenv("SPRING_REDIS_PORT")));
-        config.setDatabase(Integer.parseInt(System.getenv("SPRING_REDIS_DATABASE")));
+        config.setHostName("127.0.0.1");
+        config.setPort(6379);
+        config.setDatabase(0);
 
         JedisClientConfiguration clientConfig = JedisClientConfiguration.builder()
                 .connectTimeout(Duration.ofSeconds(5))

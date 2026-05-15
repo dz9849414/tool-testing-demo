@@ -7,6 +7,7 @@ import com.example.tooltestingdemo.dto.template.TemplateJobGenerateRequest;
 import com.example.tooltestingdemo.entity.template.TemplateJobGenerationLog;
 import com.example.tooltestingdemo.vo.TemplateJobGenerationLogVO;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -16,7 +17,14 @@ public interface TemplateJobGenerationService extends IService<TemplateJobGenera
 
     TemplateJobGenerationLogVO generate(TemplateJobGenerateRequest request);
 
-    IPage<TemplateJobGenerationLogVO> pageLogs(Page<TemplateJobGenerationLog> page, String keyword);
+    IPage<TemplateJobGenerationLogVO> pageLogs(Page<TemplateJobGenerationLog> page,
+                                               String keyword,
+                                               String systemModule,
+                                               String operationType,
+                                               String operatorName,
+                                               Integer status,
+                                               LocalDateTime startTime,
+                                               LocalDateTime endTime);
 
 
     int batchDeleteLogsAndJobs(List<Long> ids);

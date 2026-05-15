@@ -9,9 +9,8 @@ import com.example.tooltestingdemo.service.template.TemplateJobGenerationService
 import com.example.tooltestingdemo.vo.TemplateJobGenerationLogVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDateTime;
 
 /**
  * 模板任务批量生成 Controller
@@ -28,6 +28,7 @@ import java.util.Map;
 @RequestMapping("/api/template/job-generation")
 @RequiredArgsConstructor
 public class TemplateJobGenerationController {
+
 
     private final TemplateJobGenerationService generationService;
 
@@ -48,9 +49,15 @@ public class TemplateJobGenerationController {
     public Result<IPage<TemplateJobGenerationLogVO>> pageLogs(
         @RequestParam(defaultValue = "1") Long current,
         @RequestParam(defaultValue = "10") Long size,
-        @RequestParam(required = false) String keyword) {
+        @RequestParam(required = false) String keyword,
+        @RequestParam(required = false) String systemModule,
+        @RequestParam(required = false) String operationType,
+        @RequestParam(required = false) String operatorName,
+        @RequestParam(required = false) Integer status,
+        @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
+        @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {
         Page<TemplateJobGenerationLog> page = new Page<>(current, size);
-        return Result.success(generationService.pageLogs(page, keyword));
+        return Result.success(generationService.pageLogs(page, keyword, systemModule, operationType, operatorName, status, startTime, endTime));
     }
 
     /**

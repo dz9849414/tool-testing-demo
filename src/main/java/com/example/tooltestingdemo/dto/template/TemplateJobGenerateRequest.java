@@ -3,6 +3,7 @@ package com.example.tooltestingdemo.dto.template;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 批量生成模板任务请求
@@ -24,4 +25,14 @@ public class TemplateJobGenerateRequest {
      * 生成条数
      */
     private Integer count;
+
+    /**
+     * 指定生成的系统模块，可为空
+     */
+    private List<String> systemModules;
+
+    /**
+     * 指定生成的操作类型，可为空
+     */
+    private List<String> operationTypes;
 }

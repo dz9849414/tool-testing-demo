@@ -18,6 +18,15 @@ public class TemplateJobGenerationLogVO {
     private List<Long> jobIds;
     private Integer status;
     private String message;
+    private String systemModule;
+    private String operationType;
+    private String operatorName;
+    private String department;
+    private String requestMethod;
+    private String requestUrl;
+    private String logSource;
+    private Long durationMs;
+    private LocalDateTime operationTime;
     private String createName;
     private LocalDateTime createTime;
 }
