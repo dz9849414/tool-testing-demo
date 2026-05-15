@@ -235,10 +235,6 @@ public class SysOperationLogServiceImpl extends ServiceImpl<SysOperationLogMappe
                 // 列12: 状态, 列13: 错误信息, 列14: 执行时间(ms) 暂时不需要导入
                 logDTO.setCreateTime(parseDateTime(getCellStringValue(row.getCell(15))));  // 列15: 创建时间
                 logDTO.setMethodJson(getCellStringValue(row.getCell(16)));     // 列16: 方法调用链
-                // 列17: traceId（与列1重复，可选读取）
-                if (logDTO.getTraceId() == null || logDTO.getTraceId().isEmpty()) {
-                    logDTO.setTraceId(getCellStringValue(row.getCell(17)));
-                }
                 
                 if (isValidLog(logDTO)) {
                     logs.add(logDTO);
@@ -263,58 +259,21 @@ public class SysOperationLogServiceImpl extends ServiceImpl<SysOperationLogMappe
             TraceIdContext.set(itemTraceId);
             
             try {
-                boolean logExists = false;
-                if (logDTO.getId() != null && !logDTO.getId().isEmpty()) {
-                    logExists = getById(logDTO.getId()) != null;
-                }
+                // 1. 处理日志记录的插入/更新
+                processLogRecord(logDTO, itemTraceId);
                 
-                if (logExists) {
-                    log.info("[{}] 日志已存在，跳过导入: id={}, operation={}", itemTraceId, logDTO.getId(), logDTO.getOperation());
+                // 2. 处理业务还原（即使失败也继续执行后续记录）
+                if (executeRollback) {
+                    handleBusinessRollback(result, logDTO, itemTraceId, i, useMethodJson);
+                } else {
+                    // 不执行业务还原，日志记录成功即算成功
                     result.setSuccessCount(result.getSuccessCount() + 1);
                 }
                 
-                if (executeRollback) {
-                    try {
-                        if (useMethodJson && logDTO.getMethodJson() != null && !logDTO.getMethodJson().isEmpty()) {
-                            methodJsonReplayer.replayByMethodJson(logDTO);
-                            log.info("[{}] 基于method_json还原成功", itemTraceId);
-                        } else {
-                            executeBusinessOperation(logDTO);
-                            log.info("[{}] 业务操作执行成功: module={}, method={}", itemTraceId, logDTO.getModule(), logDTO.getMethod());
-                        }
-                        result.setBusinessExecuteCount(result.getBusinessExecuteCount() + 1);
-                        
-                        if (!logExists) {
-                            log.info("[{}] 还原操作完成: operation={}, module={}", itemTraceId, logDTO.getOperation(), logDTO.getModule());
-                        }
-                    } catch (Exception e) {
-                        result.setFailureCount(result.getFailureCount() + 1);
-                        OperationLogImportResultDTO.FailureDetail failure = new OperationLogImportResultDTO.FailureDetail();
-                        failure.setRowIndex(i + 1);
-                        failure.setOperation(logDTO.getOperation());
-                        failure.setModule(logDTO.getModule());
-                        failure.setErrorMessage(e.getMessage());
-                        result.getFailures().add(failure);
-                        
-                        log.error("[{}] 还原操作失败: row={}, operation={}, module={}, error={}", 
-                                itemTraceId, i + 1, logDTO.getOperation(), logDTO.getModule(), e.getMessage());
-                    }
-                } else {
-                    log.info("[{}] 跳过还原操作: executeRollback=false", itemTraceId);
-                    if (!logExists) {
-                        result.setSuccessCount(result.getSuccessCount() + 1);
-                    }
-                }
-                
             } catch (Exception e) {
+                // 日志记录处理失败
                 result.setFailureCount(result.getFailureCount() + 1);
-                OperationLogImportResultDTO.FailureDetail failure = new OperationLogImportResultDTO.FailureDetail();
-                failure.setRowIndex(i + 1);
-                failure.setOperation(logDTO.getOperation());
-                failure.setModule(logDTO.getModule());
-                failure.setErrorMessage(e.getMessage());
-                result.getFailures().add(failure);
-                
+                addFailureDetail(result, i, logDTO, "日志处理失败: " + e.getMessage());
                 log.error("[{}] 处理日志失败: row={}, operation={}, module={}, error={}", 
                         itemTraceId, i + 1, logDTO.getOperation(), logDTO.getModule(), e.getMessage());
             } finally {
@@ -325,6 +284,81 @@ public class SysOperationLogServiceImpl extends ServiceImpl<SysOperationLogMappe
         log.info("还原操作日志完成, batchId={}, success={}, failure={}, businessExecute={}", 
                 restoreBatchId, result.getSuccessCount(), result.getFailureCount(), result.getBusinessExecuteCount());
         return result;
+    }
+    
+    /**
+     * 处理业务还原逻辑
+     */
+    private void handleBusinessRollback(OperationLogImportResultDTO result, OperationLogImportDTO logDTO, 
+                                        String itemTraceId, int index, boolean useMethodJson) {
+        try {
+            if (useMethodJson && hasMethodJson(logDTO)) {
+                methodJsonReplayer.replayByMethodJson(logDTO);
+                log.info("[{}] 基于method_json还原成功", itemTraceId);
+            } else {
+                executeBusinessOperation(logDTO);
+                log.info("[{}] 业务操作执行成功: module={}, method={}", itemTraceId, logDTO.getModule(), logDTO.getMethod());
+            }
+            // 日志记录成功 + 业务还原成功 = 成功
+            result.setSuccessCount(result.getSuccessCount() + 1);
+            result.setBusinessExecuteCount(result.getBusinessExecuteCount() + 1);
+        } catch (Exception e) {
+            // 日志记录成功但业务还原失败 = 失败
+            result.setFailureCount(result.getFailureCount() + 1);
+            addFailureDetail(result, index, logDTO, "业务还原失败: " + e.getMessage());
+            
+            log.error("[{}] 业务还原失败: row={}, operation={}, module={}, error={}", 
+                    itemTraceId, index + 1, logDTO.getOperation(), logDTO.getModule(), e.getMessage());
+        }
+    }
+    
+    /**
+     * 判断是否有method_json
+     */
+    private boolean hasMethodJson(OperationLogImportDTO logDTO) {
+        return logDTO.getMethodJson() != null && !logDTO.getMethodJson().isEmpty();
+    }
+    
+    /**
+     * 添加失败记录（带前缀和异常）
+     */
+    private void addFailure(OperationLogImportResultDTO result, int index, OperationLogImportDTO logDTO, 
+                           String prefix, Exception e) {
+        addFailureDetail(result, index, logDTO, prefix + ": " + e.getMessage());
+    }
+    
+    /**
+     * 添加失败详情
+     */
+    private void addFailureDetail(OperationLogImportResultDTO result, int index, OperationLogImportDTO logDTO, 
+                                  String errorMessage) {
+        OperationLogImportResultDTO.FailureDetail failure = new OperationLogImportResultDTO.FailureDetail();
+        failure.setRowIndex(index + 1);
+        failure.setOperation(logDTO.getOperation());
+        failure.setModule(logDTO.getModule());
+        failure.setErrorMessage(errorMessage);
+        result.getFailures().add(failure);
+    }
+
+    /**
+     * 处理日志记录的插入/更新
+     */
+    private void processLogRecord(OperationLogImportDTO logDTO, String itemTraceId) {
+        boolean logExists = hasLogRecord(logDTO.getId());
+        
+        if (logExists) {
+            log.info("[{}] 日志已存在，跳过插入: id={}, operation={}", itemTraceId, logDTO.getId(), logDTO.getOperation());
+        } else {
+            log.info("[{}] 日志不存在，执行插入: id={}, operation={}", itemTraceId, logDTO.getId(), logDTO.getOperation());
+            operationLogMapper.insert(convertToEntity(logDTO));
+        }
+    }
+    
+    /**
+     * 检查日志记录是否存在
+     */
+    private boolean hasLogRecord(String logId) {
+        return logId != null && !logId.isEmpty() && getById(logId) != null;
     }
 
     private void executeBusinessOperation(OperationLogImportDTO logDTO) {

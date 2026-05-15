@@ -143,7 +143,7 @@ CREATE TABLE `pdm_tool_sys_operation_log` (
     `operation` VARCHAR(128) NOT NULL COMMENT '操作内容',
     `module` VARCHAR(64) COMMENT '操作模块',
     `method` VARCHAR(128) COMMENT '操作方法',
-    `method_json` VARCHAR(10240) COMMENT '方法调用链JSON',
+    `method_json` TEXT COMMENT '方法调用链JSON',
     `request_url` VARCHAR(512) COMMENT '请求URL',
     `request_params` TEXT COMMENT '请求参数',
     `ip_address` VARCHAR(128) COMMENT 'IP地址',
@@ -991,5 +991,3 @@ INSERT IGNORE INTO `pdm_tool_sys_organization` (`id`, `name`, `description`, `pa
 ('org_1004', '质量保障部', '负责软件测试和质量保证', '0', 1, 4, 1),
 ('org_1005', '运维部', '负责生产环境管理和系统运维', '0', 1, 5, 1),
 ('org_1006', '信息技术部', '负责系统管理和技术支持', '0', 1, 6, 1);
-
-

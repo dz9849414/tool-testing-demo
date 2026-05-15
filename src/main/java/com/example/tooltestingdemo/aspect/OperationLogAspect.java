@@ -218,7 +218,7 @@ public class OperationLogAspect {
         }
 
         SysOperationLog operationLog = new SysOperationLog();
-        // operationLog.setTraceId(TraceIdContext.get()); // TraceIdContext 类不存在，暂时注释
+        operationLog.setTraceId(TraceIdContext.getOrCreate());
         operationLog.setUserId(String.valueOf(userId));
         operationLog.setUsername(username);
         operationLog.setRoleId(roleId);

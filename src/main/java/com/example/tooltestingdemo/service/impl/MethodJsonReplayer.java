@@ -16,7 +16,9 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 @Slf4j
@@ -32,26 +34,65 @@ public class MethodJsonReplayer {
             return;
         }
 
+        JSONArray methodArray;
         try {
-            JSONArray methodArray = JSON.parseArray(methodJson);
+            methodArray = JSON.parseArray(methodJson);
+        } catch (Exception e) {
+            log.error("解析method_json失败: {}", e.getMessage(), e);
+            throw new RuntimeException("方法调用链还原失败: 解析JSON失败 - " + e.getMessage(), e);
+        }
 
-            for (int i = 0; i < methodArray.size(); i++) {
+        int successCount = 0;
+        int failureCount = 0;
+        StringBuilder failureDetails = new StringBuilder();
+
+        for (int i = 0; i < methodArray.size(); i++) {
+            try {
                 JSONObject methodInfo = methodArray.getJSONObject(i);
                 String className = methodInfo.getString("className");
                 String methodName = methodInfo.getString("methodName");
 
                 if (className == null || methodName == null) {
-                    log.warn("method_json格式错误，跳过: className={}, methodName={}", className, methodName);
+                    log.warn("method_json格式错误，跳过第{}个方法调用: className={}, methodName={}", i + 1, className, methodName);
+                    failureCount++;
+                    if (failureDetails.length() > 0) {
+                        failureDetails.append("; ");
+                    }
+                    failureDetails.append(String.format("方法%d: 格式错误(className=%s,methodName=%s)", i + 1, className, methodName));
                     continue;
                 }
 
                 executeMethod(className, methodName, logDTO);
+                successCount++;
+                log.info("成功执行第{}个方法调用: {}.{}", i + 1, className, methodName);
+            } catch (Exception e) {
+                failureCount++;
+                String detail = String.format("方法%d: %s", i + 1, e.getMessage());
+                log.error("执行第{}个方法调用失败: {}", i + 1, e.getMessage(), e);
+                
+                if (failureDetails.length() > 0) {
+                    failureDetails.append("; ");
+                }
+                failureDetails.append(detail);
             }
+        }
 
-            log.info("基于method_json还原成功: 执行了{}个方法调用", methodArray.size());
-        } catch (Exception e) {
-            log.error("基于method_json还原失败: {}", e.getMessage(), e);
-            throw new RuntimeException("方法调用链还原失败: " + e.getMessage(), e);
+        log.info("基于method_json还原完成: 成功={}, 失败={}, 总计={}", successCount, failureCount, methodArray.size());
+        
+        // 如果全部失败，抛出异常，包含详细失败原因
+        if (successCount == 0 && failureCount > 0) {
+            String errorMsg = "方法调用链还原失败: 所有方法调用均失败";
+            if (failureDetails.length() > 0) {
+                errorMsg += ", 失败详情: " + failureDetails.toString();
+            } else {
+                errorMsg += ", 失败数=" + failureCount;
+            }
+            throw new RuntimeException(errorMsg);
+        }
+        
+        // 如果部分失败，记录警告日志
+        if (failureCount > 0) {
+            log.warn("方法调用链还原部分失败: 成功={}, 失败={}, 失败详情: {}", successCount, failureCount, failureDetails.toString());
         }
     }
 
@@ -71,6 +112,21 @@ public class MethodJsonReplayer {
 
         // 根据方法参数类型解析参数
         Object[] args = parseRequestParams(logDTO.getRequestParams(), targetMethod);
+
+        // 检查参数数量是否匹配
+        int expectedParamCount = targetMethod.getParameterTypes().length;
+        if (args.length != expectedParamCount) {
+            String paramTypeNames = Arrays.stream(targetMethod.getParameterTypes())
+                    .map(Class::getSimpleName)
+                    .collect(Collectors.joining(", "));
+            throw new RuntimeException(String.format(
+                    "参数数量不匹配: 方法[%s]期望%d个参数(%s)，但从requestParams[%s]中实际解析出%d个参数", 
+                    methodName, expectedParamCount, paramTypeNames, 
+                    logDTO.getRequestParams() != null && logDTO.getRequestParams().length() > 100 
+                            ? logDTO.getRequestParams().substring(0, 100) + "..." 
+                            : logDTO.getRequestParams(),
+                    args.length));
+        }
 
         // 根据ID查询，如果存在则更新，不存在则执行原方法
         boolean shouldInvoke = true;
@@ -199,23 +255,31 @@ public class MethodJsonReplayer {
 
     private Object[] parseRequestParams(String requestParams, Method method) {
         if (requestParams == null || requestParams.isEmpty()) {
+            log.info("请求参数为空，返回空参数数组");
             return new Object[0];
         }
 
         Class<?>[] paramTypes = method.getParameterTypes();
         if (paramTypes.length == 0) {
+            log.info("方法不需要参数，返回空参数数组");
             return new Object[0];
         }
 
-        log.info("开始解析请求参数: {}, 目标参数类型: {}",
-                requestParams.length() > 100 ? requestParams.substring(0, 100) + "..." : requestParams,
-                paramTypes[0].getSimpleName());
+        log.info("开始解析请求参数: \n参数内容: {}\n目标参数类型: {}\n方法签名: {}",
+                requestParams.length() > 200 ? requestParams.substring(0, 200) + "..." : requestParams,
+                paramTypes[0].getSimpleName(),
+                method.toString());
+
+        // 如果方法需要多个参数，记录警告
+        if (paramTypes.length > 1) {
+            log.warn("方法需要{}个参数，但当前实现只支持解析1个参数", paramTypes.length);
+        }
 
         if (requestParams.startsWith("[") && requestParams.endsWith("]")) {
             String content = requestParams.substring(1, requestParams.length() - 1).trim();
 
             if (!content.startsWith("{")) {
-                log.info("检测到Java对象toString格式");
+                log.info("检测到Java对象toString格式 (数组包裹)");
                 try {
                     Object[] result = parseJavaObjectFormat(content, paramTypes[0]);
                     if (result.length > 0) {
@@ -231,14 +295,16 @@ public class MethodJsonReplayer {
 
             try {
                 JSONArray array = JSON.parseArray(requestParams);
+                log.info("解析JSON数组成功，数组大小: {}", array.size());
                 for (int i = 0; i < array.size(); i++) {
                     Object item = array.get(i);
                     if (item instanceof JSONObject) {
                         try {
                             Object dto = JSON.parseObject(item.toString(), paramTypes[0]);
+                            log.info("成功解析第{}个JSON对象为DTO: {}", i + 1, paramTypes[0].getSimpleName());
                             return new Object[]{dto};
                         } catch (Exception e) {
-                            log.debug("尝试解析为DTO失败，继续尝试: {}", e.getMessage());
+                            log.debug("尝试解析第{}个对象为DTO失败: {}", i + 1, e.getMessage());
                         }
                     }
                 }
@@ -247,17 +313,25 @@ public class MethodJsonReplayer {
             }
         }
 
-        try {
-            Object dto = JSON.parseObject(requestParams, paramTypes[0]);
-            return new Object[]{dto};
-        } catch (Exception e) {
-            log.debug("解析为DTO失败: {}", e.getMessage());
+        // 尝试直接解析为DTO（去掉外层数组）
+        String cleanParams = requestParams.trim();
+        if (cleanParams.startsWith("[") && cleanParams.endsWith("]")) {
+            cleanParams = cleanParams.substring(1, cleanParams.length() - 1).trim();
         }
 
         try {
-            if (requestParams.contains("(") && requestParams.contains(")")) {
-                Object dto = parseSingleJavaObject(requestParams, paramTypes[0]);
+            Object dto = JSON.parseObject(cleanParams, paramTypes[0]);
+            log.info("成功直接解析为DTO: {}", paramTypes[0].getSimpleName());
+            return new Object[]{dto};
+        } catch (Exception e) {
+            log.debug("直接解析为DTO失败: {}", e.getMessage());
+        }
+
+        try {
+            if (cleanParams.contains("(") && cleanParams.contains(")")) {
+                Object dto = parseSingleJavaObject(cleanParams, paramTypes[0]);
                 if (dto != null) {
+                    log.info("成功解析Java对象格式为DTO: {}", paramTypes[0].getSimpleName());
                     return new Object[]{dto};
                 }
             }
@@ -265,7 +339,7 @@ public class MethodJsonReplayer {
             log.debug("解析单个Java对象失败: {}", e.getMessage());
         }
 
-        log.warn("无法解析请求参数格式: {}", requestParams.length() > 100 ? requestParams.substring(0, 100) + "..." : requestParams);
+        log.warn("无法解析请求参数格式，返回空数组: {}", requestParams.length() > 100 ? requestParams.substring(0, 100) + "..." : requestParams);
         return new Object[0];
     }
 
