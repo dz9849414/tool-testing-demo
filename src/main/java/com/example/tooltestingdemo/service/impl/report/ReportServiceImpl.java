@@ -4318,6 +4318,97 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                             section.containsKey("data")) {
                             reportAnalysis.put("failureReasons", section.getJSONArray("data"));
                         }
+                        
+                        // 如果是 RESPONSE_TIME 类型报告，从RESPONSE_TIME数据源提取响应时间数据
+                        if ("RESPONSE_TIME".equalsIgnoreCase(report.getReportType()) && 
+                            "RESPONSE_TIME".equalsIgnoreCase(dataSource) && 
+                            section.containsKey("data")) {
+                            Object dataObj = section.get("data");
+                            
+                            // 处理两种格式：完整格式（JSONObject）和简化格式（JSONArray）
+                            if (dataObj instanceof JSONObject) {
+                                JSONObject data = (JSONObject) dataObj;
+                                
+                                // 提取响应时间统计数据（完整格式）
+                                if (data.containsKey("timeSlots")) {
+                                    reportAnalysis.put("timeSlots", data.getJSONArray("timeSlots"));
+                                }
+                                if (data.containsKey("totalExecutions")) {
+                                    reportAnalysis.put("totalExecutions", data.getLong("totalExecutions"));
+                                }
+                                if (data.containsKey("overallAvgDuration")) {
+                                    reportAnalysis.put("overallAvgDuration", data.getDouble("overallAvgDuration"));
+                                }
+                                if (data.containsKey("maxDuration")) {
+                                    reportAnalysis.put("maxDuration", data.getDouble("maxDuration"));
+                                }
+                                if (data.containsKey("minDuration")) {
+                                    reportAnalysis.put("minDuration", data.getDouble("minDuration"));
+                                }
+                                if (data.containsKey("dataSource")) {
+                                    reportAnalysis.put("dataSource", data.getString("dataSource"));
+                                }
+                                if (data.containsKey("startDate")) {
+                                    reportAnalysis.put("startDate", data.getString("startDate"));
+                                }
+                                if (data.containsKey("endDate")) {
+                                    reportAnalysis.put("endDate", data.getString("endDate"));
+                                }
+                            } else if (dataObj instanceof JSONArray) {
+                                // 简化格式：List<Map<String, Object>> 包含 name 和 value
+                                reportAnalysis.put("responseTimeData", dataObj);
+                                
+                                // 计算汇总统计
+                                JSONArray responseTimeArray = (JSONArray) dataObj;
+                                double totalValue = 0;
+                                double maxValue = 0;
+                                double minValue = Double.MAX_VALUE;
+                                int count = 0;
+                                
+                                for (int j = 0; j < responseTimeArray.size(); j++) {
+                                    JSONObject item = responseTimeArray.getJSONObject(j);
+                                    double value = item.getDoubleValue("value");
+                                    totalValue += value;
+                                    maxValue = Math.max(maxValue, value);
+                                    minValue = Math.min(minValue, value);
+                                    count++;
+                                }
+                                
+                                if (count > 0) {
+                                    reportAnalysis.put("overallAvgDuration", totalValue / count);
+                                    reportAnalysis.put("maxDuration", maxValue);
+                                    reportAnalysis.put("minDuration", minValue);
+                                }
+                            }
+                        }
+                        
+                        // 如果是 PROTOCOL_DISTRIBUTION 类型报告，从PROTOCOL_DISTRIBUTION数据源提取协议分布数据
+                        if ("PROTOCOL_DISTRIBUTION".equalsIgnoreCase(report.getReportType()) && 
+                            "PROTOCOL_DISTRIBUTION".equalsIgnoreCase(dataSource) && 
+                            section.containsKey("data")) {
+                            Object dataObj = section.get("data");
+                            
+                            if (dataObj instanceof JSONObject) {
+                                JSONObject data = (JSONObject) dataObj;
+                                
+                                // 提取协议分布数据
+                                if (data.containsKey("categoryData")) {
+                                    reportAnalysis.put("categoryData", data.getJSONArray("categoryData"));
+                                }
+                                if (data.containsKey("totalProtocolCount")) {
+                                    reportAnalysis.put("totalProtocolCount", data.getLong("totalProtocolCount"));
+                                }
+                                if (data.containsKey("reportType")) {
+                                    reportAnalysis.put("protocolReportType", data.getString("reportType"));
+                                }
+                                if (data.containsKey("reportTypeName")) {
+                                    reportAnalysis.put("protocolReportTypeName", data.getString("reportTypeName"));
+                                }
+                                if (data.containsKey("generateTime")) {
+                                    reportAnalysis.put("generateTime", data.getString("generateTime"));
+                                }
+                            }
+                        }
                     }
                     
                     analysis.add(reportAnalysis);
