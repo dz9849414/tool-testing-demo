@@ -247,4 +247,21 @@ public class ReportTemplateController {
             return Result.error("获取模板使用记录失败：" + e.getMessage());
         }
     }
+
+    @GetMapping("/system/structure")
+    @Operation(summary = "获取系统模板结构")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('report:template:view')")
+    public Result<Object> getSystemTemplateStructure(@RequestParam String templateType) {
+        try {
+            // 参数校验
+            if (templateType == null || templateType.trim().isEmpty()) {
+                return Result.error("模板类型不能为空");
+            }
+            
+            Object result = reportTemplateService.getSystemTemplateStructure(templateType);
+            return Result.success(result);
+        } catch (Exception e) {
+            return Result.error("获取系统模板结构失败：" + e.getMessage());
+        }
+    }
 }
