@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.tooltestingdemo.entity.SysOperationLog;
+import com.example.tooltestingdemo.entity.SysUser;
 import com.example.tooltestingdemo.dto.template.TemplateJobGenerateRequest;
 import com.example.tooltestingdemo.entity.template.InterfaceTemplate;
 import com.example.tooltestingdemo.entity.template.TemplateJob;
@@ -16,6 +17,7 @@ import com.example.tooltestingdemo.entity.template.TemplateEnvironment;
 import com.example.tooltestingdemo.enums.TemplateEnums;
 import com.example.tooltestingdemo.exception.TemplateValidationException;
 import com.example.tooltestingdemo.mapper.SysOperationLogMapper;
+import com.example.tooltestingdemo.mapper.SysUserMapper;
 import com.example.tooltestingdemo.mapper.template.TemplateJobGenerationLogMapper;
 import com.example.tooltestingdemo.service.template.TemplateJobGenerationService;
 import com.example.tooltestingdemo.service.template.InterfaceTemplateService;
@@ -27,7 +29,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -223,6 +228,7 @@ public class TemplateJobGenerationServiceImpl
     private final InterfaceTemplateService interfaceTemplateService;
     private final TemplateEnvironmentService templateEnvironmentService;
     private final SysOperationLogMapper sysOperationLogMapper;
+    private final SysUserMapper sysUserMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -242,9 +248,9 @@ public class TemplateJobGenerationServiceImpl
                 .list();
 
         List<TemplateJobGenerationLog> generationLogs = new ArrayList<>(request.getCount());
-        String operatorName = getCurrentUsernameOrDefault();
 
         for (int i = 1; i <= request.getCount(); i++) {
+            LogCreator creator = randomLogCreator();
             // 保证每个任务的 jobName 和 description 来自同一个索引
             int idx = randomIndex(JOB_NAME_PREFIX_POOL.size());
             String jobNamePrefix = JOB_NAME_PREFIX_POOL.get(idx);
@@ -260,9 +266,10 @@ public class TemplateJobGenerationServiceImpl
             job.setUpdateTime(createTime);
             job.setIsDeleted(0);
             job.setItems(randomItems(templates, environments));
+            applyCreator(job, creator);
 
             TemplateJob created = templateJobService.createJob(job);
-            generationLogs.add(buildGenerationLog(request, created.getId(), created.getJobName(), createTime, operatorName));
+            generationLogs.add(buildGenerationLog(request, created.getId(), created.getJobName(), createTime, creator));
         }
 
         saveBatch(generationLogs);
@@ -467,7 +474,7 @@ public class TemplateJobGenerationServiceImpl
                                                         Long jobId,
                                                         String jobName,
                                                         LocalDateTime operationTime,
-                                                        String operatorName) {
+                                                        LogCreator creator) {
         GenerationLogScenario scenario = selectScenario(request);
         String department = randomOf(DEPARTMENT_POOL);
         long durationMs = ThreadLocalRandom.current().nextLong(120, 3000);
@@ -476,7 +483,7 @@ public class TemplateJobGenerationServiceImpl
         Map<String, Object> detail = new LinkedHashMap<>();
         detail.put("systemModule", scenario.systemModule());
         detail.put("operationType", scenario.operationType());
-        detail.put("operatorName", operatorName);
+        detail.put("operatorName", creator.name());
         detail.put("department", department);
         detail.put("requestMethod", scenario.requestMethod());
         detail.put("requestUrl", buildRequestUrl(scenario.systemModule(), scenario.operationType()));
@@ -494,9 +501,11 @@ public class TemplateJobGenerationServiceImpl
         log.setJobIds(JSON.toJSONString(List.of(jobId)));
         log.setStatus(status);
         log.setMessage(JSON.toJSONString(detail));
-        log.setCreateName(operatorName);
+        log.setCreateId(creator.id());
+        log.setCreateName(creator.name());
         log.setCreateTime(operationTime);
-        log.setUpdateName(operatorName);
+        log.setUpdateId(creator.id());
+        log.setUpdateName(creator.name());
         log.setUpdateTime(operationTime);
         log.setIsDeleted(0);
         return log;
@@ -541,6 +550,39 @@ public class TemplateJobGenerationServiceImpl
             return "unknown";
         }
         return value.replaceAll("[^A-Za-z0-9\\u4e00-\\u9fa5_-]", "-");
+    }
+
+    private LogCreator randomLogCreator() {
+        List<SysUser> users = sysUserMapper.selectByStatus(1);
+        if (users == null || users.isEmpty()) {
+            users = sysUserMapper.selectList(new LambdaQueryWrapper<SysUser>()
+                    .eq(SysUser::getIsDeleted, 0));
+        }
+        if (users != null && !users.isEmpty()) {
+            SysUser user = users.get(ThreadLocalRandom.current().nextInt(users.size()));
+            return new LogCreator(user.getId(), displayName(user));
+        }
+        return new LogCreator(SecurityUtils.getUserId(), getCurrentUsernameOrDefault());
+    }
+
+    private String displayName(SysUser user) {
+        if (user == null) {
+            return getCurrentUsernameOrDefault();
+        }
+        if (StringUtils.hasText(user.getRealName())) {
+            return user.getRealName();
+        }
+        if (StringUtils.hasText(user.getUsername())) {
+            return user.getUsername();
+        }
+        return user.getId() == null ? getCurrentUsernameOrDefault() : "用户" + user.getId();
+    }
+
+    private void applyCreator(TemplateJob job, LogCreator creator) {
+        job.setCreateId(creator.id());
+        job.setCreateName(creator.name());
+        job.setUpdateId(creator.id());
+        job.setUpdateName(creator.name());
     }
 
     private String getCurrentUsernameOrDefault() {
@@ -649,8 +691,10 @@ public class TemplateJobGenerationServiceImpl
             return;
         }
         TemplateJobGenerationLogVO vo = toVO(generationLog);
+        String operationLogId = systemOperationLogId(generationLog);
+        SysOperationLog existingLog = sysOperationLogMapper.selectById(operationLogId);
         SysOperationLog operationLog = new SysOperationLog();
-        operationLog.setId(systemOperationLogId(generationLog));
+        operationLog.setId(operationLogId);
         operationLog.setTraceId("JOB_GENERATION_" + generationLog.getId());
         operationLog.setGenerationLogId(generationLog.getId());
         operationLog.setShowInSystemLog(vo.getShowInSystemLog() == null || vo.getShowInSystemLog());
@@ -667,14 +711,18 @@ public class TemplateJobGenerationServiceImpl
         requestParams.put("operationType", vo.getOperationType());
         requestParams.put("department", vo.getDepartment());
         operationLog.setRequestParams(JSON.toJSONString(requestParams));
-        operationLog.setIpAddress("127.0.0.1");
-        operationLog.setUserAgent("JobGeneration");
+        operationLog.setIpAddress(existingLog != null && StringUtils.hasText(existingLog.getIpAddress())
+                ? existingLog.getIpAddress()
+                : getCurrentRequestIp());
+        operationLog.setUserAgent(existingLog != null && StringUtils.hasText(existingLog.getUserAgent())
+                ? existingLog.getUserAgent()
+                : getCurrentUserAgent());
         operationLog.setStatus(generationLog.getStatus());
         operationLog.setErrorMessage(Objects.equals(generationLog.getStatus(), 1) ? null : "自动生成日志模拟失败");
         operationLog.setExecuteTime(vo.getDurationMs());
         operationLog.setCreateTime(vo.getOperationTime() == null ? generationLog.getCreateTime() : vo.getOperationTime());
 
-        if (sysOperationLogMapper.selectById(operationLog.getId()) == null) {
+        if (existingLog == null) {
             sysOperationLogMapper.insert(operationLog);
         } else {
             sysOperationLogMapper.updateById(operationLog);
@@ -689,6 +737,31 @@ public class TemplateJobGenerationServiceImpl
 
     private String systemOperationLogId(TemplateJobGenerationLog generationLog) {
         return GENERATED_LOG_ID_PREFIX + generationLog.getId();
+    }
+
+    private String getCurrentRequestIp() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes == null) {
+            return null;
+        }
+        HttpServletRequest request = attributes.getRequest();
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (StringUtils.hasText(forwardedFor)) {
+            return forwardedFor.split(",")[0].trim();
+        }
+        String realIp = request.getHeader("X-Real-IP");
+        if (StringUtils.hasText(realIp)) {
+            return realIp;
+        }
+        return request.getRemoteAddr();
+    }
+
+    private String getCurrentUserAgent() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes == null) {
+            return null;
+        }
+        return attributes.getRequest().getHeader("User-Agent");
     }
 
     private String toSystemModuleCode(String systemModule) {
@@ -732,5 +805,8 @@ public class TemplateJobGenerationServiceImpl
     }
 
     private record GenerationLogScenario(String systemModule, String operationType, String requestMethod) {
+    }
+
+    private record LogCreator(Long id, String name) {
     }
 }
