@@ -343,6 +343,9 @@ public class OperationLogAspect {
         if (requestUri.contains("/operation-logs/import")) {
             return true;
         }
+        if (requestUri.contains("/api/template/job-generation")) {
+            return true;
+        }
         
         return false;
     }

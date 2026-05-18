@@ -62,4 +62,10 @@ public class SysOperationLog {
     
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+
+    @TableField(value = "show_in_system_log")
+    private Boolean showInSystemLog = true;
+
+    @TableField(value = "generation_log_id")
+    private Long generationLogId;
 }

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.tooltestingdemo.entity.SysOperationLog;
 import com.example.tooltestingdemo.dto.template.TemplateJobGenerateRequest;
 import com.example.tooltestingdemo.entity.template.InterfaceTemplate;
 import com.example.tooltestingdemo.entity.template.TemplateJob;
@@ -14,6 +15,7 @@ import com.example.tooltestingdemo.entity.template.TemplateJobItem;
 import com.example.tooltestingdemo.entity.template.TemplateEnvironment;
 import com.example.tooltestingdemo.enums.TemplateEnums;
 import com.example.tooltestingdemo.exception.TemplateValidationException;
+import com.example.tooltestingdemo.mapper.SysOperationLogMapper;
 import com.example.tooltestingdemo.mapper.template.TemplateJobGenerationLogMapper;
 import com.example.tooltestingdemo.service.template.TemplateJobGenerationService;
 import com.example.tooltestingdemo.service.template.InterfaceTemplateService;
@@ -42,6 +44,7 @@ public class TemplateJobGenerationServiceImpl
 
     private static final int DEFAULT_JOB_STATUS = TemplateEnums.JobStatus.DISABLED.getCode();
     private static final int MAX_GENERATE_COUNT = 10000;
+    private static final String GENERATED_LOG_ID_PREFIX = "job_generation_";
 
     public static final List<String> JOB_NAME_PREFIX_POOL = List.of(
             "船舶PDM图纸同步任务",
@@ -219,6 +222,7 @@ public class TemplateJobGenerationServiceImpl
     private final TemplateJobService templateJobService;
     private final InterfaceTemplateService interfaceTemplateService;
     private final TemplateEnvironmentService templateEnvironmentService;
+    private final SysOperationLogMapper sysOperationLogMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -262,6 +266,7 @@ public class TemplateJobGenerationServiceImpl
         }
 
         saveBatch(generationLogs);
+        generationLogs.forEach(this::syncSystemOperationLog);
         return toVO(generationLogs.get(0));
     }
 
@@ -344,7 +349,30 @@ public class TemplateJobGenerationServiceImpl
         if (logs.isEmpty()) {
             return 0;
         }
+        logs.forEach(this::removeSystemOperationLog);
         removeByIds(logs.stream().map(TemplateJobGenerationLog::getId).toList());
+        return logs.size();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int updateAllSystemLogsVisible(Boolean visible) {
+        boolean showInSystemLog = visible == null || visible;
+        List<TemplateJobGenerationLog> logs = lambdaQuery()
+                .eq(TemplateJobGenerationLog::getIsDeleted, 0)
+                .list();
+        if (logs.isEmpty()) {
+            return 0;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        logs.forEach(log -> {
+            log.setMessage(writeShowInSystemLog(log.getMessage(), showInSystemLog));
+            log.setUpdateTime(now);
+        });
+        updateBatchById(logs);
+
+        logs.forEach(this::syncSystemOperationLog);
         return logs.size();
     }
 
@@ -456,6 +484,7 @@ public class TemplateJobGenerationServiceImpl
         detail.put("durationMs", durationMs);
         detail.put("operationTime", operationTime.toString());
         detail.put("businessName", jobName);
+        detail.put("showInSystemLog", true);
 
         TemplateJobGenerationLog log = new TemplateJobGenerationLog();
         log.setStartTime(request.getStartTime());
@@ -501,44 +530,10 @@ public class TemplateJobGenerationServiceImpl
     }
 
     private String buildRequestUrl(String systemModule, String operationType) {
-        String modulePath = switch (systemModule) {
-            case "用户管理" -> "/api/users";
-            case "角色管理" -> "/api/roles";
-            case "系统菜单" -> "/api/menus";
-            case "操作日志" -> "/api/operation-logs";
-            case "系统配置" -> "/system/config";
-            case "系统字典" -> "/system/dict/data";
-            case "模拟数据" -> "/api/mock-pdm-json-data";
-            case "协议配置" -> "/api/protocol/protocolConfig";
-            case "协议测试记录" -> "/api/protocol/protocolTestRecord";
-            case "协议类型" -> "/api/protocol/protocolType";
-            case "报表图表" -> "/api/report/charts";
-            case "报表管理" -> "/api/reports";
-            case "报表模板" -> "/api/report/templates";
-            case "模板统计" -> "/api/report/template-statistics";
-            case "接口模板" -> "/api/template";
-            case "模板环境" -> "/api/template/environment";
-            case "模板执行" -> "/api/template/execute";
-            case "执行日志" -> "/api/template/execute-log";
-            case "模板收藏" -> "/api/template/favorite";
-            case "模板目录" -> "/api/template/folder";
-            case "模板历史" -> "/api/template/history";
-            case "模板导入" -> "/api/template/import-export";
-            case "模板任务" -> "/api/template/job";
-            default -> "/api/business/" + sanitizePathSegment(systemModule);
-        };
-        String actionPath = switch (operationType) {
-            case "新增" -> "/add";
-            case "修改" -> "/edit";
-            case "删除" -> "/remove";
-            case "导入" -> "/import";
-            case "导出" -> "/export";
-            case "发布" -> "/publish";
-            case "执行" -> "/trigger";
-            case "预览" -> "/preview";
-            default -> "/" + sanitizePathSegment(operationType);
-        };
-        return modulePath + actionPath;
+        return "/api/generated-log/"
+                + sanitizePathSegment(systemModule)
+                + "/"
+                + sanitizePathSegment(operationType);
     }
 
     private String sanitizePathSegment(String value) {
@@ -574,6 +569,7 @@ public class TemplateJobGenerationServiceImpl
         vo.setOperatorName(log.getCreateName());
         vo.setOperationTime(log.getCreateTime());
         if (!StringUtils.hasText(log.getMessage())) {
+            vo.setShowInSystemLog(true);
             return;
         }
         try {
@@ -587,8 +583,12 @@ public class TemplateJobGenerationServiceImpl
             vo.setLogSource(stringValue(detail.get("logSource"), null));
             vo.setDurationMs(longValue(detail.get("durationMs")));
             vo.setOperationTime(parseLocalDateTime(stringValue(detail.get("operationTime"), null), vo.getOperationTime()));
+            vo.setShowInSystemLog(booleanValue(detail.get("showInSystemLog"), true));
         } catch (Exception ignored) {
             // 老数据 message 是普通文本时，保留基础字段展示。
+        }
+        if (vo.getShowInSystemLog() == null) {
+            vo.setShowInSystemLog(true);
         }
     }
 
@@ -619,6 +619,105 @@ public class TemplateJobGenerationServiceImpl
         } catch (Exception e) {
             return fallback;
         }
+    }
+
+    private Boolean booleanValue(Object value, Boolean fallback) {
+        if (value instanceof Boolean bool) {
+            return bool;
+        }
+        if (value == null) {
+            return fallback;
+        }
+        return Boolean.parseBoolean(String.valueOf(value));
+    }
+
+    private String writeShowInSystemLog(String message, boolean visible) {
+        Map<String, Object> detail = new LinkedHashMap<>();
+        if (StringUtils.hasText(message)) {
+            try {
+                detail.putAll(JSON.parseObject(message, new TypeReference<Map<String, Object>>() {}));
+            } catch (Exception ignored) {
+                detail.put("rawMessage", message);
+            }
+        }
+        detail.put("showInSystemLog", visible);
+        return JSON.toJSONString(detail);
+    }
+
+    private void syncSystemOperationLog(TemplateJobGenerationLog generationLog) {
+        if (generationLog.getId() == null) {
+            return;
+        }
+        TemplateJobGenerationLogVO vo = toVO(generationLog);
+        SysOperationLog operationLog = new SysOperationLog();
+        operationLog.setId(systemOperationLogId(generationLog));
+        operationLog.setTraceId("JOB_GENERATION_" + generationLog.getId());
+        operationLog.setGenerationLogId(generationLog.getId());
+        operationLog.setShowInSystemLog(vo.getShowInSystemLog() == null || vo.getShowInSystemLog());
+        operationLog.setUserId(generationLog.getCreateId() == null ? null : String.valueOf(generationLog.getCreateId()));
+        operationLog.setUsername(vo.getOperatorName());
+        operationLog.setOperation(vo.getOperationType());
+        operationLog.setModule(toSystemModuleCode(vo.getSystemModule()));
+        operationLog.setMethod(vo.getRequestMethod());
+        operationLog.setRequestUrl(vo.getRequestUrl());
+        Map<String, Object> requestParams = new LinkedHashMap<>();
+        requestParams.put("source", "一键生成");
+        requestParams.put("generationLogId", generationLog.getId());
+        requestParams.put("systemModule", vo.getSystemModule());
+        requestParams.put("operationType", vo.getOperationType());
+        requestParams.put("department", vo.getDepartment());
+        operationLog.setRequestParams(JSON.toJSONString(requestParams));
+        operationLog.setIpAddress("127.0.0.1");
+        operationLog.setUserAgent("JobGeneration");
+        operationLog.setStatus(generationLog.getStatus());
+        operationLog.setErrorMessage(Objects.equals(generationLog.getStatus(), 1) ? null : "自动生成日志模拟失败");
+        operationLog.setExecuteTime(vo.getDurationMs());
+        operationLog.setCreateTime(vo.getOperationTime() == null ? generationLog.getCreateTime() : vo.getOperationTime());
+
+        if (sysOperationLogMapper.selectById(operationLog.getId()) == null) {
+            sysOperationLogMapper.insert(operationLog);
+        } else {
+            sysOperationLogMapper.updateById(operationLog);
+        }
+    }
+
+    private void removeSystemOperationLog(TemplateJobGenerationLog generationLog) {
+        if (generationLog.getId() != null) {
+            sysOperationLogMapper.deleteById(systemOperationLogId(generationLog));
+        }
+    }
+
+    private String systemOperationLogId(TemplateJobGenerationLog generationLog) {
+        return GENERATED_LOG_ID_PREFIX + generationLog.getId();
+    }
+
+    private String toSystemModuleCode(String systemModule) {
+        return switch (systemModule) {
+            case "用户管理" -> "SysUser";
+            case "角色管理" -> "SysRole";
+            case "系统菜单" -> "SysMenu";
+            case "操作日志" -> "SysOperationLog";
+            case "系统配置" -> "SysConfig";
+            case "系统字典" -> "SysDictionary";
+            case "模拟数据" -> "MockPdmJsonData";
+            case "协议配置" -> "ProtocolConfig";
+            case "协议测试记录" -> "ProtocolTestRecord";
+            case "协议类型" -> "ProtocolType";
+            case "报表图表" -> "ReportChart";
+            case "报表管理" -> "Report";
+            case "报表模板" -> "ReportTemplate";
+            case "模板统计" -> "TemplateStatistics";
+            case "接口模板" -> "InterfaceTemplate";
+            case "模板环境" -> "TemplateEnvironment";
+            case "模板执行" -> "TemplateExecute";
+            case "执行日志" -> "TemplateExecuteLog";
+            case "模板收藏" -> "TemplateFavorite";
+            case "模板目录" -> "TemplateFolder";
+            case "模板历史" -> "TemplateHistory";
+            case "模板导入" -> "TemplateImport";
+            case "模板任务" -> "TemplateJob";
+            default -> systemModule;
+        };
     }
 
     private List<Long> parseJobIds(String jobIds) {

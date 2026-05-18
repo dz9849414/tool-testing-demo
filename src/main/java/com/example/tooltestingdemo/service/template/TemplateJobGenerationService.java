@@ -28,4 +28,6 @@ public interface TemplateJobGenerationService extends IService<TemplateJobGenera
 
 
     int batchDeleteLogsAndJobs(List<Long> ids);
+
+    int updateAllSystemLogsVisible(Boolean visible);
 }

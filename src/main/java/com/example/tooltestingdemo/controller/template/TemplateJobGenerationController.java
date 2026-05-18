@@ -69,4 +69,15 @@ public class TemplateJobGenerationController {
         int deletedCount = generationService.batchDeleteLogsAndJobs(ids);
         return Result.success("删除成功", Map.of("deletedCount", deletedCount));
     }
+
+    /**
+     * 控制自动生成日志是否展示到系统操作日志
+     */
+    @PostMapping("/logs/system-log-visible")
+    @PreAuthorize("isAuthenticated()")
+    public Result<Map<String, Object>> updateSystemLogVisible(@RequestBody Map<String, Boolean> body) {
+        Boolean visible = body == null ? null : body.get("visible");
+        int affectedCount = generationService.updateAllSystemLogsVisible(visible);
+        return Result.success("设置成功", Map.of("affectedCount", affectedCount));
+    }
 }

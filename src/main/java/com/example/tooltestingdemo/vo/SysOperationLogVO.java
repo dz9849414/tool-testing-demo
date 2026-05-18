@@ -25,4 +25,6 @@ public class SysOperationLogVO {
     private String errorMessage;
     private Long executeTime;
     private LocalDateTime createTime;
+    private Boolean showInSystemLog;
+    private Long generationLogId;
 }
