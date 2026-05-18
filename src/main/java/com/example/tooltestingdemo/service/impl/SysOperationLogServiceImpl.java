@@ -47,6 +47,7 @@ public class SysOperationLogServiceImpl extends ServiceImpl<SysOperationLogMappe
     public List<SysOperationLog> getOperationLogsByUserId(String userId) {
         LambdaQueryWrapper<SysOperationLog> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SysOperationLog::getUserId, userId)
+                .and(w -> w.isNull(SysOperationLog::getShowInSystemLog).or().eq(SysOperationLog::getShowInSystemLog, true))
                 .orderByDesc(SysOperationLog::getCreateTime);
         return list(queryWrapper);
     }
@@ -55,6 +56,7 @@ public class SysOperationLogServiceImpl extends ServiceImpl<SysOperationLogMappe
     public List<SysOperationLog> getOperationLogsByUserIdAndTimeRange(String userId, LocalDateTime startTime, LocalDateTime endTime) {
         LambdaQueryWrapper<SysOperationLog> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SysOperationLog::getUserId, userId);
+        queryWrapper.and(w -> w.isNull(SysOperationLog::getShowInSystemLog).or().eq(SysOperationLog::getShowInSystemLog, true));
 
         if (startTime != null) {
             queryWrapper.ge(SysOperationLog::getCreateTime, startTime);
@@ -72,6 +74,7 @@ public class SysOperationLogServiceImpl extends ServiceImpl<SysOperationLogMappe
     public Page<SysOperationLog> getOperationLogsByUserIdAndTimeRange(Page<SysOperationLog> page, String userId, LocalDateTime startTime, LocalDateTime endTime) {
         LambdaQueryWrapper<SysOperationLog> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SysOperationLog::getUserId, userId);
+        queryWrapper.and(w -> w.isNull(SysOperationLog::getShowInSystemLog).or().eq(SysOperationLog::getShowInSystemLog, true));
 
         if (startTime != null) {
             queryWrapper.ge(SysOperationLog::getCreateTime, startTime);
@@ -88,6 +91,7 @@ public class SysOperationLogServiceImpl extends ServiceImpl<SysOperationLogMappe
     @Override
     public Page<SysOperationLog> getOperationLogsByPage(Page<SysOperationLog> page, String userId, String username, String operation, Integer status, LocalDateTime startTime, LocalDateTime endTime, String module) {
         LambdaQueryWrapper<SysOperationLog> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.and(w -> w.isNull(SysOperationLog::getShowInSystemLog).or().eq(SysOperationLog::getShowInSystemLog, true));
 
         if (userId != null && !userId.isEmpty()) {
             queryWrapper.eq(SysOperationLog::getUserId, userId);
@@ -125,6 +129,7 @@ public class SysOperationLogServiceImpl extends ServiceImpl<SysOperationLogMappe
     public List<SysOperationLog> getOperationLogsByModule(String module) {
         LambdaQueryWrapper<SysOperationLog> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SysOperationLog::getModule, module)
+                .and(w -> w.isNull(SysOperationLog::getShowInSystemLog).or().eq(SysOperationLog::getShowInSystemLog, true))
                 .orderByDesc(SysOperationLog::getCreateTime);
         return list(queryWrapper);
     }
@@ -132,6 +137,7 @@ public class SysOperationLogServiceImpl extends ServiceImpl<SysOperationLogMappe
     @Override
     public List<SysOperationLog> getRecentOperationLogs(Integer limit) {
         LambdaQueryWrapper<SysOperationLog> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.and(w -> w.isNull(SysOperationLog::getShowInSystemLog).or().eq(SysOperationLog::getShowInSystemLog, true));
         queryWrapper.orderByDesc(SysOperationLog::getCreateTime)
                 .last("LIMIT " + limit);
         return list(queryWrapper);
@@ -140,6 +146,7 @@ public class SysOperationLogServiceImpl extends ServiceImpl<SysOperationLogMappe
     @Override
     public List<SysOperationLog> getOperationLogsByRoleId(String roleId) {
         LambdaQueryWrapper<SysOperationLog> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.and(w -> w.isNull(SysOperationLog::getShowInSystemLog).or().eq(SysOperationLog::getShowInSystemLog, true));
         if (roleId != null) {
             queryWrapper.eq(SysOperationLog::getRoleId, roleId);
         } else {
@@ -152,6 +159,7 @@ public class SysOperationLogServiceImpl extends ServiceImpl<SysOperationLogMappe
     @Override
     public List<SysOperationLog> getOperationLogsByRoleIdAndTimeRange(String roleId, LocalDateTime startTime, LocalDateTime endTime) {
         LambdaQueryWrapper<SysOperationLog> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.and(w -> w.isNull(SysOperationLog::getShowInSystemLog).or().eq(SysOperationLog::getShowInSystemLog, true));
         // 如果roleId为0或null，不添加roleId查询条件（查询所有角色）
         if (roleId != null && !roleId.isEmpty() && !"0".equals(roleId)) {
             queryWrapper.eq(SysOperationLog::getRoleId, roleId);
@@ -172,6 +180,7 @@ public class SysOperationLogServiceImpl extends ServiceImpl<SysOperationLogMappe
     @Override
     public Page<SysOperationLog> getOperationLogsByRoleIdAndPage(Page<SysOperationLog> page, String roleId, String username, String operation, Integer status, LocalDateTime startTime, LocalDateTime endTime, String module) {
         LambdaQueryWrapper<SysOperationLog> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.and(w -> w.isNull(SysOperationLog::getShowInSystemLog).or().eq(SysOperationLog::getShowInSystemLog, true));
         
         // 如果roleId为0或null，不添加roleId查询条件（查询所有角色）
         if (roleId != null && !roleId.isEmpty() && !"0".equals(roleId)) {

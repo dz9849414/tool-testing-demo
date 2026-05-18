@@ -152,12 +152,16 @@ CREATE TABLE `pdm_tool_sys_operation_log` (
     `error_message` TEXT COMMENT '错误信息',
     `execute_time` BIGINT COMMENT '执行时间(毫秒)',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `show_in_system_log` TINYINT DEFAULT 1 COMMENT '是否在系统日志页面展示：0-否，1-是',
+    `generation_log_id` BIGINT COMMENT '自动生成日志ID',
     PRIMARY KEY (`id`),
     KEY `idx_user_id` (`user_id`),
     KEY `idx_role_id` (`role_id`),
     KEY `idx_module` (`module`),
     KEY `idx_create_time` (`create_time`),
-    KEY `idx_status` (`status`)
+    KEY `idx_status` (`status`),
+    KEY `idx_show_in_system_log` (`show_in_system_log`),
+    KEY `idx_generation_log_id` (`generation_log_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作日志表';
 
 ALTER TABLE `pdm_tool_sys_operation_log`

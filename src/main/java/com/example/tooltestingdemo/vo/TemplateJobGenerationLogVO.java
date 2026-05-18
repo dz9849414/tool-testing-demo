@@ -27,6 +27,7 @@ public class TemplateJobGenerationLogVO {
     private String logSource;
     private Long durationMs;
     private LocalDateTime operationTime;
+    private Boolean showInSystemLog;
     private String createName;
     private LocalDateTime createTime;
 }
