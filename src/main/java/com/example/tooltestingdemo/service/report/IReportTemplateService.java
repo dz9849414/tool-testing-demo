@@ -67,4 +67,11 @@ public interface IReportTemplateService extends IService<ReportTemplate> {
      * 获取模板使用记录
      */
     List<Object> getTemplateUsageRecords(Long templateId);
+    
+    /**
+     * 获取系统模板结构
+     * @param templateType 模板类型
+     * @return 包含templateStructure和chapterStructure的Map
+     */
+    java.util.Map<String, Object> getSystemTemplateStructure(String templateType);
 }

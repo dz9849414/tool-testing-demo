@@ -271,6 +271,155 @@ public class ReportTemplateServiceImpl extends ServiceImpl<ReportTemplateMapper,
         return List.of();
     }
 
+    @Override
+    public java.util.Map<String, Object> getSystemTemplateStructure(String templateType) {
+        // 构建查询条件：查询系统模板(is_system_template=1)且指定templateType，按创建时间升序排序取最早创建的
+        LambdaQueryWrapper<ReportTemplate> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(ReportTemplate::getIsDeleted, 0);
+        queryWrapper.eq(ReportTemplate::getIsSystemTemplate, true);
+        queryWrapper.eq(ReportTemplate::getTemplateType, templateType);
+        queryWrapper.orderByAsc(ReportTemplate::getCreateTime);
+        queryWrapper.last("LIMIT 1");
+        
+        // 查询模板（按创建时间升序，取最早创建的一条）
+        ReportTemplate template = reportTemplateMapper.selectOne(queryWrapper);
+        
+        // 构建返回结果
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        if (template != null) {
+            result.put("templateStructure", template.getTemplateStructure());
+            result.put("chapterStructure", template.getChapterStructure());
+            result.put("templateType", template.getTemplateType());
+            result.put("name", template.getName());
+            result.put("description", template.getDescription());
+            result.put("id", template.getId());
+        }
+        
+        // 添加前端下拉框数据
+        result.put("chapterTypes", getChapterTypes());
+        result.put("chartTypes", getChartTypes());
+        result.put("dataSources", getDataSources());
+        
+        return result;
+    }
+    
+    /**
+     * 获取章节类型下拉框数据
+     */
+    private java.util.List<java.util.Map<String, Object>> getChapterTypes() {
+        java.util.List<java.util.Map<String, Object>> types = new java.util.ArrayList<>();
+        
+        java.util.Map<String, Object> chartType = new java.util.HashMap<>();
+        chartType.put("value", "chart");
+        chartType.put("label", "图表");
+        types.add(chartType);
+        
+        java.util.Map<String, Object> textType = new java.util.HashMap<>();
+        textType.put("value", "text");
+        textType.put("label", "文本");
+        types.add(textType);
+        
+        return types;
+    }
+    
+    /**
+     * 获取图表类型下拉框数据
+     */
+    private java.util.List<java.util.Map<String, Object>> getChartTypes() {
+        java.util.List<java.util.Map<String, Object>> types = new java.util.ArrayList<>();
+        
+        java.util.Map<String, Object> histogram = new java.util.HashMap<>();
+        histogram.put("value", "HISTOGRAM");
+        histogram.put("label", "直方图");
+        types.add(histogram);
+        
+        java.util.Map<String, Object> bar = new java.util.HashMap<>();
+        bar.put("value", "BAR");
+        bar.put("label", "柱状图");
+        types.add(bar);
+        
+        java.util.Map<String, Object> line = new java.util.HashMap<>();
+        line.put("value", "LINE");
+        line.put("label", "折线图");
+        types.add(line);
+        
+        java.util.Map<String, Object> pie = new java.util.HashMap<>();
+        pie.put("value", "PIE");
+        pie.put("label", "饼图");
+        types.add(pie);
+        
+        java.util.Map<String, Object> scatter = new java.util.HashMap<>();
+        scatter.put("value", "SCATTER");
+        scatter.put("label", "散点图");
+        types.add(scatter);
+        
+        return types;
+    }
+    
+    /**
+     * 获取数据来源下拉框数据
+     */
+    private java.util.List<java.util.Map<String, Object>> getDataSources() {
+        java.util.List<java.util.Map<String, Object>> sources = new java.util.ArrayList<>();
+        
+        java.util.Map<String, Object> responseTime = new java.util.HashMap<>();
+        responseTime.put("value", "RESPONSE_TIME");
+        responseTime.put("label", "响应时间");
+        sources.add(responseTime);
+        
+        java.util.Map<String, Object> failureReasons = new java.util.HashMap<>();
+        failureReasons.put("value", "FAILURE_REASONS");
+        failureReasons.put("label", "失败原因");
+        sources.add(failureReasons);
+        
+        java.util.Map<String, Object> optimization = new java.util.HashMap<>();
+        optimization.put("value", "OPTIMIZATION_SUGGESTIONS");
+        optimization.put("label", "优化建议");
+        sources.add(optimization);
+        
+        java.util.Map<String, Object> overview = new java.util.HashMap<>();
+        overview.put("value", "OVERVIEW");
+        overview.put("label", "概览");
+        sources.add(overview);
+        
+        java.util.Map<String, Object> weeklyExecution = new java.util.HashMap<>();
+        weeklyExecution.put("value", "WEEKLY_EXECUTION");
+        weeklyExecution.put("label", "周执行量");
+        sources.add(weeklyExecution);
+        
+        java.util.Map<String, Object> dailyExecution = new java.util.HashMap<>();
+        dailyExecution.put("value", "DAILY_EXECUTION");
+        dailyExecution.put("label", "日执行量");
+        sources.add(dailyExecution);
+        
+        java.util.Map<String, Object> successRate = new java.util.HashMap<>();
+        successRate.put("value", "SUCCESS_RATE");
+        successRate.put("label", "成功率");
+        sources.add(successRate);
+        
+        java.util.Map<String, Object> protocolDistribution = new java.util.HashMap<>();
+        protocolDistribution.put("value", "PROTOCOL_DISTRIBUTION");
+        protocolDistribution.put("label", "协议分布");
+        sources.add(protocolDistribution);
+        
+        java.util.Map<String, Object> anomalyDetection = new java.util.HashMap<>();
+        anomalyDetection.put("value", "ANOMALY_DETECTION");
+        anomalyDetection.put("label", "异常检测");
+        sources.add(anomalyDetection);
+        
+        java.util.Map<String, Object> influencingFactors = new java.util.HashMap<>();
+        influencingFactors.put("value", "INFLUENCING_FACTORS");
+        influencingFactors.put("label", "影响因素");
+        sources.add(influencingFactors);
+        
+        java.util.Map<String, Object> interfaceDetails = new java.util.HashMap<>();
+        interfaceDetails.put("value", "INTERFACE_DETAILS");
+        interfaceDetails.put("label", "接口详情");
+        sources.add(interfaceDetails);
+        
+        return sources;
+    }
+
     private ReportTemplateDTO convertToDTO(ReportTemplate template) {
         ReportTemplateDTO dto = new ReportTemplateDTO();
         BeanUtils.copyProperties(template, dto);

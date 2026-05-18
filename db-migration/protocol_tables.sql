@@ -30,6 +30,11 @@ CREATE TABLE `pdm_tool_protocol_type`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='协议类型主表';
 
+  ALTER TABLE `tool_testing`.`pdm_tool_protocol_type`
+      ADD COLUMN `template_id` bigint NULL DEFAULT NULL COMMENT '关联模板ID',
+  ADD COLUMN `template_name` varchar(50) NULL DEFAULT NULL COMMENT '关联模板名称';
+
+
 -- 2. 协议参数配置表
 DROP TABLE IF EXISTS protocol_config;
 DROP TABLE IF EXISTS pdm_tool_protocol_config;
@@ -64,6 +69,9 @@ CREATE TABLE `pdm_tool_protocol_config`
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='协议参数配置表';
+
+  ALTER TABLE `tool_testing`.`pdm_tool_protocol_config`
+      ADD COLUMN `tcp_udp` json NULL COMMENT 'TCP/UDP配置数据';
 
 -- 3. 协议-项目关联表
 DROP TABLE IF EXISTS protocol_project;
