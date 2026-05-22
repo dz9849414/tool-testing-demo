@@ -42,7 +42,6 @@ import java.util.concurrent.ThreadLocalRandom;
  * 模板任务批量生成 Service 实现
  */
 @Service
-@RequiredArgsConstructor
 public class TemplateJobGenerationServiceImpl
         extends ServiceImpl<TemplateJobGenerationLogMapper, TemplateJobGenerationLog>
         implements TemplateJobGenerationService {
@@ -230,6 +229,18 @@ public class TemplateJobGenerationServiceImpl
     private final SysOperationLogMapper sysOperationLogMapper;
     private final SysUserMapper sysUserMapper;
 
+    public TemplateJobGenerationServiceImpl(TemplateJobService templateJobService,
+                                            InterfaceTemplateService interfaceTemplateService,
+                                            TemplateEnvironmentService templateEnvironmentService,
+                                            SysOperationLogMapper sysOperationLogMapper,
+                                            SysUserMapper sysUserMapper) {
+        this.templateJobService = templateJobService;
+        this.interfaceTemplateService = interfaceTemplateService;
+        this.templateEnvironmentService = templateEnvironmentService;
+        this.sysOperationLogMapper = sysOperationLogMapper;
+        this.sysUserMapper = sysUserMapper;
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TemplateJobGenerationLogVO generate(TemplateJobGenerateRequest request) {
@@ -248,9 +259,10 @@ public class TemplateJobGenerationServiceImpl
                 .list();
 
         List<TemplateJobGenerationLog> generationLogs = new ArrayList<>(request.getCount());
+        List<LogCreator> creatorPool = loadLogCreatorPool();
 
         for (int i = 1; i <= request.getCount(); i++) {
-            LogCreator creator = randomLogCreator();
+            LogCreator creator = randomLogCreator(creatorPool);
             // 保证每个任务的 jobName 和 description 来自同一个索引
             int idx = randomIndex(JOB_NAME_PREFIX_POOL.size());
             String jobNamePrefix = JOB_NAME_PREFIX_POOL.get(idx);
@@ -293,11 +305,21 @@ public class TemplateJobGenerationServiceImpl
                     .or()
                     .like(TemplateJobGenerationLog::getMessage, keyword));
         }
-        if (StringUtils.hasText(systemModule)) {
-            wrapper.like(TemplateJobGenerationLog::getJobNamePrefix, systemModule);
+        List<String> systemModules = splitQueryValues(systemModule);
+        if (!systemModules.isEmpty()) {
+            wrapper.in(TemplateJobGenerationLog::getJobNamePrefix, systemModules);
         }
-        if (StringUtils.hasText(operationType)) {
-            wrapper.like(TemplateJobGenerationLog::getMessage, operationType);
+        List<String> operationTypes = splitQueryValues(operationType);
+        if (!operationTypes.isEmpty()) {
+            wrapper.and(w -> {
+                for (int i = 0; i < operationTypes.size(); i++) {
+                    if (i == 0) {
+                        w.like(TemplateJobGenerationLog::getMessage, operationTypes.get(i));
+                    } else {
+                        w.or().like(TemplateJobGenerationLog::getMessage, operationTypes.get(i));
+                    }
+                }
+            });
         }
         if (StringUtils.hasText(operatorName)) {
             wrapper.and(w -> w.like(TemplateJobGenerationLog::getCreateName, operatorName)
@@ -320,6 +342,17 @@ public class TemplateJobGenerationServiceImpl
                 new Page<>(entityPage.getCurrent(), entityPage.getSize(), entityPage.getTotal());
         voPage.setRecords(entityPage.getRecords().stream().map(this::toVO).toList());
         return voPage;
+    }
+
+    private List<String> splitQueryValues(String value) {
+        if (!StringUtils.hasText(value)) {
+            return Collections.emptyList();
+        }
+        return Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toList();
     }
 
     @Override
@@ -552,16 +585,28 @@ public class TemplateJobGenerationServiceImpl
         return value.replaceAll("[^A-Za-z0-9\\u4e00-\\u9fa5_-]", "-");
     }
 
-    private LogCreator randomLogCreator() {
+    private List<LogCreator> loadLogCreatorPool() {
         List<SysUser> users = sysUserMapper.selectByStatus(1);
         if (users == null || users.isEmpty()) {
             users = sysUserMapper.selectList(new LambdaQueryWrapper<SysUser>()
                     .eq(SysUser::getIsDeleted, 0));
         }
         if (users != null && !users.isEmpty()) {
-            SysUser user = users.get(ThreadLocalRandom.current().nextInt(users.size()));
-            return new LogCreator(user.getId(), displayName(user));
+            return users.stream()
+                    .map(user -> new LogCreator(user.getId(), displayName(user)))
+                    .toList();
         }
+        return List.of(fallbackLogCreator());
+    }
+
+    private LogCreator randomLogCreator(List<LogCreator> creators) {
+        if (creators == null || creators.isEmpty()) {
+            return fallbackLogCreator();
+        }
+        return creators.get(ThreadLocalRandom.current().nextInt(creators.size()));
+    }
+
+    private LogCreator fallbackLogCreator() {
         return new LogCreator(SecurityUtils.getUserId(), getCurrentUsernameOrDefault());
     }
 
