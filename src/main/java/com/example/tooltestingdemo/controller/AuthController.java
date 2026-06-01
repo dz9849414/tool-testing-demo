@@ -88,7 +88,7 @@ public class AuthController {
             loginLogService.recordLoginLog(loginLog);
             
             Map<String, Object> response = new HashMap<>();
-            response.put("code", 401);
+            response.put("code", 403);
             response.put("message", "用户已被禁用: " + loginDTO.getUsername());
             response.put("data", null);
             response.put("success", false);
