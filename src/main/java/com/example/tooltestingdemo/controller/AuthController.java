@@ -73,8 +73,8 @@ public class AuthController {
             loginLogService.recordLoginLog(loginLog);
             
             Map<String, Object> response = new HashMap<>();
-            response.put("code", 401);
-            response.put("message", "用户不存在: " + loginDTO.getUsername());
+            response.put("code", 40101);
+            response.put("message", "用户名或密码错误");
             response.put("data", null);
             response.put("success", false);
             return ResponseEntity.ok(response);
@@ -88,7 +88,7 @@ public class AuthController {
             loginLogService.recordLoginLog(loginLog);
             
             Map<String, Object> response = new HashMap<>();
-            response.put("code", 403);
+            response.put("code", 40300);
             response.put("message", "用户已被禁用: " + loginDTO.getUsername());
             response.put("data", null);
             response.put("success", false);
@@ -146,7 +146,7 @@ public class AuthController {
             loginLogService.recordLoginLog(loginLog);
             
             Map<String, Object> response = new HashMap<>();
-            response.put("code", 401);
+            response.put("code", 40101);
             response.put("message", "用户名或密码错误");
             response.put("data", null);
             response.put("success", false);
