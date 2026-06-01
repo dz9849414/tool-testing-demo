@@ -181,11 +181,16 @@ public class OperationLogAspect {
         }
 
         StopWatch stopWatch = new StopWatch(joinPoint.getSignature().toShortString());
-        stopWatch.start();
-        Object result = joinPoint.proceed();
-        stopWatch.stop();
-        recordOperationLog(joinPoint, stopWatch.getTotalTimeMillis(), null);
-        return result;
+        try {
+            stopWatch.start();
+            Object result = joinPoint.proceed();
+            stopWatch.stop();
+            recordOperationLog(joinPoint, stopWatch.getTotalTimeMillis(), null);
+            return result;
+        } finally {
+            // 确保无论成功还是失败，都清理 ThreadLocal，防止数据累积
+            MethodCallChainTracker.clear();
+        }
     }
 
     @AfterThrowing(pointcut = "operationLogPointcut()", throwing = "e")
@@ -229,10 +234,10 @@ public class OperationLogAspect {
         // 记录方法调用链信息
         log.info("=== 开始获取方法调用链 ===");
         String methodJson = MethodCallChainTracker.getMethodJson();
-        log.info("获取到的method_json: {}", methodJson);
+        log.info("获取到的method_json: {}", methodJson != null && methodJson.length() > 500 ? methodJson.substring(0, 500) + "..." : methodJson);
         if (methodJson != null && !methodJson.isEmpty()) {
-            operationLog.setMethodJson(methodJson);
-            log.info("设置method_json成功");
+            operationLog.setMethodJsonString(methodJson);
+            log.info("设置method_json成功（已压缩）");
         } else {
             log.warn("method_json为空，可能的原因：1. Service方法未被调用 2. ThreadLocal未正确传递 3. AOP顺序问题");
         }
@@ -248,9 +253,6 @@ public class OperationLogAspect {
         operationLog.setCreateTime(LocalDateTime.now());
 
         operationLogService.recordOperationLog(operationLog);
-        
-        // 清理ThreadLocal，避免内存泄漏
-        MethodCallChainTracker.clear();
     }
 
     private String getModuleName(JoinPoint joinPoint) {

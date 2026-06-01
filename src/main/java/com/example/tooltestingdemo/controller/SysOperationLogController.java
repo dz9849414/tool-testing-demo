@@ -255,7 +255,7 @@ public class SysOperationLogController {
                 setCellValue(row, 13, log.getErrorMessage(), dataStyle);
                 setCellValue(row, 14, log.getExecuteTime(), dataStyle);
                 setCellValue(row, 15, log.getCreateTime(), dataStyle);
-                setCellValue(row, 16, log.getMethodJson(), dataStyle);
+                setCellValue(row, 16, log.getMethodJsonString(), dataStyle);
             }
 
             try (OutputStream outputStream = response.getOutputStream()) {

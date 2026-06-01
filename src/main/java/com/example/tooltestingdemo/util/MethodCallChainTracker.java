@@ -47,6 +47,11 @@ public class MethodCallChainTracker {
     }
     
     /**
+     * method_json 最大长度限制（LONGBLOB支持4GB，这里设置4MB作为合理上限,数据库8.0云库默认max_allowed_packet4M）
+     */
+    private static final int MAX_METHOD_JSON_SIZE = 4 * 1024 * 1024; // 4MB
+
+    /**
      * 获取方法调用链JSON（直接从ThreadLocal获取）
      */
     public static String getMethodJson() {
@@ -54,7 +59,17 @@ public class MethodCallChainTracker {
         if (chain != null && !chain.isEmpty()) {
             log.info("获取到方法调用链，共{}个方法调用", chain.size());
             String json = JSON.toJSONString(chain);
-            log.info("方法调用链JSON: {}", json);
+            
+            // 检查JSON大小是否超过限制
+            if (json.length() > MAX_METHOD_JSON_SIZE) {
+                // 记录超过限制的原因和具体大小
+                log.warn("method_json超过最大长度限制: {} -> {}", json.length(), MAX_METHOD_JSON_SIZE);
+                // 截断到最大长度，保留有效JSON格式（移除末尾不完整部分）
+                json = json.substring(0, MAX_METHOD_JSON_SIZE - 3) + "...";
+                log.warn("已截断method_json，截断后长度: {}", json.length());
+            }
+            
+            log.debug("方法调用链JSON: {}", json.length() > 500 ? json.substring(0, 500) + "..." : json);
             return json;
         }
         log.warn("ThreadLocal中的方法调用链为空");

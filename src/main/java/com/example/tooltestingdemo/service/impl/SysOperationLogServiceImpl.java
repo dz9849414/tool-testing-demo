@@ -384,7 +384,8 @@ public class SysOperationLogServiceImpl extends ServiceImpl<SysOperationLogMappe
         entity.setOperation(dto.getOperation());
         entity.setModule(dto.getModule());
         entity.setMethod(dto.getMethod());
-        //entity.setMethodJson(dto.getMethodJson());
+        // 使用压缩方法设置 method_json
+        entity.setMethodJsonString(dto.getMethodJson());
         entity.setRequestUrl(dto.getRequestUrl());
         entity.setRequestParams(dto.getRequestParams());
         entity.setIpAddress(dto.getIpAddress());
