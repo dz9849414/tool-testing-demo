@@ -31,16 +31,16 @@ public class TemplateValidator {
                 name -> name.length() <= 100, "模板名称不能超过100个字符");
 
         validateField(errors, dto.getProtocolType(), "协议类型不能为空", null, null);
-        if (isSocketProtocol(dto.getProtocolType())) {
-            if (!StringUtils.hasText(dto.getFullUrl())
-                && !StringUtils.hasText(dto.getBaseUrl())
-                && !StringUtils.hasText(dto.getPath())) {
-                errors.add("TCP/UDP目标地址不能为空");
-            }
-        } else {
-            validateField(errors, dto.getMethod(), "请求方法不能为空", null, null);
-            validateField(errors, dto.getPath(), "请求路径不能为空", null, null);
-        }
+//        if (isSocketProtocol(dto.getProtocolType())) {
+//            if (!StringUtils.hasText(dto.getFullUrl())
+//                && !StringUtils.hasText(dto.getBaseUrl())
+//                && !StringUtils.hasText(dto.getPath())) {
+//                errors.add("TCP/UDP目标地址不能为空");
+//            }
+//        } else {
+//            validateField(errors, dto.getMethod(), "请求方法不能为空", null, null);
+//            validateField(errors, dto.getPath(), "请求路径不能为空", null, null);
+//        }
 
         checkDuplicate(dto.getName(), dto.getMethod(), excludeId);
 

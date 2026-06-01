@@ -354,6 +354,20 @@ public class InterfaceTemplateServiceImpl extends ServiceImpl<InterfaceTemplateM
             "审核驳回，原因：" + Optional.ofNullable(reason).orElse("无"));
     }
 
+    @Override
+    public boolean disableTemplate(Long id) {
+        return checkAndUpdateStatus(id, TemplateEnums.TemplateStatus.PUBLISHED.getCode(),
+            TemplateEnums.TemplateStatus.DISABLED.getCode(), "只有已发布状态的模板可以禁用", "DISABLE",
+            "模板已禁用");
+    }
+
+    @Override
+    public boolean enableTemplate(Long id) {
+        return checkAndUpdateStatus(id, TemplateEnums.TemplateStatus.DISABLED.getCode(),
+            TemplateEnums.TemplateStatus.PUBLISHED.getCode(), "只有已禁用状态的模板可以启用", "ENABLE",
+            "模板已启用");
+    }
+
     // ========== 私有方法 ==========
 
     private InterfaceTemplateVO enrichTemplateVO(InterfaceTemplate template) {

@@ -113,12 +113,26 @@ public class ProtocolTypeServiceImpl extends ServiceImpl<ProtocolTypeMapper, Pro
     @Transactional(rollbackFor = Exception.class)
     public ProtocolType createProtocolType(ProtocolTypeCreateDTO dto) {
         String protocolCode = normalizeText(dto.getProtocolCode());
+        String protocolName = normalizeText(dto.getProtocolName());
+        String protocolCategory = normalizeText(dto.getProtocolCategory());
+        
+        // 验证必填字段
+        if (protocolCode == null) {
+            throw new RuntimeException("协议编码不能为空");
+        }
+        if (protocolName == null) {
+            throw new RuntimeException("协议名称不能为空");
+        }
+        if (protocolCategory == null) {
+            throw new RuntimeException("协议分类不能为空");
+        }
+        
         ensureProtocolCodeUnique(protocolCode, null);
 
         ProtocolType entity = new ProtocolType();
         entity.setProtocolCode(protocolCode);
-        entity.setProtocolName(normalizeText(dto.getProtocolName()));
-        entity.setProtocolCategory(normalizeText(dto.getProtocolCategory()));
+        entity.setProtocolName(protocolName);
+        entity.setProtocolCategory(protocolCategory);
         entity.setSystemType(normalizeText(dto.getSystemType()));
         entity.setDescription(normalizeText(dto.getDescription()));
         entity.setStatus(resolveStatus(dto.getStatus(), 0));

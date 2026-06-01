@@ -356,6 +356,44 @@ public class InterfaceTemplateController {
     }
 
     /**
+     * 禁用模板
+     *
+     * 接口地址：PUT /api/template/{id}/disable
+     *
+     * @param id 模板ID
+     * @return 是否成功
+     */
+    @PutMapping("/{id}/disable")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:edit')")
+    public Result<String> disableTemplate(@PathVariable Long id) {
+        boolean success = templateService.disableTemplate(id);
+        if (success) {
+            return Result.success("禁用成功");
+        }
+        return Result.error("禁用失败，只有已发布状态的模板可以禁用");
+    }
+
+    /**
+     * 启用模板
+     *
+     * 接口地址：PUT /api/template/{id}/enable
+     *
+     * @param id 模板ID
+     * @return 是否成功
+     */
+    @PutMapping("/{id}/enable")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:edit')")
+    public Result<String> enableTemplate(@PathVariable Long id) {
+        boolean success = templateService.enableTemplate(id);
+        if (success) {
+            return Result.success("启用成功");
+        }
+        return Result.error("启用失败，只有已禁用状态的模板可以启用");
+    }
+
+
+
+    /**
      * 移动模板
      *
      * 接口地址：PUT /api/template/{id}/move

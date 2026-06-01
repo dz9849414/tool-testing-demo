@@ -189,11 +189,27 @@ public interface InterfaceTemplateService extends IService<InterfaceTemplate> {
     boolean approveTemplate(Long id);
 
     /**
-     * 审核驳回
+     * 驳回模板
      *
      * @param id 模板ID
      * @param reason 驳回原因
      * @return 是否成功
      */
     boolean rejectTemplate(Long id, String reason);
+
+    /**
+     * 禁用模板
+     *
+     * @param id 模板ID
+     * @return 是否成功
+     */
+    boolean disableTemplate(Long id);
+
+    /**
+     * 启用模板
+     *
+     * @param id 模板ID
+     * @return 是否成功
+     */
+    boolean enableTemplate(Long id);
 }
