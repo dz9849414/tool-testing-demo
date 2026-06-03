@@ -54,5 +54,12 @@ public class ProtocolFileImportExportQueryDTO extends PageQuery {
     @Schema(description = "创建时间-结束（yyyy-MM-dd HH:mm:ss）", example = "2026-04-30 23:59:59")
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTimeEnd;
-}
 
+    @Schema(description = "创建时间（yyyy-MM-dd，仅日期，兼容前端）", example = "2026-04-01")
+    @DateTimeFormat(pattern = "yyyy-MM-dd")
+    private String createTime;
+
+    @Schema(description = "结束时间（yyyy-MM-dd，仅日期，兼容前端）", example = "2026-04-30")
+    @DateTimeFormat(pattern = "yyyy-MM-dd")
+    private String endTime;
+}

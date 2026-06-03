@@ -50,12 +50,24 @@ public class ProtocolFileImportExportServiceImpl
                 wrapper.eq(ProtocolFileImportExport::getStatus, query.getStatus());
             }
 
-            // 图片字段：开始/结束时间
+            // 开始/结束时间筛选
             applyDateTimeRange(wrapper, query.getStartTimeStart(), query.getStartTimeEnd(), ProtocolFileImportExport::getStartTime);
             applyDateTimeRange(wrapper, query.getEndTimeStart(), query.getEndTimeEnd(), ProtocolFileImportExport::getEndTime);
 
-            // 创建时间筛选
-            applyDateTimeRange(wrapper, query.getCreateTimeStart(), query.getCreateTimeEnd(), ProtocolFileImportExport::getCreateTime);
+            // 兼容前端参数：createTime（开始日期）和 endTime（结束日期），格式 yyyy-MM-dd
+            // 两者都是用于过滤创建时间字段，形成日期范围
+            LocalDateTime createTimeStart = query.getCreateTimeStart();
+            LocalDateTime createTimeEnd = query.getCreateTimeEnd();
+
+            if (StringUtils.isNotBlank(query.getCreateTime())) {
+                createTimeStart = LocalDateTime.parse(query.getCreateTime() + " 00:00:00",
+                        java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            }
+            if (StringUtils.isNotBlank(query.getEndTime())) {
+                createTimeEnd = LocalDateTime.parse(query.getEndTime() + " 23:59:59",
+                        java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            }
+            applyDateTimeRange(wrapper, createTimeStart, createTimeEnd, ProtocolFileImportExport::getCreateTime);
         }
 
         wrapper.orderByDesc(ProtocolFileImportExport::getCreateTime).orderByDesc(ProtocolFileImportExport::getId);
@@ -119,4 +131,3 @@ public class ProtocolFileImportExportServiceImpl
         };
     }
 }
-
