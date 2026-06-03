@@ -59,7 +59,9 @@ public class InterfaceTemplateController {
     @GetMapping("/page")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('test:template:search')")
     public Result<IPage<InterfaceTemplateVO>> pageTemplates(
+            @RequestParam(defaultValue = "1") Long pageNum,
             @RequestParam(defaultValue = "1") Long current,
+            @RequestParam(defaultValue = "10") Long pageSize,
             @RequestParam(defaultValue = "10") Long size,
             @RequestParam(required = false) Long folderId,
             @RequestParam(required = false) String keyword,
@@ -71,8 +73,12 @@ public class InterfaceTemplateController {
             @RequestParam(required = false) String protocolType,
             @RequestParam(required = false, name = "status") List<Integer> statuses,
             @RequestParam(required = false) Long extNum1) {
-
-        Page<InterfaceTemplate> page = new Page<>(current, size);
+        
+        // 优先使用 pageNum/pageSize，兼容 current/size
+        long pageNumValue = pageNum != null && pageNum > 0 ? pageNum : (current != null && current > 0 ? current : 1);
+        long pageSizeValue = pageSize != null && pageSize > 0 ? pageSize : (size != null && size > 0 ? size : 10);
+        
+        Page<InterfaceTemplate> page = new Page<>(pageNumValue, pageSizeValue);
         IPage<InterfaceTemplateVO> result = templateService.pageTemplates(
             page, folderId, keyword, name, extField2, extField3, protocolId, protocolType, statuses, extNum1, pdmSystemType);
         return Result.success(result);
