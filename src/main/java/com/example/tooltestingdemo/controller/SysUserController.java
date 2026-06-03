@@ -552,6 +552,62 @@ public class SysUserController {
     }
     
     /**
+     * 删除用户权限
+     * 
+     * 请求示例：
+     * DELETE /api/users/2/permissions
+     * Content-Type: application/json
+     * 
+     * ["protocol_m15", "protocol_m18", "report_p1"]
+     */
+    @DeleteMapping("/{id}/permissions")
+    @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:user:permission:remove')")
+    public Result<String> removeUserPermissions(
+            @PathVariable Long id,
+            @RequestBody List<String> permissionCodes) {
+        try {
+            // 检查用户是否存在
+            SysUser user = userService.findById(id);
+            if (user == null) {
+                return Result.error(ErrorStatus.NOT_FOUND, "用户不存在");
+            }
+            
+            // 检查是否是admin用户
+            if ("admin".equals(user.getUsername())) {
+                return Result.error(ErrorStatus.BAD_REQUEST, "不能删除admin用户的权限");
+            }
+            
+            // 检查权限列表中是否包含admin权限
+            if (permissionCodes != null && !permissionCodes.isEmpty()) {
+                List<String> adminPermissions = new ArrayList<>();
+                for (String permissionCode : permissionCodes) {
+                    if (permissionCode.toLowerCase().contains("admin")) {
+                        adminPermissions.add(permissionCode);
+                    }
+                }
+                if (!adminPermissions.isEmpty()) {
+                    return Result.error(ErrorStatus.BAD_REQUEST, "不能删除admin权限");
+                }
+            }
+            
+            if (permissionCodes == null || permissionCodes.isEmpty()) {
+                return Result.error("权限列表不能为空");
+            }
+            
+            // 调用服务层删除用户权限
+            boolean success = userService.removeUserPermissions(id, permissionCodes);
+            
+            if (success) {
+                return Result.success("删除用户权限成功");
+            } else {
+                return Result.error("删除用户权限失败");
+            }
+        } catch (Exception e) {
+            return Result.error("删除用户权限异常: " + e.getMessage());
+        }
+    }
+    
+    /**
      * 导出用户权限配置
      * 
      * @param id 用户ID

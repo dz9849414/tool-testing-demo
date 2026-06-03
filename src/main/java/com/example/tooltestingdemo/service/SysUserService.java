@@ -161,6 +161,15 @@ public interface SysUserService {
     void removeAllDirectPermissions(Long userId);
     
     /**
+     * 删除用户指定的权限
+     * 
+     * @param userId 用户ID
+     * @param permissionCodes 权限编码列表
+     * @return 是否删除成功
+     */
+    boolean removeUserPermissions(Long userId, List<String> permissionCodes);
+    
+    /**
      * 批量直接分配权限给用户
      * 
      * @param userId 用户ID

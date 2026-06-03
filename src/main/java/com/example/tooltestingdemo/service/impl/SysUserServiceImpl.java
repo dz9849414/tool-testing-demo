@@ -795,6 +795,21 @@ public class SysUserServiceImpl implements SysUserService {
     
     @Override
     @Transactional
+    public boolean removeUserPermissions(Long userId, List<String> permissionCodes) {
+        if (permissionCodes == null || permissionCodes.isEmpty()) {
+            return false;
+        }
+        
+        LambdaQueryWrapper<SysUserPermission> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysUserPermission::getUserId, userId.toString());
+        queryWrapper.in(SysUserPermission::getPermissionCode, permissionCodes);
+        
+        int deletedCount = userPermissionMapper.delete(queryWrapper);
+        return deletedCount > 0;
+    }
+    
+    @Override
+    @Transactional
     public void batchAssignDirectPermissions(Long userId, List<String> permissionCodes) {
         if (permissionCodes == null || permissionCodes.isEmpty()) {
             return;
