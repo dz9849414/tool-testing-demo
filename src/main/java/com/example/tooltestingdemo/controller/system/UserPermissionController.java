@@ -52,6 +52,11 @@ public class UserPermissionController {
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:user:permission:grant')")
     public Result<Boolean> grantPermission(@RequestBody UserPermissionDTO dto) {
         try {
+            // 检查是否包含admin用户
+            if ("admin".equals(dto.getUserId())) {
+                return Result.error("不能为admin用户分配权限");
+            }
+            
             // 参数校验
             if (dto.getUserId() == null || dto.getUserId().trim().isEmpty()) {
                 return Result.error("用户ID不能为空");
@@ -78,6 +83,13 @@ public class UserPermissionController {
         try {
             if (dtos == null || dtos.isEmpty()) {
                 return Result.error("权限列表不能为空");
+            }
+            
+            // 检查是否包含admin用户
+            for (UserPermissionDTO dto : dtos) {
+                if ("1".equals(dto.getUserId())) {
+                    return Result.error("不能为admin用户分配权限");
+                }
             }
             
             // 参数校验
