@@ -18,6 +18,7 @@ import com.example.tooltestingdemo.enums.ReportTypeEnum;
 import com.example.tooltestingdemo.enums.SuccessRateLevel;
 import com.example.tooltestingdemo.enums.SystemLoadLevel;
 import com.example.tooltestingdemo.mapper.protocol.ProtocolTestRecordMapper;
+import com.example.tooltestingdemo.util.StoragePathUtil;
 import com.example.tooltestingdemo.mapper.report.ReportMapper;
 import com.example.tooltestingdemo.mapper.template.TemplateExecuteLogMapper;
 import com.example.tooltestingdemo.mapper.template.TemplateJobLogMapper;
@@ -1201,8 +1202,9 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         }
         
         try {
-            // 创建导出目录
-            File exportDir = new File("exports/reports");
+            // 使用 StoragePathUtil 获取导出目录（非C盘优先）
+            String exportDirPath = StoragePathUtil.getReportExportPath();
+            File exportDir = new File(exportDirPath);
             if (!exportDir.exists()) {
                 exportDir.mkdirs();
             }

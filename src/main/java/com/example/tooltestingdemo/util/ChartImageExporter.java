@@ -34,8 +34,6 @@ public class ChartImageExporter {
     
     private final IProtocolTestRecordService protocolTestRecordService;
     
-    private static final String EXPORT_BASE_DIR = "exports/charts/";
-    
     /**
      * 导出图表为图片
      * 
@@ -46,8 +44,9 @@ public class ChartImageExporter {
      */
     public String exportChartToImage(ReportChart chart, String format, String resolution) {
         try {
-            // 创建导出目录
-            createExportDirectory();
+            // 创建导出目录（非C盘优先）
+            String exportDirPath = StoragePathUtil.getChartExportPath();
+            createExportDirectory(exportDirPath);
             
             // 获取图片尺寸
             Dimension size = getImageSize(resolution);
@@ -57,7 +56,7 @@ public class ChartImageExporter {
             
             // 保存图片文件
             String fileName = chart.getId() + "_" + System.currentTimeMillis() + "." + format.toLowerCase();
-            String filePath = EXPORT_BASE_DIR + fileName;
+            String filePath = exportDirPath + File.separator + fileName;
             
             File outputFile = new File(filePath);
             ImageIO.write(image, format.toLowerCase(), outputFile);
@@ -525,8 +524,8 @@ public class ChartImageExporter {
     /**
      * 创建导出目录
      */
-    private void createExportDirectory() throws IOException {
-        Path exportPath = Paths.get(EXPORT_BASE_DIR);
+    private void createExportDirectory(String exportDirPath) throws IOException {
+        Path exportPath = Paths.get(exportDirPath);
         if (!Files.exists(exportPath)) {
             Files.createDirectories(exportPath);
         }

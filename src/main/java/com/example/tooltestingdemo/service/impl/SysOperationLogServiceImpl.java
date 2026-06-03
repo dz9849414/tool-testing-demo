@@ -92,6 +92,9 @@ public class SysOperationLogServiceImpl extends ServiceImpl<SysOperationLogMappe
     public Page<SysOperationLog> getOperationLogsByPage(Page<SysOperationLog> page, String userId, String username, String operation, Integer status, LocalDateTime startTime, LocalDateTime endTime, String module) {
         LambdaQueryWrapper<SysOperationLog> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.and(w -> w.isNull(SysOperationLog::getShowInSystemLog).or().eq(SysOperationLog::getShowInSystemLog, true));
+        
+        // 排除 method_json 字段，只查询其他字段
+        queryWrapper.select(SysOperationLog.class, info -> !info.getColumn().equals("method_json"));
 
         if (userId != null && !userId.isEmpty()) {
             queryWrapper.eq(SysOperationLog::getUserId, userId);

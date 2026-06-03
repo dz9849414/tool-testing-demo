@@ -59,9 +59,11 @@ services:
       SPRING_REDIS_DATABASE: 0
       SPRING_REDIS_TIMEOUT: 3000
       APP_FILE_UPLOAD_PATH: /uploads
+      TOOL_TESTING_EXPORT_PATH: /exports
       TZ: Asia/Shanghai
     volumes:
       - upload_data:/uploads
+      - export_data:/exports
     depends_on:
       - mysql
       - redis
@@ -73,6 +75,7 @@ volumes:
   mysql_data:
   redis_data:
   upload_data:
+  export_data:
 
 networks:
   tool-testing-network:
