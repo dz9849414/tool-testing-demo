@@ -42,7 +42,8 @@ public class UserPermissionServiceImpl extends ServiceImpl<SysUserPermissionMapp
     public List<UserPermissionVO> getUserPermissions(String userId, String scopeType, String scopeId) {
         try {
             LambdaQueryWrapper<SysUserPermission> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(SysUserPermission::getUserId, userId);
+            queryWrapper.eq(SysUserPermission::getUserId, userId)
+                       .eq(SysUserPermission::getStatus, 1);
             
             if (scopeType != null && !scopeType.trim().isEmpty()) {
                 queryWrapper.eq(SysUserPermission::getScopeType, scopeType);
@@ -54,7 +55,21 @@ public class UserPermissionServiceImpl extends ServiceImpl<SysUserPermissionMapp
             
             List<SysUserPermission> userPermissions = userPermissionMapper.selectList(queryWrapper);
             
-            return userPermissions.stream().map(this::convertToVO).collect(Collectors.toList());
+            LocalDateTime now = LocalDateTime.now();
+            java.util.Set<String> seenPermissionCodes = new java.util.HashSet<>();
+            
+            return userPermissions.stream()
+                .filter(permission -> {
+                    if (permission.getStartTime() != null && now.isBefore(permission.getStartTime())) {
+                        return false;
+                    }
+                    if (permission.getEndTime() != null && now.isAfter(permission.getEndTime())) {
+                        return false;
+                    }
+                    return seenPermissionCodes.add(permission.getPermissionCode());
+                })
+                .map(this::convertToVO)
+                .collect(Collectors.toList());
             
         } catch (Exception e) {
             log.error("获取用户权限列表失败: userId={}", userId, e);

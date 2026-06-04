@@ -795,14 +795,14 @@ public class SysUserServiceImpl implements SysUserService {
     
     @Override
     @Transactional
-    public boolean removeUserPermissions(Long userId, List<String> permissionCodes) {
-        if (permissionCodes == null || permissionCodes.isEmpty()) {
+    public boolean removeUserPermissions(Long userId, List<String> permissionIds) {
+        if (permissionIds == null || permissionIds.isEmpty()) {
             return false;
         }
         
         LambdaQueryWrapper<SysUserPermission> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SysUserPermission::getUserId, userId.toString());
-        queryWrapper.in(SysUserPermission::getPermissionCode, permissionCodes);
+        queryWrapper.in(SysUserPermission::getPermissionId, permissionIds);
         
         int deletedCount = userPermissionMapper.delete(queryWrapper);
         return deletedCount > 0;

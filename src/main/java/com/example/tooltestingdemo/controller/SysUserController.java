@@ -558,13 +558,13 @@ public class SysUserController {
      * DELETE /api/users/2/permissions
      * Content-Type: application/json
      * 
-     * ["protocol_m15", "protocol_m18", "report_p1"]
+     * ["perm_001", "perm_002", "perm_003"]
      */
     @DeleteMapping("/{id}/permissions")
     @PreAuthorize("hasRole('ADMIN') or @securityService.hasPermission('system:user:permission:remove')")
     public Result<String> removeUserPermissions(
             @PathVariable Long id,
-            @RequestBody List<String> permissionCodes) {
+            @RequestBody List<String> permissionIds) {
         try {
             // 检查用户是否存在
             SysUser user = userService.findById(id);
@@ -578,9 +578,9 @@ public class SysUserController {
             }
             
             // 检查权限列表中是否包含admin权限
-            if (permissionCodes != null && !permissionCodes.isEmpty()) {
+            if (permissionIds != null && !permissionIds.isEmpty()) {
                 List<String> adminPermissions = new ArrayList<>();
-                for (String permissionCode : permissionCodes) {
+                for (String permissionCode : permissionIds) {
                     if (permissionCode.toLowerCase().contains("admin")) {
                         adminPermissions.add(permissionCode);
                     }
@@ -590,12 +590,12 @@ public class SysUserController {
                 }
             }
             
-            if (permissionCodes == null || permissionCodes.isEmpty()) {
+            if (permissionIds == null || permissionIds.isEmpty()) {
                 return Result.error("权限列表不能为空");
             }
             
             // 调用服务层删除用户权限
-            boolean success = userService.removeUserPermissions(id, permissionCodes);
+            boolean success = userService.removeUserPermissions(id, permissionIds);
             
             if (success) {
                 return Result.success("删除用户权限成功");
