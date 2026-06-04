@@ -33,13 +33,14 @@ public class UserPermissionController {
     public Result<List<UserPermissionVO>> getUserPermissions(
             @RequestParam(required = false) String userId,
             @RequestParam(required = false) String scopeType,
-            @RequestParam(required = false) String scopeId) {
+            @RequestParam(required = false) String scopeId,
+            @RequestParam(required = false) Integer moduleType) {
         try {
             if (userId == null || userId.trim().isEmpty()) {
                 return Result.error("用户ID不能为空");
             }
             
-            List<UserPermissionVO> permissions = userPermissionService.getUserPermissions(userId, scopeType, scopeId);
+            List<UserPermissionVO> permissions = userPermissionService.getUserPermissions(userId, scopeType, scopeId, moduleType);
             return Result.success(permissions);
             
         } catch (Exception e) {

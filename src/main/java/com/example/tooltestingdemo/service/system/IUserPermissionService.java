@@ -16,8 +16,9 @@ public interface IUserPermissionService extends IService<SysUserPermission> {
     
     /**
      * 获取用户权限列表
+     * @param moduleType 模块类型筛选：不传值-返回所有权限，传2-只返回协议模块的权限
      */
-    List<UserPermissionVO> getUserPermissions(String userId, String scopeType, String scopeId);
+    List<UserPermissionVO> getUserPermissions(String userId, String scopeType, String scopeId, Integer moduleType);
     
     /**
      * 为用户分配权限

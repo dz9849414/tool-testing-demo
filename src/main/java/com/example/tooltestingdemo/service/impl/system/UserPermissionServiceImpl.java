@@ -39,7 +39,7 @@ public class UserPermissionServiceImpl extends ServiceImpl<SysUserPermissionMapp
     private final SysPermissionMapper permissionMapper;
 
     @Override
-    public List<UserPermissionVO> getUserPermissions(String userId, String scopeType, String scopeId) {
+    public List<UserPermissionVO> getUserPermissions(String userId, String scopeType, String scopeId, Integer moduleType) {
         try {
             LambdaQueryWrapper<SysUserPermission> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(SysUserPermission::getUserId, userId)
@@ -60,12 +60,21 @@ public class UserPermissionServiceImpl extends ServiceImpl<SysUserPermissionMapp
             
             return userPermissions.stream()
                 .filter(permission -> {
+                    // 模块类型筛选：传2-只返回协议模块的权限
+                    if (moduleType != null && moduleType == 2) {
+                        String permissionCode = permission.getPermissionCode();
+                        if (permissionCode == null || !permissionCode.startsWith("protocol")) {
+                            return false;
+                        }
+                    }
+                    // 有效期检查
                     if (permission.getStartTime() != null && now.isBefore(permission.getStartTime())) {
                         return false;
                     }
                     if (permission.getEndTime() != null && now.isAfter(permission.getEndTime())) {
                         return false;
                     }
+                    // 权限编码去重
                     return seenPermissionCodes.add(permission.getPermissionCode());
                 })
                 .map(this::convertToVO)
